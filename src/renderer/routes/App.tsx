@@ -5,6 +5,18 @@ import ProtectedRoute from '../app/ProtectedRoute';
 import { useEffect, useState } from 'react';
 import Layout from '../layouts/Layout';
 import KabisilyaDashboardPage from '../pages/dashboard';
+import KabisilyaFirstRunSetup from '../pages/Setup';
+import Login from '../pages/Auth/Login';
+import BukidTablePage from '../pages/Bukid/Table';
+import PitakTablePage from '../pages/Pitak/Table/PitakTable';
+
+// 🔹 Placeholder components para hindi mag red mark
+const Placeholder = ({ title }: { title: string }) => (
+  <div style={{ padding: '2rem' }}>
+    <h1>{title}</h1>
+    <p>Placeholder page for {title}</p>
+  </div>
+);
 
 function App() {
   const [setupRequired, setSetupRequired] = useState<boolean | null>(false);
@@ -17,12 +29,11 @@ function App() {
   const checkSetup = async () => {
     try {
       const response = await userAPI.getAllUsers();
-      console.log(response)
       const hasUsers = response.data && response.data.users.length > 0;
       setSetupRequired(!hasUsers);
     } catch (error) {
       console.error('Error checking setup:', error);
-      setSetupRequired(true); // Default to setup required on error
+      setSetupRequired(true);
     } finally {
       setLoading(false);
     }
@@ -52,19 +63,17 @@ function App() {
       </div>
     );
   }
+
   return (
     <Routes>
-      {/* Setup route - only accessible when no users exist */}
       {setupRequired && (
-        <Route path="*" element={<FirstRunSetup />} />
+        <Route path="*" element={<KabisilyaFirstRunSetup />} />
       )}
 
       {!setupRequired && (
         <>
-          {/* Public routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected routes - wrap with ProtectedRoute */}
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
@@ -72,26 +81,48 @@ function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
 
-            {/* Core POS */}
+            {/* Dashboard */}
             <Route path="dashboard" element={<KabisilyaDashboardPage />} />
 
-            {/* Define protected routes here */}
+            {/* Bukid & Pitak */}
+            <Route path="farms/bukid" element={<BukidTablePage/>} />
+            <Route path="farms/pitak" element={<PitakTablePage/>} />
+            <Route path="farms/assignments" element={<Placeholder title="Assignments" />} />
+
+            {/* Kabisilya & Workers */}
+            <Route path="workers/kabisilya" element={<Placeholder title="Mga Kabisilya" />} />
+            <Route path="workers/list" element={<Placeholder title="Worker Directory" />} />
+            <Route path="workers/attendance" element={<Placeholder title="Attendance" />} />
+
+            {/* Payroll & Finance */}
+            <Route path="finance/payments" element={<Placeholder title="Payments" />} />
+            <Route path="finance/debts" element={<Placeholder title="Debt Management" />} />
+            <Route path="finance/history" element={<Placeholder title="Payment History" />} />
+
+            {/* Reports & Analytics */}
+            <Route path="analytics/bukid" element={<Placeholder title="Bukid Reports" />} />
+            <Route path="analytics/pitak" element={<Placeholder title="Pitak Productivity" />} />
+            <Route path="analytics/finance" element={<Placeholder title="Financial Reports" />} />
+            <Route path="analytics/workers" element={<Placeholder title="Worker Performance" />} />
+
+            {/* System */}
+            <Route path="system/users" element={<Placeholder title="User Management" />} />
+            <Route path="system/audit" element={<Placeholder title="Audit Trail" />} />
+            <Route path="system/notifications" element={<Placeholder title="Notifications" />} />
+            <Route path="system/backup" element={<Placeholder title="Backup & Restore" />} />
 
             {/* Default redirect */}
             <Route path="/" element={
               setupRequired ? <Navigate to="/setup" replace /> : <Navigate to="/login" replace />
             } />
 
-            {/* 404 Page - Must be the last route */}
+            {/* 404 */}
             <Route path="*" element={<PageNotFound />} />
           </Route>
 
-          {/* Fallback redirect for unauthenticated */}
           <Route path="*" element={<Navigate to="/login" replace />} />
-
         </>
       )}
-
     </Routes>
   );
 }

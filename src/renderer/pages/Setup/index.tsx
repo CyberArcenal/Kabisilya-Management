@@ -24,8 +24,8 @@ import {
   MapPin,
   Warehouse
 } from 'lucide-react';
-import userAPI from '../../api/user';
-import windowControlAPI from '../../api/control';
+import windowControlAPI from '../../apis/control';
+import userAPI from '../../apis/user';
 
 const KabisilyaFirstRunSetup: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -71,7 +71,7 @@ const KabisilyaFirstRunSetup: React.FC = () => {
   const checkSetupRequired = async () => {
     try {
       const response = await userAPI.getAllUsers();
-      const hasUsers = response.data && response.data.length > 0;
+      const hasUsers = response.data && response.data.users.length > 0;
       setSetupRequired(!hasUsers);
     } catch (error) {
       console.error('Error checking setup:', error);
@@ -134,7 +134,7 @@ const KabisilyaFirstRunSetup: React.FC = () => {
     try {
       if (step === 1) {
         const usersResponse = await userAPI.getAllUsers();
-        const hasAdmin = usersResponse.data?.some(user => 
+        const hasAdmin = usersResponse.data?.users.some((user: { role: string; }) => 
           user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'administrator'
         );
 

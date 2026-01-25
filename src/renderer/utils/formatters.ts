@@ -288,3 +288,12 @@ export function formatPercentage(rate:number): string {
   }
   return `${(rate * 100).toFixed(2)}%`;
 }
+
+export function formatNumber(value: number | null | undefined, minimumFractionDigits = 0, maximumFractionDigits = 2): string {
+  if (typeof value !== "number" || isNaN(value))
+    return "0";
+  return new Intl.NumberFormat("en", {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(value);
+}
