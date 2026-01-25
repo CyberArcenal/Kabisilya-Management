@@ -10,29 +10,29 @@
   --warning-color: #d69e2e; /* Harvest Gold */
   --danger-color: #c53030; /* Rust Red */
   --info-color: #3182ce; /* Sky Blue */
-  
+
   /* Background Colors - Nature Inspired */
   --background-color: #f7f5f0; /* Warm Off-White (Soil/Paper tone) */
   --sidebar-bg: #2a623d; /* Dark Green - Sidebar */
   --sidebar-border: #1a472a; /* Deeper Green border */
   --sidebar-text: #f0fdf4; /* Light Greenish White */
   --header-bg: #ffffff; /* White header */
-  
+
   /* Text Colors */
   --text-primary: #1a202c; /* Almost Black */
   --text-secondary: #4a5568; /* Gray */
   --text-tertiary: #718096; /* Lighter Gray */
-  
+
   /* Card Backgrounds */
   --card-bg: #ffffff; /* White */
   --card-secondary-bg: #f8f9fa; /* Very Light Gray */
   --card-hover-bg: #f0fdf4; /* Light Green tint */
-  
+
   /* Border Colors - Earthy */
   --border-color: #e2e8f0; /* Light Gray */
   --border-light: #f1f5f9; /* Very Light Gray */
   --border-dark: #cbd5e0; /* Medium Gray */
-  
+
   /* Farm Status Colors */
   --status-planted: #38a169; /* Green - Planted/Active */
   --status-growing: #d69e2e; /* Gold - In Progress */
@@ -40,121 +40,121 @@
   --status-fallow: #718096; /* Gray - Inactive */
   --status-irrigation: #3182ce; /* Blue - Watering */
   --status-fertilized: #d69e2e; /* Amber - Fertilized */
-  
+
   /* Crop Status */
   --crop-healthy: #38a169; /* Green */
   --crop-stressed: #d69e2e; /* Amber */
   --crop-diseased: #c53030; /* Red */
   --crop-harvest-ready: #805ad5; /* Purple */
-  
+
   /* Worker Status */
   --worker-active: #38a169; /* Green */
   --worker-inactive: #718096; /* Gray */
   --worker-onleave: #d69e2e; /* Amber */
   --worker-assigned: #3182ce; /* Blue */
-  
+
   /* Equipment Status */
   --equipment-available: #38a169; /* Green */
   --equipment-inuse: #d69e2e; /* Amber */
   --equipment-maintenance: #c53030; /* Red */
   --equipment-retired: #718096; /* Gray */
-  
+
   /* Accent Colors - Nature Inspired */
   --accent-green: #2a623d;
   --accent-green-hover: #1a472a;
   --accent-green-light: rgba(42, 98, 61, 0.1);
   --accent-green-dark: #1a472a;
-  
+
   --accent-earth: #d4a574;
   --accent-earth-hover: #b5895c;
   --accent-earth-light: rgba(212, 165, 116, 0.1);
   --accent-earth-dark: #b5895c;
-  
+
   --accent-sky: #3182ce;
   --accent-sky-hover: #2c5282;
   --accent-sky-light: rgba(49, 130, 206, 0.1);
   --accent-sky-dark: #2c5282;
-  
+
   --accent-gold: #d69e2e;
   --accent-gold-hover: #b7791f;
   --accent-gold-light: rgba(214, 158, 46, 0.1);
   --accent-gold-dark: #b7791f;
-  
+
   --accent-rust: #c53030;
   --accent-rust-hover: #9b2c2c;
   --accent-rust-light: rgba(197, 48, 48, 0.1);
   --accent-rust-dark: #9b2c2c;
-  
+
   /* Status Backgrounds */
   --status-planted-bg: rgba(56, 161, 105, 0.15);
   --status-growing-bg: rgba(214, 158, 46, 0.15);
   --status-harvested-bg: rgba(128, 90, 213, 0.15);
   --status-fallow-bg: rgba(113, 128, 150, 0.15);
   --status-irrigation-bg: rgba(49, 130, 206, 0.15);
-  
+
   /* Crop Status Backgrounds */
   --crop-healthy-bg: rgba(56, 161, 105, 0.15);
   --crop-stressed-bg: rgba(214, 158, 46, 0.15);
   --crop-diseased-bg: rgba(197, 48, 48, 0.15);
   --crop-harvest-ready-bg: rgba(128, 90, 213, 0.15);
-  
+
   /* Button Colors */
   --btn-primary-bg: var(--accent-green);
   --btn-primary-hover: var(--accent-green-hover);
   --btn-primary-text: #ffffff;
-  
+
   --btn-success-bg: var(--accent-green);
   --btn-success-hover: var(--accent-green-hover);
   --btn-success-text: #ffffff;
-  
+
   --btn-danger-bg: var(--accent-rust);
   --btn-danger-hover: var(--accent-rust-hover);
   --btn-danger-text: #ffffff;
-  
+
   --btn-warning-bg: var(--accent-gold);
   --btn-warning-hover: var(--accent-gold-hover);
   --btn-warning-text: #ffffff;
-  
+
   --btn-earth-bg: var(--accent-earth);
   --btn-earth-hover: var(--accent-earth-hover);
   --btn-earth-text: #1a202c;
-  
+
   /* Action Buttons */
   --btn-plant-bg: linear-gradient(135deg, #38a169 0%, #2a623d 100%);
   --btn-plant-hover: linear-gradient(135deg, #2a623d 0%, #1a472a 100%);
   --btn-plant-text: #ffffff;
-  
+
   --btn-harvest-bg: linear-gradient(135deg, #d69e2e 0%, #b7791f 100%);
   --btn-harvest-hover: linear-gradient(135deg, #b7791f 0%, #975a16 100%);
   --btn-harvest-text: #ffffff;
-  
+
   /* Report & Invoice Colors */
   --report-bg: #ffffff;
   --report-border: #e2e8f0;
   --report-header: #f0fdf4;
   --report-total: #2a623d;
-  
+
   /* Data Table */
   --table-header-bg: #f0fdf4;
   --table-row-even: #ffffff;
   --table-row-odd: #f8f9fa;
   --table-row-hover: #f0fdf4;
   --table-border: #e2e8f0;
-  
+
   /* Form Colors */
   --input-bg: #ffffff;
   --input-border: #e2e8f0;
   --input-focus: var(--accent-green);
   --select-option-bg: #ffffff;
   --select-option-hover: #f0fdf4;
-  
+
   /* Topbar Colors */
   --topbar-bg: #ffffff;
   --topbar-border: #e2e8f0;
   --topbar-hover: var(--accent-green);
   --topbar-search-bg: #f8f9fa;
   --topbar-search-border: #e2e8f0;
-  
+
   /* Gradient Colors */
   --gradient-primary: linear-gradient(135deg, #2a623d 0%, #1a472a 100%);
   --gradient-success: linear-gradient(135deg, #38a169 0%, #2a623d 100%);
@@ -251,7 +251,7 @@
 }
 
 .plot-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -525,7 +525,8 @@
 }
 
 @keyframes pulse-green {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(56, 161, 105, 0.4);
   }
   50% {
@@ -538,7 +539,9 @@
 }
 
 /* Form Elements */
-input, select, textarea {
+input,
+select,
+textarea {
   background-color: var(--input-bg) !important;
   border: 1px solid var(--input-border) !important;
   color: var(--text-primary) !important;
@@ -546,7 +549,9 @@ input, select, textarea {
   transition: all 0.2s ease;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--input-focus) !important;
   outline: none;
   box-shadow: 0 0 0 3px rgba(42, 98, 61, 0.1);
@@ -583,7 +588,7 @@ input:focus, select:focus, textarea:focus {
   .farm-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .data-table {
     display: block;
     overflow-x: auto;
@@ -598,7 +603,7 @@ input:focus, select:focus, textarea:focus {
     background: white !important;
     color: black !important;
   }
-  
+
   .no-print {
     display: none !important;
   }
@@ -625,7 +630,7 @@ input:focus, select:focus, textarea:focus {
 
 /* Utility Classes */
 .bg-field-pattern {
-  background-image: 
+  background-image:
     linear-gradient(to right, rgba(42, 98, 61, 0.1) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(42, 98, 61, 0.1) 1px, transparent 1px);
   background-size: 20px 20px;
@@ -633,9 +638,17 @@ input:focus, select:focus, textarea:focus {
 
 .bg-soil-texture {
   background-color: #f7f5f0;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(212, 165, 116, 0.1) 0%, transparent 20%),
-    radial-gradient(circle at 90% 80%, rgba(212, 165, 116, 0.1) 0%, transparent 20%);
+  background-image:
+    radial-gradient(
+      circle at 10% 20%,
+      rgba(212, 165, 116, 0.1) 0%,
+      transparent 20%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(212, 165, 116, 0.1) 0%,
+      transparent 20%
+    );
 }
 
 .text-gradient-green {
@@ -645,38 +658,44 @@ input:focus, select:focus, textarea:focus {
   color: transparent;
 }
 
-
-
-
-
-
-
-
-
-
-
 /* Add to index.css */
 
 /* PageNotFound Specific Styles */
 .page-not-found-bg {
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(42, 98, 61, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(212, 165, 116, 0.05) 0%, transparent 50%),
+  background-image:
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(42, 98, 61, 0.05) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(212, 165, 116, 0.05) 0%,
+      transparent 50%
+    ),
     linear-gradient(to bottom, transparent, rgba(56, 161, 105, 0.02));
 }
 
 /* Field pattern background */
 .bg-field-pattern-404 {
-  background-image: 
+  background-image:
     linear-gradient(to right, rgba(42, 98, 61, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(42, 98, 61, 0.05) 1px, transparent 1px),
-    radial-gradient(circle at 50% 50%, rgba(212, 165, 116, 0.03) 0%, transparent 50%);
-  background-size: 40px 40px, 40px 40px, 100% 100%;
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(212, 165, 116, 0.03) 0%,
+      transparent 50%
+    );
+  background-size:
+    40px 40px,
+    40px 40px,
+    100% 100%;
 }
 
 /* Farm element animations */
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -709,7 +728,8 @@ input:focus, select:focus, textarea:focus {
 
 /* Season indicator animation */
 @keyframes season-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(56, 161, 105, 0.2);
   }
   50% {
@@ -729,13 +749,18 @@ input:focus, select:focus, textarea:focus {
 }
 
 .farm-card-hover::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -745,7 +770,7 @@ input:focus, select:focus, textarea:focus {
 
 /* Error code styling */
 .error-code {
-  text-shadow: 
+  text-shadow:
     2px 2px 0 rgba(42, 98, 61, 0.1),
     4px 4px 0 rgba(212, 165, 116, 0.1),
     6px 6px 0 rgba(56, 161, 105, 0.1);
@@ -763,13 +788,13 @@ input:focus, select:focus, textarea:focus {
 .nav-card:hover {
   transform: translateY(-4px);
   border-color: var(--accent-green);
-  box-shadow: 
+  box-shadow:
     0 10px 25px rgba(42, 98, 61, 0.1),
     0 5px 10px rgba(42, 98, 61, 0.05);
 }
 
 .nav-card::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
@@ -833,7 +858,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .user-card-farm::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -848,7 +873,7 @@ input:focus, select:focus, textarea:focus {
   .page-not-found-grid {
     grid-template-columns: 1fr !important;
   }
-  
+
   .nav-card-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
@@ -858,8 +883,85 @@ input:focus, select:focus, textarea:focus {
   .nav-card-grid {
     grid-template-columns: 1fr !important;
   }
-  
+
   .error-code {
     font-size: 5rem !important;
   }
+}
+
+.status-badge-on-leave {
+  background-color: var(--status-on-leave-bg);
+  color: var(--status-on-leave-text);
+}
+
+.status-badge-terminated {
+  background-color: var(--status-terminated-bg);
+  color: var(--status-terminated-text);
+}
+
+/* Add to your global CSS file */
+.status-badge-active {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: rgb(21, 128, 61);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-badge-completed {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(29, 78, 216);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.status-badge-cancelled {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(185, 28, 28);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.status-badge-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: rgb(180, 83, 9);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-badge-partially-paid {
+  background-color: rgba(168, 85, 247, 0.1);
+  color: rgb(126, 34, 206);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.status-badge-paid {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: rgb(21, 128, 61);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-badge-overdue {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(185, 28, 28);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.status-badge-admin {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: rgb(109, 40, 217);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.status-badge-manager {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(29, 78, 216);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.status-badge-user {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: rgb(5, 150, 105);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-badge-inactive {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: rgb(75, 85, 99);
+  border: 1px solid rgba(107, 114, 128, 0.2);
 }

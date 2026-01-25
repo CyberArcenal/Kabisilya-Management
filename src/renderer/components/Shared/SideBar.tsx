@@ -100,7 +100,7 @@ const [menuItems, setMenuItems] = useState<MenuItem[]>([
     children: [
       { path: "/finance/payments", name: "Payments", icon: DollarSign },
       { path: "/finance/debts", name: "Debt Management", icon: Receipt },
-      { path: "/finance/history", name: "Payment History", icon: ClipboardList },
+      // { path: "/finance/history", name: "Payment History", icon: ClipboardList },
     ],
   },
 

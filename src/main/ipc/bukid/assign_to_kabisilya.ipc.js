@@ -1,11 +1,11 @@
-// ipc/bukid/add_note.ipc.js
+// ipc/bukid/assign_to_kabisilya.ipc.js
 //@ts-check
 
-const { AppDataSource } = require("../../../db/dataSource");
-const Bukid = require("../../../../entities/Bukid");
-const UserActivity = require("../../../../entities/UserActivity");
+const { AppDataSource } = require("../../db/dataSource");
+const Bukid = require("../../../entities/Bukid");
+const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async function addBukidNote(params = {}, queryRunner = null) {
+module.exports = async function assignToKabisilya(params = {}, queryRunner = null) {
   let shouldRelease = false;
   
   if (!queryRunner) {
@@ -19,20 +19,20 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { id, note, _userId } = params;
+    const { bukidId, kabisilyaId, _userId } = params;
     
-    if (!id || !note) {
+    if (!bukidId || !kabisilyaId) {
       return {
         status: false,
-        message: 'Bukid ID and note are required',
+        message: 'Bukid ID and Kabisilya ID are required',
         data: null
       };
     }
 
-    // Find existing bukid
+    // Find bukid
     // @ts-ignore
     const bukid = await queryRunner.manager.findOne(Bukid, {
-      where: { id }
+      where: { id: bukidId }
     });
 
     if (!bukid) {
@@ -43,23 +43,18 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
       };
     }
 
-    // Add note (assuming we have a notes field in Bukid entity)
-    // If not, you need to add it to the entity first
-    const currentNotes = bukid.notes || '';
-    const newNotes = currentNotes 
-      ? `${currentNotes}\n${new Date().toISOString()}: ${note}`
-      : `${new Date().toISOString()}: ${note}`;
-
+    // Assign to kabisilya
     // @ts-ignore
-    await queryRunner.manager.update(Bukid, id, {
-      notes: newNotes,
+    await queryRunner.manager.update(Bukid, bukidId, {
+      kabisilya: { id: kabisilyaId },
       updatedAt: new Date()
     });
     
     // Get updated bukid
     // @ts-ignore
     const updatedBukid = await queryRunner.manager.findOne(Bukid, {
-      where: { id }
+      where: { id: bukidId },
+      relations: ['kabisilya']
     });
 
     // Log activity
@@ -67,8 +62,8 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
       user_id: _userId,
-      action: 'add_bukid_note',
-      description: `Added note to bukid ID: ${id}`,
+      action: 'assign_bukid_to_kabisilya',
+      description: `Assigned bukid ${bukidId} to kabisilya ${kabisilyaId}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
       created_at: new Date()
@@ -82,7 +77,7 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
 
     return {
       status: true,
-      message: 'Note added successfully',
+      message: 'Bukid assigned to kabisilya successfully',
       data: { bukid: updatedBukid }
     };
   } catch (error) {
@@ -90,11 +85,11 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in addBukidNote:', error);
+    console.error('Error in assignToKabisilya:', error);
     return {
       status: false,
       // @ts-ignore
-      message: `Failed to add note: ${error.message}`,
+      message: `Failed to assign bukid to kabisilya: ${error.message}`,
       data: null
     };
   } finally {

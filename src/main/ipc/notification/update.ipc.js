@@ -1,11 +1,11 @@
-// ipc/bukid/update_status.ipc.js
+// ipc/notification/update.ipc.js
 //@ts-check
 
-const { AppDataSource } = require("../../../db/dataSource");
-const Bukid = require("../../../../entities/Bukid");
-const UserActivity = require("../../../../entities/UserActivity");
+const Notification = require("../../../entities/Notification");
+const UserActivity = require("../../../entities/UserActivity");
+const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function updateBukidStatus(params = {}, queryRunner = null) {
+module.exports = async function updateNotification(params = {}, queryRunner = null) {
   let shouldRelease = false;
   
   if (!queryRunner) {
@@ -19,50 +19,46 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
 
   try {
     // @ts-ignore
-    const { id, status, _userId } = params;
+    const { id, type, context, _userId } = params;
     
-    if (!id || !status) {
+    if (!id) {
       return {
         status: false,
-        message: 'Bukid ID and status are required',
+        message: 'Notification ID is required',
         data: null
       };
     }
 
-    // Find existing bukid
     // @ts-ignore
-    const bukid = await queryRunner.manager.findOne(Bukid, {
+    const notificationRepo = queryRunner.manager.getRepository(Notification);
+    
+    // Find existing notification
+    const existingNotification = await notificationRepo.findOne({
       where: { id }
     });
 
-    if (!bukid) {
+    if (!existingNotification) {
       return {
         status: false,
-        message: 'Bukid not found',
+        message: 'Notification not found',
         data: null
       };
     }
 
-    // Update status
-    // @ts-ignore
-    await queryRunner.manager.update(Bukid, id, {
-      status,
-      updatedAt: new Date()
-    });
-    
-    // Get updated bukid
-    // @ts-ignore
-    const updatedBukid = await queryRunner.manager.findOne(Bukid, {
-      where: { id }
-    });
+    // Update fields
+    if (type !== undefined) existingNotification.type = type;
+    if (context !== undefined) existingNotification.context = context;
 
+    // @ts-ignore
+    const updatedNotification = await queryRunner.manager.save(existingNotification);
+    
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
       user_id: _userId,
-      action: 'update_bukid_status',
-      description: `Updated bukid ${id} status to: ${status}`,
+      action: 'update_notification',
+      description: `Updated notification ID: ${id}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
       created_at: new Date()
@@ -76,19 +72,19 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
 
     return {
       status: true,
-      message: 'Bukid status updated successfully',
-      data: { bukid: updatedBukid }
+      message: 'Notification updated successfully',
+      data: { notification: updatedNotification }
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in updateBukidStatus:', error);
+    console.error('Error in updateNotification:', error);
     return {
       status: false,
       // @ts-ignore
-      message: `Failed to update bukid status: ${error.message}`,
+      message: `Failed to update notification: ${error.message}`,
       data: null
     };
   } finally {

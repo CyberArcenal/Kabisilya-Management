@@ -67,7 +67,7 @@ const PitakSelect: React.FC<PitakSelectProps> = ({
       const response = await pitakAPI.getAllPitaks(filters);
       
       if (response.status && response.data) {
-        const pitakList = Array.isArray(response.data) ? response.data : response.data.pitaks || [];
+        const pitakList = Array.isArray(response.data) ? response.data : response.data || [];
         setPitaks(pitakList);
         setFilteredPitaks(pitakList);
         

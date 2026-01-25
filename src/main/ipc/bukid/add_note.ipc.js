@@ -1,11 +1,11 @@
-// ipc/bukid/remove_from_kabisilya.ipc.js
+// ipc/bukid/add_note.ipc.js
 //@ts-check
 
-const { AppDataSource } = require("../../../db/dataSource");
-const Bukid = require("../../../../entities/Bukid");
-const UserActivity = require("../../../../entities/UserActivity");
+const { AppDataSource } = require("../../db/dataSource");
+const Bukid = require("../../../entities/Bukid");
+const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async function removeFromKabisilya(params = {}, queryRunner = null) {
+module.exports = async function addBukidNote(params = {}, queryRunner = null) {
   let shouldRelease = false;
   
   if (!queryRunner) {
@@ -19,17 +19,17 @@ module.exports = async function removeFromKabisilya(params = {}, queryRunner = n
 
   try {
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, note, _userId } = params;
     
-    if (!id) {
+    if (!id || !note) {
       return {
         status: false,
-        message: 'Bukid ID is required',
+        message: 'Bukid ID and note are required',
         data: null
       };
     }
 
-    // Find bukid
+    // Find existing bukid
     // @ts-ignore
     const bukid = await queryRunner.manager.findOne(Bukid, {
       where: { id }
@@ -43,10 +43,16 @@ module.exports = async function removeFromKabisilya(params = {}, queryRunner = n
       };
     }
 
-    // Remove from kabisilya
+    // Add note (assuming we have a notes field in Bukid entity)
+    // If not, you need to add it to the entity first
+    const currentNotes = bukid.notes || '';
+    const newNotes = currentNotes 
+      ? `${currentNotes}\n${new Date().toISOString()}: ${note}`
+      : `${new Date().toISOString()}: ${note}`;
+
     // @ts-ignore
     await queryRunner.manager.update(Bukid, id, {
-      kabisilya: null,
+      notes: newNotes,
       updatedAt: new Date()
     });
     
@@ -61,8 +67,8 @@ module.exports = async function removeFromKabisilya(params = {}, queryRunner = n
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
       user_id: _userId,
-      action: 'remove_bukid_from_kabisilya',
-      description: `Removed bukid ${id} from kabisilya`,
+      action: 'add_bukid_note',
+      description: `Added note to bukid ID: ${id}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
       created_at: new Date()
@@ -76,7 +82,7 @@ module.exports = async function removeFromKabisilya(params = {}, queryRunner = n
 
     return {
       status: true,
-      message: 'Bukid removed from kabisilya successfully',
+      message: 'Note added successfully',
       data: { bukid: updatedBukid }
     };
   } catch (error) {
@@ -84,11 +90,11 @@ module.exports = async function removeFromKabisilya(params = {}, queryRunner = n
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in removeFromKabisilya:', error);
+    console.error('Error in addBukidNote:', error);
     return {
       status: false,
       // @ts-ignore
-      message: `Failed to remove bukid from kabisilya: ${error.message}`,
+      message: `Failed to add note: ${error.message}`,
       data: null
     };
   } finally {

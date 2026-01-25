@@ -56,7 +56,7 @@ const BukidSelectWithStats: React.FC<BukidSelectWithStatsProps> = ({
         
         // Fetch summaries for each bukid if showStats is true
         if (showStats) {
-          const summaryPromises = bukidList.map(async (bukid: { id: any; }) => {
+          const summaryPromises = bukidList.map(async (bukid: { id?: any; }) => {
             if (bukid.id) {
               try {
                 const summaryResponse = await bukidAPI.getSummary(bukid.id);
@@ -72,7 +72,7 @@ const BukidSelectWithStats: React.FC<BukidSelectWithStatsProps> = ({
           
           const summariesArray = await Promise.all(summaryPromises);
           const summariesMap: Record<number, BukidSummaryData> = {};
-          summariesArray.forEach((item: { id: string | number; summary: any; }) => {
+          summariesArray.forEach((item?: { id: string | number; summary: any; } | null) => {
             if (item) {
               summariesMap[item.id as number] = item.summary;
             }
