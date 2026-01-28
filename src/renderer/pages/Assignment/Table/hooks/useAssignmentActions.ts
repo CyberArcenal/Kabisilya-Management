@@ -2,7 +2,7 @@
 import assignmentAPI from '../../../../apis/assignment';
 import type { Assignment, AssignmentFilters } from '../../../../apis/assignment';
 import { showError, showSuccess, showToast } from '../../../../utils/notification';
-import { showConfirm } from '../../../../utils/dialogs';
+import { dialogs, showConfirm } from '../../../../utils/dialogs';
 
 export const useAssignmentActions = (
     assignments: Assignment[],
@@ -133,6 +133,7 @@ export const useAssignmentActions = (
     };
 
     const handleExportCSV = async () => {
+        if(!await dialogs.confirm({title: 'Export Assignments to CSV', message: 'Do you want to export the current assignments to a CSV file?'}))return;
         try {
             showToast('Exporting to CSV...', 'info');
             const filterParams: AssignmentFilters = {

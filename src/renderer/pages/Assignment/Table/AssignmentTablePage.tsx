@@ -11,6 +11,7 @@ import AssignmentPagination from './components/AssignmentPagination';
 import { useAssignmentData } from './hooks/useAssignmentData';
 import { useAssignmentActions } from './hooks/useAssignmentActions';
 import ViewSingleAssignmentDialog from '../View/Dialogs/ViewSingleAssignmentDialog';
+import AssignmentFormDialog from '../Dialogs/Form';
 
 const AssignmentTablePage: React.FC = () => {
     const navigate = useNavigate();
@@ -72,8 +73,13 @@ const AssignmentTablePage: React.FC = () => {
     // Dialog states
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+    
+    // Form dialog states
+    const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+    const [formDialogMode, setFormDialogMode] = useState<'add' | 'edit'>('add');
+    const [formDialogAssignmentId, setFormDialogAssignmentId] = useState<number | null>(null);
 
-    // Dialog handlers
+    // View Dialog handlers
     const openViewDialog = (id: number) => {
         setSelectedAssignmentId(id);
         setIsViewDialogOpen(true);
@@ -84,12 +90,30 @@ const AssignmentTablePage: React.FC = () => {
         setSelectedAssignmentId(null);
     };
 
-    const handleEditAssignment = (id: number) => {
-        navigate(`/assignment/edit/${id}`);
+    // Form Dialog handlers
+    const openFormDialog = (mode: 'add' | 'edit', id?: number) => {
+        setFormDialogMode(mode);
+        setFormDialogAssignmentId(id || null);
+        setIsFormDialogOpen(true);
+    };
+
+    const closeFormDialog = () => {
+        setIsFormDialogOpen(false);
+        setFormDialogAssignmentId(null);
+        setFormDialogMode('add');
+    };
+
+    const handleFormSuccess = () => {
+        fetchAssignments(); // Refresh the data
+        closeFormDialog();
     };
 
     const handleCreateAssignment = () => {
-        navigate('/assignment/create');
+        openFormDialog('add');
+    };
+
+    const handleEditAssignment = (id: number) => {
+        openFormDialog('edit', id);
     };
 
     // Delete handler with dialog integration
@@ -97,6 +121,9 @@ const AssignmentTablePage: React.FC = () => {
         // If the dialog is open for this assignment, close it first
         if (selectedAssignmentId === id && isViewDialogOpen) {
             closeViewDialog();
+        }
+        if (formDialogAssignmentId === id && isFormDialogOpen) {
+            closeFormDialog();
         }
         await handleDeleteAssignment(id);
     };
@@ -107,6 +134,9 @@ const AssignmentTablePage: React.FC = () => {
         if (selectedAssignmentId === id && isViewDialogOpen) {
             closeViewDialog();
         }
+        if (formDialogAssignmentId === id && isFormDialogOpen) {
+            closeFormDialog();
+        }
         await handleUpdateStatus(id, currentStatus);
     };
 
@@ -115,6 +145,9 @@ const AssignmentTablePage: React.FC = () => {
         // If the dialog is open for this assignment, close it first
         if (selectedAssignmentId === id && isViewDialogOpen) {
             closeViewDialog();
+        }
+        if (formDialogAssignmentId === id && isFormDialogOpen) {
+            closeFormDialog();
         }
         await handleCancelAssignment(id);
     };
@@ -303,8 +336,8 @@ const AssignmentTablePage: React.FC = () => {
                                     selectedAssignments={selectedAssignments}
                                     toggleSelectAll={toggleSelectAll}
                                     toggleSelectAssignment={toggleSelectAssignment}
-                                    onView={openViewDialog} // Changed to dialog
-                                    onEdit={handleEditAssignment}
+                                    onView={openViewDialog}
+                                    onEdit={handleEditAssignment} // Updated to use dialog
                                     onDelete={handleDeleteWithDialog}
                                     onUpdateStatus={handleUpdateStatusWithDialog}
                                     onCancel={handleCancelWithDialog}
@@ -318,8 +351,8 @@ const AssignmentTablePage: React.FC = () => {
                                         assignments={assignments}
                                         selectedAssignments={selectedAssignments}
                                         toggleSelectAssignment={toggleSelectAssignment}
-                                        onView={openViewDialog} // Changed to dialog
-                                        onEdit={handleEditAssignment}
+                                        onView={openViewDialog}
+                                        onEdit={handleEditAssignment} // Updated to use dialog
                                         onUpdateStatus={handleUpdateStatusWithDialog}
                                         onCancel={handleCancelWithDialog}
                                         onDelete={handleDeleteWithDialog}
@@ -352,6 +385,16 @@ const AssignmentTablePage: React.FC = () => {
                         handleEditAssignment(selectedAssignmentId);
                     }}
                     onDelete={() => handleDeleteWithDialog(selectedAssignmentId)}
+                />
+            )}
+
+            {/* Assignment Form Dialog */}
+            {isFormDialogOpen && (
+                <AssignmentFormDialog
+                    id={formDialogAssignmentId || undefined}
+                    mode={formDialogMode}
+                    onClose={closeFormDialog}
+                    onSuccess={handleFormSuccess}
                 />
             )}
         </>

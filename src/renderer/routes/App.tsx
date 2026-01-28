@@ -9,8 +9,8 @@ import KabisilyaFirstRunSetup from '../pages/Setup';
 import Login from '../pages/Auth/Login';
 // import BukidTablePage from '../pages/Bukid/Table';
 // import AssignmentTablePage from '../pages/Assignment/Table';
-import KabisilyaTablePage from '../pages/Kabisilya/Table';
-import WorkerTablePage from '../pages/Worker/Table/WorkerTable';
+// import KabisilyaTablePage from '../pages/Kabisilya/Table';
+// import WorkerTablePage from '../pages/Worker/Table/WorkerTable';
 import WorkerAttendancePage from '../pages/WorkerAttendance';
 import PaymentTablePage from '../pages/Payment/Table/PaymentTable';
 import DebtTablePage from '../pages/Debt/Table/DebtTable';
@@ -28,6 +28,8 @@ import DebtFormPage from '../pages/Debt/Form/DebtForm';
 import PitakTablePage from '../pages/Pitak/Table';
 import BukidTablePage from '../pages/Bukid/Table/BukidTablePage';
 import AssignmentTablePage from '../pages/Assignment/Table/AssignmentTablePage';
+import KabisilyaTablePage from '../pages/Kabisilya/Table/KabisilyaTablePage';
+import WorkerTablePage from '../pages/Worker/Table/WorkerTablePage';
 
 // 🔹 Placeholder components para hindi mag red mark
 const Placeholder = ({ title }: { title: string }) => (
