@@ -6,19 +6,21 @@ const Bukid = require("../../../entities/Bukid");
 const { AppDataSource } = require("../../db/dataSource");
 const { Not } = require("typeorm");
 
-module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: any; status: any; excludePitakId?: null | undefined; }} */ params) => {
+module.exports = async (
+  /** @type {{ bukidId: any; location: any; totalLuwang: any; status: any; excludePitakId?: null | undefined; }} */ params,
+) => {
   try {
-    const { 
-      bukidId, 
-      location, 
-      totalLuwang, 
+    const {
+      bukidId,
+      location,
+      totalLuwang,
       status,
-      excludePitakId = null // For update validation
+      excludePitakId = null, // For update validation
     } = params;
 
     const errors = [];
     const warnings = [];
-    const validStatuses = ['active', 'inactive', 'harvested'];
+    const validStatuses = ["active", "inactive", "completed"];
 
     // Validate bukidId
     if (bukidId === undefined) {
@@ -33,7 +35,7 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
 
     // Validate location (if provided)
     if (location !== undefined && location !== null) {
-      if (typeof location !== 'string') {
+      if (typeof location !== "string") {
         errors.push("location must be a string");
       } else if (location.length > 255) {
         errors.push("location must be less than 255 characters");
@@ -43,7 +45,7 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
       if (bukidId && location) {
         const pitakRepo = AppDataSource.getRepository(Pitak);
         const whereClause = { bukidId, location };
-        
+
         if (excludePitakId) {
           // @ts-ignore
           whereClause.id = Not(excludePitakId);
@@ -51,7 +53,9 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
 
         const existing = await pitakRepo.findOne({ where: whereClause });
         if (existing) {
-          errors.push(`A pitak already exists at location "${location}" in the same bukid`);
+          errors.push(
+            `A pitak already exists at location "${location}" in the same bukid`,
+          );
         }
       }
     }
@@ -76,7 +80,7 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
     // Validate status
     if (status !== undefined && status !== null) {
       if (!validStatuses.includes(status)) {
-        errors.push(`status must be one of: ${validStatuses.join(', ')}`);
+        errors.push(`status must be one of: ${validStatuses.join(", ")}`);
       }
     }
 
@@ -85,22 +89,31 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
       // Check if location matches pattern if needed
       const locationPattern = /^[A-Za-z0-9\s\-_,.#]+$/;
       if (location && !locationPattern.test(location)) {
-        warnings.push("location contains special characters that may be invalid");
+        warnings.push(
+          "location contains special characters that may be invalid",
+        );
       }
 
       // Check totalLuwang against bukid's existing pitaks
       const pitakRepo = AppDataSource.getRepository(Pitak);
       const bukidPitaks = await pitakRepo.find({
         where: { bukidId },
-        select: ['totalLuwang']
+        select: ["totalLuwang"],
       });
 
-      const totalBukidLuWang = bukidPitaks.reduce((/** @type {number} */ sum, /** @type {{ totalLuwang: string; }} */ p) => 
-        sum + parseFloat(p.totalLuwang), 0);
-      
+      const totalBukidLuWang = bukidPitaks.reduce(
+        (
+          /** @type {number} */ sum,
+          /** @type {{ totalLuwang: string; }} */ p,
+        ) => sum + parseFloat(p.totalLuwang),
+        0,
+      );
+
       // @ts-ignore
-      if (totalLuwangNum > 0 && totalLuwangNum > (totalBukidLuWang * 2)) {
-        warnings.push("totalLuwang is significantly higher than other pitaks in this bukid");
+      if (totalLuwangNum > 0 && totalLuwangNum > totalBukidLuWang * 2) {
+        warnings.push(
+          "totalLuwang is significantly higher than other pitaks in this bukid",
+        );
       }
     }
 
@@ -117,18 +130,17 @@ module.exports = async (/** @type {{ bukidId: any; location: any; totalLuwang: a
           bukidId: bukidId !== undefined ? "provided" : "missing",
           location: location !== undefined ? "provided" : "missing",
           totalLuwang: totalLuwang !== undefined ? "provided" : "missing",
-          status: status !== undefined ? "provided" : "missing"
-        }
-      }
+          status: status !== undefined ? "provided" : "missing",
+        },
+      },
     };
-
   } catch (error) {
     console.error("Error validating pitak data:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Validation error: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

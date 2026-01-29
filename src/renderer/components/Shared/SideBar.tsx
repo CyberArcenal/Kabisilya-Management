@@ -109,8 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
       children: [
         { path: "/system/users", name: "User Management", icon: User2 },
         { path: "/system/audit", name: "Audit Trail", icon: ListChecks },
-        { path: "/system/notifications", name: "Notifications", icon: Bell },
-        { path: "/system/backup", name: "Backup & Restore", icon: Shield },
+        // { path: "/system/notifications", name: "Notifications", icon: Bell },
+        // { path: "/system/backup", name: "Backup & Restore", icon: Shield },
       ],
     },
   ]);
@@ -336,7 +336,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             <div className="font-bold text-sm">0</div>
             <div className="text-[10px]">Pending Tasks</div>
           </div>
-          <div className="bg-[var(--status-harvested-bg)] text-[var(--status-harvested)] text-xs py-2 px-2 rounded-lg text-center border border-[var(--border-light)]">
+          <div className="bg-[var(--status-completed-bg)] text-[var(--status-completed)] text-xs py-2 px-2 rounded-lg text-center border border-[var(--border-light)]">
             <div className="font-bold text-sm">₱0.00</div>
             <div className="text-[10px]">Today's Sales</div>
           </div>

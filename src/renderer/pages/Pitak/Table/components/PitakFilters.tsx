@@ -49,7 +49,7 @@ const PitakFilters: React.FC<PitakFiltersProps> = ({
 
         {/* Status Filter */}
         <div className="flex gap-2 flex-wrap">
-          {['all', 'active', 'inactive', 'harvested'].map((status) => (
+          {['all', 'active', 'inactive', 'completed'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}

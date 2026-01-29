@@ -36,7 +36,7 @@
   /* Farm Status Colors */
   --status-planted: #38a169; /* Green - Planted/Active */
   --status-growing: #d69e2e; /* Gold - In Progress */
-  --status-harvested: #805ad5; /* Purple - Completed */
+  --status-completed: #805ad5; /* Purple - Completed */
   --status-fallow: #718096; /* Gray - Inactive */
   --status-irrigation: #3182ce; /* Blue - Watering */
   --status-fertilized: #d69e2e; /* Amber - Fertilized */
@@ -88,7 +88,7 @@
   /* Status Backgrounds */
   --status-planted-bg: rgba(56, 161, 105, 0.15);
   --status-growing-bg: rgba(214, 158, 46, 0.15);
-  --status-harvested-bg: rgba(128, 90, 213, 0.15);
+  --status-completed-bg: rgba(128, 90, 213, 0.15);
   --status-fallow-bg: rgba(113, 128, 150, 0.15);
   --status-irrigation-bg: rgba(49, 130, 206, 0.15);
 
@@ -190,9 +190,9 @@
   border: 1px solid rgba(214, 158, 46, 0.3);
 }
 
-.status-badge-harvested {
-  background-color: var(--status-harvested-bg);
-  color: var(--status-harvested);
+.status-badge-completed {
+  background-color: var(--status-completed-bg);
+  color: var(--status-completed);
   border: 1px solid rgba(128, 90, 213, 0.3);
 }
 
@@ -966,11 +966,6 @@ textarea:focus {
   border: 1px solid rgba(107, 114, 128, 0.2);
 }
 
-
-
-
-
-
 .pitak-table-container {
   position: relative;
   overflow: visible !important;
@@ -1067,10 +1062,6 @@ table.data-table {
   z-index: 9999 !important;
 } */
 
-
-
-
-
 /* Modal backdrop blur effect */
 .backdrop-blur-sm {
   backdrop-filter: blur(4px);
@@ -1097,7 +1088,10 @@ table.data-table {
 
 /* Smooth transitions */
 * {
-  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 /* Modal entrance animation */
@@ -1117,7 +1111,9 @@ table.data-table {
 }
 
 /* Input focus styles */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   ring-width: 2px;
 }
@@ -1131,4 +1127,4 @@ input:focus, textarea:focus, select:focus {
 .bg-gradient-to-br {
   background-size: 200% 200%;
   background-position: 0% 0%;
-} 
+}

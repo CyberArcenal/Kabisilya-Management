@@ -303,7 +303,7 @@ const WorkerTablePage: React.FC = () => {
 
                 {/* Main Content Area */}
                 <div className="flex-1 overflow-hidden">
-                    <div className="h-full overflow-y-auto p-6">
+                    <div className="h-full p-6">
                         {/* Stats Cards */}
                         <div className="mb-6">
                             <WorkerStats stats={stats} />

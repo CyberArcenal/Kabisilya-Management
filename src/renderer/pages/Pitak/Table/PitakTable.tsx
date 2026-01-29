@@ -495,13 +495,13 @@
 //         }
 //     };
 
-//     const handleBulkStatusChange = async (status: 'active' | 'inactive' | 'harvested') => {
+//     const handleBulkStatusChange = async (status: 'active' | 'inactive' | 'completed') => {
 //         if (selectedPitaks.length === 0) return;
 
 //         const actionMap = {
 //             active: 'activate',
 //             inactive: 'deactivate',
-//             harvested: 'mark as harvested'
+//             completed: 'mark as completed'
 //         };
 
 //         const confirmed = await showConfirm({
@@ -519,7 +519,7 @@
 
 //             const results = await Promise.allSettled(
 //                 selectedPitaks.map(id =>
-//                     status === 'harvested'
+//                     status === 'completed'
 //                         ? pitakAPI.markPitakAsHarvested(id)
 //                         : pitakAPI.updatePitakStatus(id, status)
 //                 )
@@ -683,8 +683,8 @@
 //                 border: 'rgba(113, 128, 150, 0.3)',
 //                 icon: XCircle
 //             },
-//             harvested: {
-//                 text: 'Harvested',
+//             completed: {
+//                 text: 'Completed',
 //                 bg: 'var(--accent-gold-light)',
 //                 color: 'var(--accent-gold)',
 //                 border: 'rgba(214, 158, 46, 0.3)',
@@ -774,32 +774,32 @@
 //         setExpandedPitak(prev => prev === id ? null : id);
 //     };
 
-//     // Mark pitak as harvested
+//     // Mark pitak as completed
 //     const handleMarkAsHarvested = async (id: number) => {
 //         const pitak = pitaks.find(p => p.id === id);
 //         if (!pitak) return;
 
 //         const confirmed = await showConfirm({
-//             title: 'Mark as Harvested',
-//             message: `Are you sure you want to mark "${pitak.location || 'this pitak'}" as harvested? This will change its status and may affect assignments.`,
+//             title: 'Mark as Completed',
+//             message: `Are you sure you want to mark "${pitak.location || 'this pitak'}" as completed? This will change its status and may affect assignments.`,
 //             icon: 'warning',
-//             confirmText: 'Mark as Harvested',
+//             confirmText: 'Mark as Completed',
 //             cancelText: 'Cancel'
 //         });
 
 //         if (!confirmed) return;
 
 //         try {
-//             showToast('Marking pitak as harvested...', 'info');
+//             showToast('Marking pitak as completed...', 'info');
 
 //             // Check if there are active assignments
 //             if (pitak.stats && pitak.stats.assignments.active > 0) {
 //                 const resolveAssignments = await showConfirm({
 //                     title: 'Active Assignments Found',
-//                     message: `This pitak has ${pitak.stats.assignments.active} active assignment(s). Do you want to cancel them before marking as harvested?`,
+//                     message: `This pitak has ${pitak.stats.assignments.active} active assignment(s). Do you want to cancel them before marking as completed?`,
 //                     icon: 'question',
-//                     confirmText: 'Cancel & Mark as Harvested',
-//                     cancelText: 'Just Mark as Harvested'
+//                     confirmText: 'Cancel & Mark as Completed',
+//                     cancelText: 'Just Mark as Completed'
 //                 });
 
 //                 if (resolveAssignments) {
@@ -807,23 +807,23 @@
 //                     const cancelPromises = pitak.assignments
 //                         ?.filter(a => a.status === 'active')
 //                         .map(assignment =>
-//                             assignmentAPI.cancelAssignment(assignment.id, 'Pitak marked as harvested')
+//                             assignmentAPI.cancelAssignment(assignment.id, 'Pitak marked as completed')
 //                         ) || [];
 
 //                     await Promise.all(cancelPromises);
 //                 }
 //             }
 
-//             // Mark pitak as harvested
-//             const response = await pitakAPI.markPitakAsHarvested(id, `Marked as harvested on ${new Date().toLocaleDateString()}`);
+//             // Mark pitak as completed
+//             const response = await pitakAPI.markPitakAsHarvested(id, `Marked as completed on ${new Date().toLocaleDateString()}`);
 
 //             if (response.status) {
-//                 showSuccess('Pitak marked as harvested successfully');
+//                 showSuccess('Pitak marked as completed successfully');
 
 //                 // Update local state
 //                 setPitaks(prev => prev.map(p =>
 //                     p.id === id
-//                         ? { ...p, status: 'harvested', updatedAt: new Date().toISOString() }
+//                         ? { ...p, status: 'completed', updatedAt: new Date().toISOString() }
 //                         : p
 //                 ));
 
@@ -838,7 +838,7 @@
 //                 throw new Error(response.message);
 //             }
 //         } catch (err: any) {
-//             showError(err.message || 'Failed to mark pitak as harvested');
+//             showError(err.message || 'Failed to mark pitak as completed');
 //         }
 //     };
 
@@ -1223,7 +1223,7 @@
 
 //                     {/* Status Filter */}
 //                     <div className="flex gap-2 flex-wrap">
-//                         {['all', 'active', 'inactive', 'harvested'].map((status) => (
+//                         {['all', 'active', 'inactive', 'completed'].map((status) => (
 //                             <button
 //                                 key={status}
 //                                 onClick={() => handleStatusFilterChange(status)}
@@ -1568,7 +1568,7 @@
 //                                                                         Generate Report
 //                                                                     </button>
 //                                                                     <div className="border-t my-1"></div>
-//                                                                     {pitak.status !== 'harvested' && (
+//                                                                     {pitak.status !== 'completed' && (
 //                                                                         <>
 //                                                                             <button
 //                                                                                 onClick={() => {
@@ -1597,7 +1597,7 @@
 //                                                                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-gray-100 text-left"
 //                                                                             >
 //                                                                                 <Crop className="w-4 h-4" />
-//                                                                                 Mark as Harvested
+//                                                                                 Mark as Completed
 //                                                                             </button>
 //                                                                         </>
 //                                                                     )}

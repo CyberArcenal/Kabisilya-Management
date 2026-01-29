@@ -12,10 +12,10 @@ import Login from '../pages/Auth/Login';
 // import KabisilyaTablePage from '../pages/Kabisilya/Table';
 // import WorkerTablePage from '../pages/Worker/Table/WorkerTable';
 import WorkerAttendancePage from '../pages/WorkerAttendance';
-import PaymentTablePage from '../pages/Payment/Table/PaymentTable';
-import DebtTablePage from '../pages/Debt/Table/DebtTable';
-import UserTablePage from '../pages/User/Table';
-import AuditTrailTablePage from '../pages/Audit/AuditTrail';
+// import PaymentTablePage from '../pages/Payment/Table/PaymentTable';
+// import DebtTablePage from '../pages/Debt/Table/DebtTable';
+// import UserTablePage from '../pages/User/Table';
+// import AuditTrailTablePage from '../pages/Audit/AuditTrail';
 import BukidReportsPage from '../pages/Analytics/Bukid';
 import PitakProductivityPage from '../pages/Analytics/PitakProductivity';
 import FinancialReportsPage from '../pages/Analytics/FinancialReports';
@@ -30,6 +30,10 @@ import BukidTablePage from '../pages/Bukid/Table/BukidTablePage';
 import AssignmentTablePage from '../pages/Assignment/Table/AssignmentTablePage';
 import KabisilyaTablePage from '../pages/Kabisilya/Table/KabisilyaTablePage';
 import WorkerTablePage from '../pages/Worker/Table/WorkerTablePage';
+import PaymentTablePage from '../pages/Payment/Table/PaymentTablePage';
+import DebtTablePage from '../pages/Debt/Table/DebtTablePage';
+import UserTablePage from '../pages/User/Table/UserTablePage';
+import AuditTrailTablePage from '../pages/Audit/AuditTrailTablePage';
 
 // 🔹 Placeholder components para hindi mag red mark
 const Placeholder = ({ title }: { title: string }) => (

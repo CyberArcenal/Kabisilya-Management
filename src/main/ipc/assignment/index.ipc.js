@@ -122,7 +122,7 @@ class AssignmentHandler {
         case "getAssignmentsByWorker":
           return await this.getAssignmentsByWorker(
             // @ts-ignore
-            enrichedParams.worker_id,
+            enrichedParams.workerId,
             // @ts-ignore
             enrichedParams.filters,
             userId,
@@ -177,7 +177,7 @@ class AssignmentHandler {
         case "getWorkerPerformanceReport":
           return await this.getWorkerPerformanceReport(
             // @ts-ignore
-            enrichedParams.worker_id,
+            enrichedParams.workerId,
             // @ts-ignore
             enrichedParams.date_range,
             userId,

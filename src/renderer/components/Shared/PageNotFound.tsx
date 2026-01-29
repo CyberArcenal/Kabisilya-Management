@@ -166,7 +166,7 @@ const PageNotFound: React.FC = () => {
 
           <p className="text-base mb-6 max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
             The farm route you're looking for could not be found in our Kabisilya Management System.
-            It might have been moved, harvested, or you might have entered an incorrect path.
+            It might have been moved, completed, or you might have entered an incorrect path.
             As a {getUserRoleMessage()}, you can try one of the available farm sections below.
           </p>
 
@@ -215,7 +215,7 @@ const PageNotFound: React.FC = () => {
                     border: '1px solid var(--border-color)'
                   }}
                 >
-                  <div className="p-3 rounded-full mb-3 transition-all duration-200 group-hover:scale-110" style={{ 
+                  <div className="p-3 rounded-full mb-3 transition-all duration-200 group-hover:scale-110" style={{
                     backgroundColor: link.color + '20',
                     border: `2px solid ${link.color}40`
                   }}>

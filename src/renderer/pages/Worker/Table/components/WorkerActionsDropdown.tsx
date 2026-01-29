@@ -49,6 +49,27 @@ const WorkerActionsDropdown: React.FC<WorkerActionsDropdownProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+
+      const getDropdownPosition = () => {
+        if (!buttonRef.current) return {};
+
+        const rect = buttonRef.current.getBoundingClientRect();
+        const dropdownHeight = 350;
+        const windowHeight = window.innerHeight;
+
+        if (rect.bottom + dropdownHeight > windowHeight) {
+            return {
+                bottom: `${windowHeight - rect.top + 5}px`,
+                right: `${window.innerWidth - rect.right}px`,
+            };
+        }
+
+        return {
+            top: `${rect.bottom + 5}px`,
+            right: `${window.innerWidth - rect.right}px`,
+        };
+    };
+
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'active': return CheckCircle;
@@ -85,11 +106,7 @@ const WorkerActionsDropdown: React.FC<WorkerActionsDropdownProps> = ({
             {isOpen && (
                 <div
                     className="fixed bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50 max-h-80 overflow-y-auto"
-                    style={{
-                        top: buttonRef.current?.getBoundingClientRect().bottom || 0,
-                        left: buttonRef.current?.getBoundingClientRect().left || 0,
-                        transform: 'translateX(-200px)'
-                    }}
+                    style={getDropdownPosition()}
                 >
                     <div className="py-2">
                         {/* Header with worker info */}

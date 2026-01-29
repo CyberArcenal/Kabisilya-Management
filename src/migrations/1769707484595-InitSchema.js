@@ -7,20 +7,20 @@
  * @class
  * @implements {MigrationInterface}
  */
-module.exports = class InitSchema1769267205760 {
-    name = 'InitSchema1769267205760'
+module.exports = class InitSchema1769707484595 {
+    name = 'InitSchema1769707484595'
 
     /**
      * @param {QueryRunner} queryRunner
      */
     async up(queryRunner) {
-        await queryRunner.query(`CREATE TABLE "assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer)`);
+        await queryRunner.query(`CREATE TABLE "assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer, CONSTRAINT "UQ_WORKER_PITAK" UNIQUE ("workerId", "pitakId"))`);
         await queryRunner.query(`CREATE INDEX "IDX_ASSIGNMENT_DATE" ON "assignments" ("assignmentDate") `);
         await queryRunner.query(`CREATE INDEX "IDX_ASSIGNMENT_STATUS" ON "assignments" ("status") `);
         await queryRunner.query(`CREATE TABLE "audit_trails" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "action" varchar NOT NULL, "actor" varchar NOT NULL, "details" json, "timestamp" datetime NOT NULL DEFAULT (datetime('now')))`);
         await queryRunner.query(`CREATE INDEX "IDX_AUDIT_ACTION" ON "audit_trails" ("action") `);
         await queryRunner.query(`CREATE INDEX "IDX_AUDIT_TIMESTAMP" ON "audit_trails" ("timestamp") `);
-        await queryRunner.query(`CREATE TABLE "bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer)`);
+        await queryRunner.query(`CREATE TABLE "bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer)`);
         await queryRunner.query(`CREATE TABLE "debts" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "originalAmount" decimal(10,2) NOT NULL DEFAULT (0), "amount" decimal(10,2) NOT NULL DEFAULT (0), "reason" varchar, "balance" decimal(10,2) NOT NULL DEFAULT (0), "status" varchar NOT NULL DEFAULT ('pending'), "dateIncurred" datetime NOT NULL DEFAULT (datetime('now')), "dueDate" datetime, "paymentTerm" varchar, "interestRate" decimal(5,2) NOT NULL DEFAULT (0), "totalInterest" decimal(10,2) NOT NULL DEFAULT (0), "totalPaid" decimal(10,2) NOT NULL DEFAULT (0), "lastPaymentDate" datetime, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer)`);
         await queryRunner.query(`CREATE INDEX "IDX_DEBT_STATUS" ON "debts" ("status") `);
         await queryRunner.query(`CREATE INDEX "IDX_DEBT_DUE_DATE" ON "debts" ("dueDate") `);
@@ -58,14 +58,14 @@ module.exports = class InitSchema1769267205760 {
         await queryRunner.query(`CREATE UNIQUE INDEX "idx_system_settings_type_key" ON "system_settings" ("setting_type", "key") `);
         await queryRunner.query(`DROP INDEX "IDX_ASSIGNMENT_DATE"`);
         await queryRunner.query(`DROP INDEX "IDX_ASSIGNMENT_STATUS"`);
-        await queryRunner.query(`CREATE TABLE "temporary_assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer, CONSTRAINT "FK_e5efb819bcd3373785eede6493a" FOREIGN KEY ("workerId") REFERENCES "workers" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_d0383781e2fa2e0b675e3f23446" FOREIGN KEY ("pitakId") REFERENCES "pitaks" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);
+        await queryRunner.query(`CREATE TABLE "temporary_assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer, CONSTRAINT "UQ_WORKER_PITAK" UNIQUE ("workerId", "pitakId"), CONSTRAINT "FK_e5efb819bcd3373785eede6493a" FOREIGN KEY ("workerId") REFERENCES "workers" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_d0383781e2fa2e0b675e3f23446" FOREIGN KEY ("pitakId") REFERENCES "pitaks" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);
         await queryRunner.query(`INSERT INTO "temporary_assignments"("id", "luwangCount", "assignmentDate", "status", "notes", "createdAt", "updatedAt", "workerId", "pitakId") SELECT "id", "luwangCount", "assignmentDate", "status", "notes", "createdAt", "updatedAt", "workerId", "pitakId" FROM "assignments"`);
         await queryRunner.query(`DROP TABLE "assignments"`);
         await queryRunner.query(`ALTER TABLE "temporary_assignments" RENAME TO "assignments"`);
         await queryRunner.query(`CREATE INDEX "IDX_ASSIGNMENT_DATE" ON "assignments" ("assignmentDate") `);
         await queryRunner.query(`CREATE INDEX "IDX_ASSIGNMENT_STATUS" ON "assignments" ("status") `);
-        await queryRunner.query(`CREATE TABLE "temporary_bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer, CONSTRAINT "FK_0caba19d01baf91c011e37eb701" FOREIGN KEY ("kabisilyaId") REFERENCES "kabisilyas" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)`);
-        await queryRunner.query(`INSERT INTO "temporary_bukids"("id", "name", "location", "createdAt", "updatedAt", "kabisilyaId") SELECT "id", "name", "location", "createdAt", "updatedAt", "kabisilyaId" FROM "bukids"`);
+        await queryRunner.query(`CREATE TABLE "temporary_bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer, CONSTRAINT "FK_0caba19d01baf91c011e37eb701" FOREIGN KEY ("kabisilyaId") REFERENCES "kabisilyas" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)`);
+        await queryRunner.query(`INSERT INTO "temporary_bukids"("id", "name", "status", "location", "createdAt", "updatedAt", "kabisilyaId") SELECT "id", "name", "status", "location", "createdAt", "updatedAt", "kabisilyaId" FROM "bukids"`);
         await queryRunner.query(`DROP TABLE "bukids"`);
         await queryRunner.query(`ALTER TABLE "temporary_bukids" RENAME TO "bukids"`);
         await queryRunner.query(`DROP INDEX "IDX_DEBT_STATUS"`);
@@ -191,13 +191,13 @@ module.exports = class InitSchema1769267205760 {
         await queryRunner.query(`CREATE INDEX "IDX_DEBT_DUE_DATE" ON "debts" ("dueDate") `);
         await queryRunner.query(`CREATE INDEX "IDX_DEBT_STATUS" ON "debts" ("status") `);
         await queryRunner.query(`ALTER TABLE "bukids" RENAME TO "temporary_bukids"`);
-        await queryRunner.query(`CREATE TABLE "bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer)`);
-        await queryRunner.query(`INSERT INTO "bukids"("id", "name", "location", "createdAt", "updatedAt", "kabisilyaId") SELECT "id", "name", "location", "createdAt", "updatedAt", "kabisilyaId" FROM "temporary_bukids"`);
+        await queryRunner.query(`CREATE TABLE "bukids" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "location" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "kabisilyaId" integer)`);
+        await queryRunner.query(`INSERT INTO "bukids"("id", "name", "status", "location", "createdAt", "updatedAt", "kabisilyaId") SELECT "id", "name", "status", "location", "createdAt", "updatedAt", "kabisilyaId" FROM "temporary_bukids"`);
         await queryRunner.query(`DROP TABLE "temporary_bukids"`);
         await queryRunner.query(`DROP INDEX "IDX_ASSIGNMENT_STATUS"`);
         await queryRunner.query(`DROP INDEX "IDX_ASSIGNMENT_DATE"`);
         await queryRunner.query(`ALTER TABLE "assignments" RENAME TO "temporary_assignments"`);
-        await queryRunner.query(`CREATE TABLE "assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer)`);
+        await queryRunner.query(`CREATE TABLE "assignments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "luwangCount" decimal(5,2) NOT NULL DEFAULT (0), "assignmentDate" datetime NOT NULL, "status" varchar NOT NULL DEFAULT ('active'), "notes" varchar, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "workerId" integer, "pitakId" integer, CONSTRAINT "UQ_WORKER_PITAK" UNIQUE ("workerId", "pitakId"))`);
         await queryRunner.query(`INSERT INTO "assignments"("id", "luwangCount", "assignmentDate", "status", "notes", "createdAt", "updatedAt", "workerId", "pitakId") SELECT "id", "luwangCount", "assignmentDate", "status", "notes", "createdAt", "updatedAt", "workerId", "pitakId" FROM "temporary_assignments"`);
         await queryRunner.query(`DROP TABLE "temporary_assignments"`);
         await queryRunner.query(`CREATE INDEX "IDX_ASSIGNMENT_STATUS" ON "assignments" ("status") `);

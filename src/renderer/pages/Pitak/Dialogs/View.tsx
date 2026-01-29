@@ -74,7 +74,7 @@ const PitakViewDialog: React.FC<PitakViewDialogProps> = ({
                     border: 'border-gray-200',
                     icon: XCircle
                 };
-            case 'harvested':
+            case 'completed':
                 return {
                     bg: 'bg-yellow-100',
                     text: 'text-yellow-800',
@@ -465,10 +465,10 @@ Updated: ${formatDate(pitak.updatedAt)}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
                                                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${assignment.status === 'completed'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : assignment.status === 'pending'
-                                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                                    : 'bg-gray-100 text-gray-800'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : assignment.status === 'pending'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-gray-100 text-gray-800'
                                                             }`}>
                                                             {assignment.status}
                                                         </span>
@@ -547,10 +547,10 @@ Updated: ${formatDate(pitak.updatedAt)}
                                                     </td>
                                                     <td className="px-4 py-3 whitespace-nowrap">
                                                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${payment.status === 'completed'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : payment.status === 'pending'
-                                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                                    : 'bg-gray-100 text-gray-800'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : payment.status === 'pending'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-gray-100 text-gray-800'
                                                             }`}>
                                                             {payment.status}
                                                         </span>
@@ -639,8 +639,8 @@ Updated: ${formatDate(pitak.updatedAt)}
                                 <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full ${pitak.stats.utilizationRate >= 80 ? 'bg-red-500' :
-                                                pitak.stats.utilizationRate >= 60 ? 'bg-yellow-500' :
-                                                    'bg-green-500'
+                                            pitak.stats.utilizationRate >= 60 ? 'bg-yellow-500' :
+                                                'bg-green-500'
                                             }`}
                                         style={{ width: `${Math.min(pitak.stats.utilizationRate, 100)}%` }}
                                     ></div>

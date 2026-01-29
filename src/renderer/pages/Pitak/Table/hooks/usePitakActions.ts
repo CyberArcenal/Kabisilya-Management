@@ -58,6 +58,13 @@ export const usePitakActions = (
     null,
   );
 
+  const [showAssignedWorkersDialog, setShowAssignedWorkersDialog] =
+    useState(false);
+  const [selectedPitakForWorkers, setSelectedPitakForWorkers] = useState<{
+    id: number;
+    location?: string;
+  } | null>(null);
+
   const [assignmentData, setAssignmentData] = useState<AssignmentDialogData>({
     pitakId: 0,
     workers: [], // Changed from workerId: null
@@ -299,7 +306,7 @@ export const usePitakActions = (
 
   // Update this function in usePitakActions.ts
   const handleBulkStatusChange = async (
-    status: "active" | "inactive" | "harvested",
+    status: "active" | "inactive" | "completed",
     selectedPitaks: number[],
   ) => {
     if (selectedPitaks.length === 0) {
@@ -312,7 +319,7 @@ export const usePitakActions = (
         ? "activate"
         : status === "inactive"
           ? "deactivate"
-          : "mark as harvested";
+          : "mark as completed";
 
     const confirmed = await showConfirm({
       title: `Bulk ${action.charAt(0).toUpperCase() + action.slice(1)}`,
@@ -435,122 +442,34 @@ export const usePitakActions = (
   const handleViewReport = async (pitakId: number) => {
     navigate(`/reports/pitak/${pitakId}`);
   };
-  const handleViewAssignedWorkers = async (pitakId: number) => {
-    try {
-      showToast("Fetching assigned workers...", "info");
-
-      // Fetch assignments for this pitak using the updated API
-      const response = await assignmentAPI.getAssignmentsByPitak(pitakId);
-
-      if (
-        response.status &&
-        response.data &&
-        response.data.assignments &&
-        response.data.assignments.length > 0
-      ) {
-        const { pitak, assignments, statistics } = response.data;
-
-        // Build HTML message with proper formatting
-        let message = `<strong>Assigned Workers for ${pitak.location} (ID: ${pitak.id})</strong><br><br>`;
-
-        // Group assignments by worker
-        const workersMap = new Map();
-        assignments.forEach((assignment: any, index: number) => {
-          if (assignment.worker && assignment.worker.id) {
-            const workerId = assignment.worker.id;
-            if (!workersMap.has(workerId)) {
-              workersMap.set(workerId, {
-                id: workerId,
-                name: assignment.worker.name,
-                contact: assignment.worker.contactNumber || "N/A",
-                assignments: [],
-              });
-            }
-            workersMap.get(workerId).assignments.push({
-              id: assignment.id,
-              luwangCount: parseFloat(assignment.luwangCount) || 0,
-              assignmentDate: new Date(
-                assignment.assignmentDate,
-              ).toLocaleDateString(),
-              status: assignment.status,
-              notes: assignment.notes || "None",
-            });
-          }
-        });
-
-        const workers = Array.from(workersMap.values());
-
-        // Add each worker's information
-        workers.forEach((worker, index) => {
-          const totalLuwang = worker.assignments.reduce(
-            (sum: number, a: any) => sum + (a.luwangCount || 0),
-            0,
-          );
-          const activeAssignments = worker.assignments.filter(
-            (a: any) => a.status === "active",
-          ).length;
-
-          message += `<strong>${index + 1}. ${worker.name}</strong><br>`;
-          message += `&nbsp;&nbsp;Contact: ${worker.contact}<br>`;
-          message += `&nbsp;&nbsp;Total Luwang Assigned: ${totalLuwang}<br>`;
-          message += `&nbsp;&nbsp;Active Assignments: ${activeAssignments}<br>`;
-          message += `&nbsp;&nbsp;Total Assignments: ${worker.assignments.length}<br><br>`;
-        });
-
-        // Add statistics summary
-        message += `<strong>Summary:</strong><br>`;
-        message += `Total Workers: ${statistics.uniqueWorkers}<br>`;
-        message += `Total Assignments: ${statistics.totalAssignments}<br>`;
-        message += `Total Luwang: ${statistics.totalLuWang}<br>`;
-        message += `Average Luwang per Assignment: ${statistics.averageLuWang}<br><br>`;
-
-        message += `<strong>Assignments by Status:</strong><br>`;
-        message += `&nbsp;&nbsp;Active: ${statistics.byStatus.active}<br>`;
-        message += `&nbsp;&nbsp;Completed: ${statistics.byStatus.completed}<br>`;
-        message += `&nbsp;&nbsp;Cancelled: ${statistics.byStatus.cancelled}<br>`;
-
-        // Use showAlert directly
-        await showAlert({
-          title: "Assigned Workers",
-          message: message,
-          icon: "info",
-          buttonText: "Close",
-        });
-      } else {
-        // Use dialogs.info for simple text messages
-        await dialogs.info(
-          "No workers are currently assigned to this pitak.",
-          "Assigned Workers",
-        );
-      }
-    } catch (err: any) {
-      showError(err.message || "Failed to fetch assigned workers");
-    }
+  const handleViewAssignedWorkers = (pitakId: number, location?: string) => {
+    setSelectedPitakForWorkers({ id: pitakId, location });
+    setShowAssignedWorkersDialog(true);
   };
 
   const handleMarkAsHarvested = async (id: number, location?: string) => {
     const confirmed = await showConfirm({
-      title: "Mark as Harvested",
-      message: `Are you sure you want to mark "${location || "this pitak"}" as harvested?`,
+      title: "Mark as Completed",
+      message: `Are you sure you want to mark "${location || "this pitak"}" as completed?`,
       icon: "warning",
-      confirmText: "Mark as Harvested",
+      confirmText: "Mark as Completed",
       cancelText: "Cancel",
     });
 
     if (!confirmed) return;
 
     try {
-      showToast("Marking pitak as harvested...", "info");
+      showToast("Marking pitak as completed...", "info");
       const response = await pitakAPI.markPitakAsHarvested(id);
 
       if (response.status) {
-        showSuccess("Pitak marked as harvested successfully");
+        showSuccess("Pitak marked as completed successfully");
         fetchPitaks();
       } else {
         throw new Error(response.message);
       }
     } catch (err: any) {
-      showError(err.message || "Failed to mark pitak as harvested");
+      showError(err.message || "Failed to mark pitak as completed");
     }
   };
 
@@ -654,5 +573,11 @@ export const usePitakActions = (
     setShowViewDialog,
     selectedViewPitakId,
     setSelectedViewPitakId,
+
+
+    showAssignedWorkersDialog,
+    setShowAssignedWorkersDialog,
+    selectedPitakForWorkers,
+    setSelectedPitakForWorkers,
   };
 };

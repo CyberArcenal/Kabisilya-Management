@@ -406,8 +406,8 @@ const UserTablePage: React.FC = () => {
         const roleConfig = {
             admin: {
                 text: 'Admin',
-                bg: 'var(--status-harvested-bg)',
-                color: 'var(--status-harvested)',
+                bg: 'var(--status-completed-bg)',
+                color: 'var(--status-completed)',
                 border: 'rgba(128, 90, 213, 0.3)',
                 icon: Shield
             },

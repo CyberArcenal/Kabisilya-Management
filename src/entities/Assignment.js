@@ -51,7 +51,14 @@ const Assignment = new EntitySchema({
       name: "IDX_ASSIGNMENT_STATUS",
       columns: ["status"]
     }
+  ],
+  uniques: [
+    {
+      name: "UQ_WORKER_PITAK",
+      columns: ["worker", "pitak"] // ✅ unique pair constraint
+    }
   ]
+
 });
 
 module.exports = Assignment;

@@ -13,7 +13,7 @@ const Pitak = new EntitySchema({
       scale: 2, 
       default: 0.00
     },
-    // status: "active", "inactive", "harvested"
+    // status: "active", "inactive", "completed"
     status: { 
       type: String, 
       default: "active" 

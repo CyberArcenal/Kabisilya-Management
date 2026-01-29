@@ -171,7 +171,7 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
               Status
             </div>
             
-            {pitak.status !== 'harvested' && (
+            {pitak.status !== 'completed' && (
               <>
                 <button
                   onClick={() => handleAction(onUpdateStatus)}
@@ -197,7 +197,7 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <Crop className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
-                  <span>Mark as Harvested</span>
+                  <span>Mark as Completed</span>
                 </button>
               </>
             )}
