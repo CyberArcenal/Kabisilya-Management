@@ -45,7 +45,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
         const locationMatch = pitak.location?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
         const bukidMatch = pitak.bukid?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
         const statusMatch = pitak.status?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-        
+
         return locationMatch || bukidMatch || statusMatch;
       });
       setFilteredPitaks(filtered);
@@ -56,15 +56,15 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
     try {
       setLoading(true);
       setError(null);
-      
+
       const filters: any = {};
       if (bukidId) filters.bukidId = bukidId;
-      
+
       const response = await pitakAPI.getAllPitaks(filters);
-      
+
       if (response.status && response.data) {
         let pitakList = Array.isArray(response.data) ? response.data : response.data.pitaks || [];
-        
+
         // If showOnlyAvailable is true, filter only available pitaks
         if (showOnlyAvailable && dateFilter) {
           const availabilityPromises = pitakList.map(async (pitak: { id: number; }) => {
@@ -75,14 +75,14 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
               return { pitak, available: false };
             }
           });
-          
+
           const results = await Promise.all(availabilityPromises);
           pitakList = results.filter((result: { available: any; }) => result.available).map((result: { pitak: any; }) => result.pitak);
         }
-        
+
         setPitaks(pitakList as PitakWithDetails[]);
         setFilteredPitaks(pitakList as PitakWithDetails[]);
-        
+
         // Check availability for all pitaks if dateFilter is provided
         if (dateFilter) {
           checkAllAvailabilities(pitakList);
@@ -100,7 +100,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
 
   const checkAllAvailabilities = async (pitakList: any[]) => {
     const checks: Record<number, boolean> = {};
-    
+
     for (const pitak of pitakList) {
       try {
         const available = await pitakAPI.isPitakAvailable(pitak.id, dateFilter);
@@ -109,7 +109,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
         checks[pitak.id] = false;
       }
     }
-    
+
     setAvailabilityChecks(checks);
   };
 
@@ -129,8 +129,8 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
         return 'status-badge-planted';
       case 'inactive':
         return 'status-badge-fallow';
-      case 'harvested':
-        return 'status-badge-harvested';
+      case 'completed':
+        return 'status-badge-completed';
       default:
         return 'status-badge-growing';
     }
@@ -142,8 +142,8 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
         return 'Active';
       case 'inactive':
         return 'Inactive';
-      case 'harvested':
-        return 'Harvested';
+      case 'completed':
+        return 'Completed';
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
@@ -165,8 +165,8 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`compact-input w-full rounded-md text-left flex justify-between items-center transition-all duration-200 ${disabled
-            ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
-            : 'text-gray-900 dark:text-[#9ED9EC] hover:border-green-500 focus:border-green-500 focus:ring-1 focus:ring-green-500'
+          ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+          : 'text-gray-900 dark:text-[#9ED9EC] hover:border-green-500 focus:border-green-500 focus:ring-1 focus:ring-green-500'
           }`}
         style={{
           backgroundColor: 'var(--card-bg)',
@@ -298,7 +298,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
                 filteredPitaks.map((pitak) => {
                   const utilizationRate = getUtilizationRate(pitak);
                   const isAvailable = dateFilter ? availabilityChecks[pitak.id] : true;
-                  
+
                   return (
                     <button
                       key={pitak.id}
@@ -306,8 +306,8 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
                       onClick={() => handlePitakSelect(pitak)}
                       disabled={dateFilter !== "" && !isAvailable}
                       className={`w-full compact-card text-left transition-all duration-200 hover:scale-[1.02] ${pitak.id === value
-                          ? 'border-l-2 border-green-600'
-                          : ''
+                        ? 'border-l-2 border-green-600'
+                        : ''
                         } ${dateFilter && !isAvailable ? 'opacity-60 cursor-not-allowed' : ''}`}
                       style={{
                         backgroundColor: pitak.id === value ? 'var(--card-hover-bg)' : 'transparent',
@@ -330,7 +330,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="flex items-center text-xs mt-xs" style={{ color: 'var(--text-secondary)' }}>
                             <TreePalm className="icon-xs mr-1" />
                             <span>{pitak.bukid?.name || `Farm #${pitak.bukidId}`}</span>
@@ -350,7 +350,7 @@ const PitakSelectWithDetails: React.FC<PitakSelectWithDetailsProps> = ({
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="text-right ml-xs">
                           <div className="font-semibold text-sm" style={{ color: 'var(--sidebar-text)' }}>
                             {pitak.totalLuwang} LuWang

@@ -23,7 +23,7 @@ interface FormData {
     bukidId: number | null;
     location: string;
     totalLuwang: number;
-    status: 'active' | 'inactive' | 'harvested';
+    status: 'active' | 'inactive' | 'completed';
     notes: string;
 }
 
@@ -226,7 +226,7 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                 if (onSuccess && response.data) {
                     onSuccess(response.data);
                 }
-                
+
                 onClose();
             } else {
                 throw new Error(response?.message || 'Failed to save pitak');
@@ -319,10 +319,10 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                                             <div className="text-xs text-gray-600">Status</div>
                                             <div className="flex items-center gap-2">
                                                 <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${formData.status === 'active'
-                                                        ? 'bg-green-100 text-green-800 border border-green-200'
-                                                        : formData.status === 'inactive'
-                                                            ? 'bg-gray-100 text-gray-800 border border-gray-200'
-                                                            : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                                                    ? 'bg-green-100 text-green-800 border border-green-200'
+                                                    : formData.status === 'inactive'
+                                                        ? 'bg-gray-100 text-gray-800 border border-gray-200'
+                                                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                                     }`}>
                                                     {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
                                                 </span>
@@ -461,8 +461,8 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                                                                 type="button"
                                                                 onClick={() => handleLuWangExample(example.value)}
                                                                 className={`p-2 rounded text-sm text-left transition-all ${formData.totalLuwang === example.value
-                                                                        ? 'bg-green-100 border-2 border-green-500'
-                                                                        : 'bg-gray-100 border border-gray-300 hover:border-green-500'
+                                                                    ? 'bg-green-100 border-2 border-green-500'
+                                                                    : 'bg-gray-100 border border-gray-300 hover:border-green-500'
                                                                     }`}
                                                             >
                                                                 <div className="font-medium text-gray-900">
@@ -554,14 +554,14 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                                                         Plot Status <span className="text-red-500">*</span>
                                                     </label>
                                                     <div className="grid grid-cols-3 gap-2">
-                                                        {(['active', 'inactive', 'harvested'] as const).map((status) => (
+                                                        {(['active', 'inactive', 'completed'] as const).map((status) => (
                                                             <button
                                                                 key={status}
                                                                 type="button"
                                                                 onClick={() => handleChange('status', status)}
                                                                 className={`p-3 rounded border flex flex-col items-center justify-center gap-1 ${formData.status === status
-                                                                        ? 'ring-2 ring-green-500 ring-offset-1'
-                                                                        : 'border-gray-300 hover:border-green-500'
+                                                                    ? 'ring-2 ring-green-500 ring-offset-1'
+                                                                    : 'border-gray-300 hover:border-green-500'
                                                                     } transition-all`}
                                                             >
                                                                 {status === 'active' && (
@@ -570,14 +570,14 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                                                                 {status === 'inactive' && (
                                                                     <XCircle className={`w-4 h-4 ${formData.status === status ? 'text-gray-600' : 'text-gray-400'}`} />
                                                                 )}
-                                                                {status === 'harvested' && (
+                                                                {status === 'completed' && (
                                                                     <Calendar className={`w-4 h-4 ${formData.status === status ? 'text-yellow-600' : 'text-gray-400'}`} />
                                                                 )}
                                                                 <span className={`text-xs font-medium ${formData.status === status
-                                                                        ? status === 'active' ? 'text-green-700'
-                                                                            : status === 'inactive' ? 'text-gray-700'
-                                                                                : 'text-yellow-700'
-                                                                        : 'text-gray-600'
+                                                                    ? status === 'active' ? 'text-green-700'
+                                                                        : status === 'inactive' ? 'text-gray-700'
+                                                                            : 'text-yellow-700'
+                                                                    : 'text-gray-600'
                                                                     }`}>
                                                                     {status.charAt(0).toUpperCase() + status.slice(1)}
                                                                 </span>
@@ -595,7 +595,7 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                                                                 <div>Not available for assignments</div>
                                                             </div>
                                                             <div className="p-2 rounded bg-yellow-50">
-                                                                <div className="font-medium text-yellow-700 mb-0.5">Harvested</div>
+                                                                <div className="font-medium text-yellow-700 mb-0.5">Completed</div>
                                                                 <div>Completed harvesting cycle</div>
                                                             </div>
                                                         </div>

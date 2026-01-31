@@ -20,7 +20,7 @@ interface PitakTableRowProps {
   onAssign: (id: number, pitakData: any) => void;
   onUpdateLuWang: (id: number, totalLuwang: number | null) => void;
   onViewAssignments: (id: number) => void;
-  onViewAssignedWorkers: (id: number) => void;
+  onViewAssignedWorkers: (id: number, location?: string) => void;
   onViewReport: (id: number) => void;
   onMarkAsHarvested: (id: number) => void;
   onUpdateStatus: (id: number, currentStatus: string) => void;
@@ -66,8 +66,8 @@ const PitakTableRow: React.FC<PitakTableRowProps> = ({
         border: 'rgba(113, 128, 150, 0.3)',
         icon: XCircle
       },
-      harvested: {
-        text: 'Harvested',
+      completed: {
+        text: 'Completed',
         bg: 'var(--accent-gold-light)',
         color: 'var(--accent-gold)',
         border: 'rgba(214, 158, 46, 0.3)',
@@ -298,7 +298,7 @@ const PitakTableRow: React.FC<PitakTableRowProps> = ({
               pitak={pitak}
               onAssign={() => onAssign(pitak.id, pitak)}
               // onViewAssignments={() => onViewPitakAssignments(pitak.id)}
-              onViewAssignedWorkers={() => onViewAssignedWorkers(pitak.id)}
+              onViewAssignedWorkers={() => onViewAssignedWorkers(pitak.id, pitak.location)}
               onUpdateLuWang={() => onUpdateLuWang(pitak.id, pitak.totalLuwang)}
               onViewReport={() => onViewReport(pitak.id)}
               onUpdateStatus={() => onUpdateStatus(pitak.id, pitak.status)}

@@ -9,18 +9,10 @@ import {
     Clock,
     Award,
     Filter,
-    Download,
-    Calendar,
-    RefreshCw,
+    Download, RefreshCw,
     Eye,
     Layers,
-    Activity,
-    PieChart,
-    DollarSign,
-    CheckCircle,
-    AlertTriangle,
-    ChevronRight,
-    MapPin,
+    Activity, DollarSign, AlertTriangle, MapPin,
     Home,
     Sparkles,
     LineChart,
@@ -34,7 +26,8 @@ import dashboardAPI, {
     type PitakEfficiencyAnalysisData,
     type ComparePitaksProductivityData
 } from '../../../apis/dashboard';
-import { formatCurrency, formatNumber, formatDate, formatPercentage } from '../../../utils/formatters';
+import { formatCurrency, formatNumber, formatPercentage } from '../../../utils/formatters';
+import { hideLoading, showLoading } from '../../../utils/notification';
 
 const PitakProductivityPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -43,7 +36,7 @@ const PitakProductivityPage: React.FC = () => {
     const [timeRange, setTimeRange] = useState('month');
     const [selectedPitak, setSelectedPitak] = useState<string | null>(null);
     const [productivityScoreFilter, setProductivityScoreFilter] = useState('all');
-    
+
     // Data states
     const [overviewData, setOverviewData] = useState<PitakProductivityOverviewData | null>(null);
     const [detailsData, setDetailsData] = useState<PitakProductivityDetailsData | null>(null);
@@ -85,7 +78,7 @@ const PitakProductivityPage: React.FC = () => {
 
     const fetchComparisonData = async () => {
         try {
-            const response = await dashboardAPI.comparePitaksProductivity({ 
+            const response = await dashboardAPI.comparePitaksProductivity({
                 timeRange,
                 scoreFilter: productivityScoreFilter !== 'all' ? productivityScoreFilter : undefined
             });
@@ -114,6 +107,7 @@ const PitakProductivityPage: React.FC = () => {
             console.error('Failed to fetch pitak productivity data:', err);
         } finally {
             setLoading(false);
+            hideLoading();
         }
     };
 
@@ -181,14 +175,7 @@ const PitakProductivityPage: React.FC = () => {
     ];
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-3" style={{ borderColor: 'var(--primary-color)' }}></div>
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading productivity data...</p>
-                </div>
-            </div>
-        );
+        showLoading('Loading pitak productivity data...');
     }
 
     if (error) {
@@ -379,7 +366,7 @@ const PitakProductivityPage: React.FC = () => {
                                     {overviewData.summary.activePitaks} active
                                 </span>
                                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                    {overviewData.summary.harvestedPitaks} harvested
+                                    {overviewData.summary.harvestedPitaks} completed
                                 </span>
                             </div>
                         </div>
@@ -492,14 +479,6 @@ const PitakProductivityPage: React.FC = () => {
                                                 <tr key={index} className="hover:bg-gray-50"
                                                     style={{ borderBottom: '1px solid var(--border-color)' }}
                                                 >
-                                                    <td className="py-3 px-4">
-                                                        <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                                                            {pitak.location}
-                                                        </div>
-                                                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                            {pitak.kabisilyaName}
-                                                        </div>
-                                                    </td>
                                                     <td className="py-3 px-4 text-sm" style={{ color: 'var(--text-primary)' }}>
                                                         {pitak.bukidName}
                                                     </td>
@@ -507,9 +486,9 @@ const PitakProductivityPage: React.FC = () => {
                                                         <span className="px-2 py-1 rounded-full text-xs font-medium"
                                                             style={{
                                                                 background: pitak.status === 'active' ? 'var(--accent-green-light)' :
-                                                                    pitak.status === 'harvested' ? 'var(--accent-gold-light)' : 'var(--accent-gray-light)',
+                                                                    pitak.status === 'completed' ? 'var(--accent-gold-light)' : 'var(--accent-gray-light)',
                                                                 color: pitak.status === 'active' ? 'var(--accent-green)' :
-                                                                    pitak.status === 'harvested' ? 'var(--accent-gold)' : 'var(--accent-gray)'
+                                                                    pitak.status === 'completed' ? 'var(--accent-gold)' : 'var(--accent-gray)'
                                                             }}
                                                         >
                                                             {pitak.status}
@@ -664,13 +643,6 @@ const PitakProductivityPage: React.FC = () => {
                                         </span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Users className="w-4 h-4 mr-1" style={{ color: 'var(--text-secondary)' }} />
-                                        <span style={{ color: 'var(--text-secondary)' }}>Kabisilya:</span>
-                                        <span className="font-medium ml-1" style={{ color: 'var(--text-primary)' }}>
-                                            {detailsData.pitakInfo.kabisilya}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center">
                                         <Layers className="w-4 h-4 mr-1" style={{ color: 'var(--text-secondary)' }} />
                                         <span style={{ color: 'var(--text-secondary)' }}>Total Luwang:</span>
                                         <span className="font-medium ml-1" style={{ color: 'var(--accent-gold)' }}>
@@ -682,9 +654,9 @@ const PitakProductivityPage: React.FC = () => {
                             <span className="px-3 py-1 rounded-full text-sm font-medium"
                                 style={{
                                     background: detailsData.pitakInfo.status === 'active' ? 'var(--accent-green-light)' :
-                                        detailsData.pitakInfo.status === 'harvested' ? 'var(--accent-gold-light)' : 'var(--accent-gray-light)',
+                                        detailsData.pitakInfo.status === 'completed' ? 'var(--accent-gold-light)' : 'var(--accent-gray-light)',
                                     color: detailsData.pitakInfo.status === 'active' ? 'var(--accent-green)' :
-                                        detailsData.pitakInfo.status === 'harvested' ? 'var(--accent-gold)' : 'var(--accent-gray)'
+                                        detailsData.pitakInfo.status === 'completed' ? 'var(--accent-gold)' : 'var(--accent-gray)'
                                 }}
                             >
                                 {detailsData.pitakInfo.status}
@@ -807,8 +779,8 @@ const PitakProductivityPage: React.FC = () => {
                             Production Timeline
                         </h3>
                         <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            Trend: <span style={{ 
-                                color: timelineData.trendAnalysis.overallTrend > 0 ? 'var(--accent-green)' : 'var(--accent-red)' 
+                            Trend: <span style={{
+                                color: timelineData.trendAnalysis.overallTrend > 0 ? 'var(--accent-green)' : 'var(--accent-red)'
                             }}>
                                 {timelineData.trendAnalysis.trendType}
                             </span>
@@ -828,9 +800,9 @@ const PitakProductivityPage: React.FC = () => {
                         <div className="p-4 rounded-lg text-center"
                             style={{ background: 'var(--card-secondary-bg)' }}
                         >
-                            <div className="text-xl font-bold mb-1" 
-                                style={{ 
-                                    color: timelineData.trendAnalysis.overallTrend > 0 ? 'var(--accent-green)' : 'var(--accent-red)' 
+                            <div className="text-xl font-bold mb-1"
+                                style={{
+                                    color: timelineData.trendAnalysis.overallTrend > 0 ? 'var(--accent-green)' : 'var(--accent-red)'
                                 }}
                             >
                                 {timelineData.trendAnalysis.overallTrend > 0 ? '+' : ''}{timelineData.trendAnalysis.overallTrend.toFixed(1)}%
@@ -1172,8 +1144,8 @@ const PitakProductivityPage: React.FC = () => {
                                         <div className="capitalize" style={{ color: 'var(--text-secondary)' }}>
                                             {benchmark === 'current' ? 'Your Score' : benchmark}
                                         </div>
-                                        <div className="font-semibold" 
-                                            style={{ 
+                                        <div className="font-semibold"
+                                            style={{
                                                 color: benchmark === 'current' ? getEfficiencyLevel(value).color : 'var(--text-primary)'
                                             }}
                                         >
@@ -1200,19 +1172,19 @@ const PitakProductivityPage: React.FC = () => {
                             <div className="space-y-3">
                                 {efficiencyData.insights.map((insight, index) => (
                                     <div key={index} className="p-4 rounded-lg"
-                                        style={{ 
+                                        style={{
                                             background: insight.type === 'positive' ? 'var(--accent-green-light)' :
                                                 insight.type === 'warning' ? 'var(--accent-yellow-light)' : 'var(--accent-red-light)',
                                             border: `1px solid ${insight.type === 'positive' ? 'var(--accent-green)20' :
                                                 insight.type === 'warning' ? 'var(--accent-yellow)20' : 'var(--accent-red)20'}`
                                         }}
                                     >
-                                        <div className="font-medium text-sm mb-2" style={{ 
+                                        <div className="font-medium text-sm mb-2" style={{
                                             color: insight.type === 'positive' ? 'var(--accent-green-dark)' :
                                                 insight.type === 'warning' ? 'var(--accent-yellow-dark)' : 'var(--accent-red-dark)'
                                         }}>
-                                            {insight.type === 'positive' ? '✅ Strength' : 
-                                             insight.type === 'warning' ? '⚠️ Area for Improvement' : '❌ Critical Issue'}
+                                            {insight.type === 'positive' ? '✅ Strength' :
+                                                insight.type === 'warning' ? '⚠️ Area for Improvement' : '❌ Critical Issue'}
                                         </div>
                                         <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                                             {insight.message}
@@ -1400,14 +1372,6 @@ const PitakProductivityPage: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
-                                                        {pitak.info.location}
-                                                    </div>
-                                                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                                        {pitak.info.bukid} • {pitak.info.kabisilya}
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-4">
                                                     <div className="text-2xl font-bold" style={{ color: 'var(--accent-gold)' }}>
                                                         {pitak.scores.overall.toFixed(1)}
                                                     </div>
@@ -1462,7 +1426,7 @@ const PitakProductivityPage: React.FC = () => {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="font-semibold text-center"
-                                                        style={{ 
+                                                        style={{
                                                             color: pitak.rankings.percentile >= 75 ? 'var(--accent-green)' :
                                                                 pitak.rankings.percentile >= 50 ? 'var(--accent-yellow)' : 'var(--accent-red)'
                                                         }}
@@ -1491,19 +1455,19 @@ const PitakProductivityPage: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {comparisonData.insights.map((insight, index) => (
                                     <div key={index} className="p-4 rounded-lg"
-                                        style={{ 
+                                        style={{
                                             background: insight.type === 'positive' ? 'var(--accent-green-light)' :
                                                 insight.type === 'neutral' ? 'var(--accent-sky-light)' : 'var(--accent-yellow-light)',
                                             border: `1px solid ${insight.type === 'positive' ? 'var(--accent-green)20' :
                                                 insight.type === 'neutral' ? 'var(--accent-sky)20' : 'var(--accent-yellow)20'}`
                                         }}
                                     >
-                                        <div className="font-medium text-sm mb-2" style={{ 
+                                        <div className="font-medium text-sm mb-2" style={{
                                             color: insight.type === 'positive' ? 'var(--accent-green-dark)' :
                                                 insight.type === 'neutral' ? 'var(--accent-sky-dark)' : 'var(--accent-yellow-dark)'
                                         }}>
-                                            {insight.type === 'positive' ? '📈 Strength' : 
-                                             insight.type === 'neutral' ? '📊 Observation' : '⚠️ Warning'}
+                                            {insight.type === 'positive' ? '📈 Strength' :
+                                                insight.type === 'neutral' ? '📊 Observation' : '⚠️ Warning'}
                                         </div>
                                         <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
                                             {insight.message}
@@ -1529,7 +1493,7 @@ const PitakProductivityPage: React.FC = () => {
             {/* No Data Message for Detail Tabs */}
             {((activeTab === 'details' || activeTab === 'timeline' || activeTab === 'workers' || activeTab === 'efficiency') && !selectedPitak) && (
                 <div className="text-center p-8">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" 
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
                         style={{ background: 'var(--card-secondary-bg)', color: 'var(--text-secondary)' }}>
                         <Eye className="w-8 h-8" />
                     </div>

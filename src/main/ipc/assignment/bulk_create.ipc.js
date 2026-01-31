@@ -2,7 +2,14 @@
 //@ts-check
 
 const Assignment = require("../../../entities/Assignment");
+const Worker = require("../../../entities/Worker");
 const Pitak = require("../../../entities/Pitak");
+const {
+  validateWorkers,
+  validatePitak,
+  findAlreadyAssigned,
+} = require("./utils/assignmentUtils");
+const { farmSessionDefaultSessionId } = require("../../../utils/system");
 
 /**
  * Bulk create assignments
@@ -19,48 +26,50 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Assignments array is required and must not be empty",
-        data: null
+        data: null,
       };
     }
 
-    // Validate each assignment
+    // ✅ Always require default session
+    const sessionId = await farmSessionDefaultSessionId();
+    if (!sessionId || sessionId === 0) {
+      return {
+        status: false,
+        message: "No default session configured. Please set one in Settings.",
+        data: null,
+      };
+    }
+
     const validationErrors = [];
     const validAssignments = [];
     const workerRepo = queryRunner.manager.getRepository(Worker);
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
 
+    // Validate each assignment
     for (let i = 0; i < assignments.length; i++) {
       const assignment = assignments[i];
       const errors = [];
 
-      // Required fields
       if (!assignment.workerId) errors.push("workerId is required");
       if (!assignment.pitakId) errors.push("pitakId is required");
       if (!assignment.assignmentDate) errors.push("assignmentDate is required");
 
-      // Validate worker exists
+      // Validate worker
       if (assignment.workerId) {
-        const worker = await workerRepo.findOne({ 
-          // @ts-ignore
-          where: { id: assignment.workerId } 
-        });
-        if (!worker) errors.push(`Worker with ID ${assignment.workerId} not found`);
+        const workerCheck = await validateWorkers(workerRepo, [
+          assignment.workerId,
+        ]);
+        if (!workerCheck.valid) errors.push(workerCheck.message);
       }
 
-      // Validate pitak exists
+      // Validate pitak
       if (assignment.pitakId) {
-        const pitak = await pitakRepo.findOne({ 
-          where: { id: assignment.pitakId } 
-        });
-        if (!pitak) errors.push(`Pitak with ID ${assignment.pitakId} not found`);
+        const pitakCheck = await validatePitak(pitakRepo, assignment.pitakId);
+        if (!pitakCheck.valid) errors.push(pitakCheck.message);
       }
 
       if (errors.length > 0) {
-        validationErrors.push({
-          index: i,
-          assignment,
-          errors
-        });
+        validationErrors.push({ index: i, assignment, errors });
       } else {
         validAssignments.push(assignment);
       }
@@ -71,7 +80,7 @@ module.exports = async (params, queryRunner) => {
         status: false,
         message: "All assignments failed validation",
         data: { validationErrors },
-        meta: { totalFailed: validationErrors.length }
+        meta: { totalFailed: validationErrors.length },
       };
     }
 
@@ -82,90 +91,91 @@ module.exports = async (params, queryRunner) => {
 
     for (const assignmentData of validAssignments) {
       try {
-        // Check for existing assignment for same worker on same date
-        const existing = await assignmentRepo.findOne({
-          where: {
-            // @ts-ignore
-            workerId: assignmentData.workerId,
-            assignmentDate: new Date(assignmentData.assignmentDate),
-            status: 'active'
-          }
-        });
+        // 🔑 Skip if worker already assigned to pitak
+        const skippedWorkers = await findAlreadyAssigned(
+          assignmentRepo,
+          [assignmentData.workerId],
+          assignmentData.pitakId,
+        );
 
-        if (existing) {
+        if (skippedWorkers.length > 0) {
           skippedAssignments.push({
             assignment: assignmentData,
-            reason: "Worker already has active assignment for this date",
-            existingAssignmentId: existing.id
+            reason: "Worker already assigned to this pitak",
+            existingAssignmentId: skippedWorkers[0],
           });
           continue;
         }
 
-        // Create assignment
+        // ✅ Create assignment with sessionId
         const newAssignment = assignmentRepo.create({
           // @ts-ignore
-          workerId: assignmentData.workerId,
-          pitakId: assignmentData.pitakId,
-          luwangCount: assignmentData.luwangCount || 0.00,
+          worker: { id: assignmentData.workerId },
+          pitak: { id: assignmentData.pitakId },
+          session: { id: sessionId }, // 🔑 tie to default session
+          luwangCount: assignmentData.luwangCount || 0.0,
           assignmentDate: new Date(assignmentData.assignmentDate),
-          status: assignmentData.status || 'active',
-          notes: assignmentData.notes || null
+          status: assignmentData.status || "active",
+          notes: assignmentData.notes || null,
         });
 
         const savedAssignment = await assignmentRepo.save(newAssignment);
         createdAssignments.push(savedAssignment);
-
       } catch (error) {
         skippedAssignments.push({
           assignment: assignmentData,
           // @ts-ignore
-          reason: `Error: ${error.message}`
+          reason: `Error: ${error.message}`,
         });
       }
     }
 
     // Calculate totals
-    const totalLuWang = createdAssignments.reduce((sum, assignment) => 
+    const totalLuWang = createdAssignments.reduce(
       // @ts-ignore
-      sum + parseFloat(assignment.luwangCount || 0), 0);
+      (sum, assignment) => sum + parseFloat(assignment.luwangCount || 0),
+      0,
+    );
 
     return {
       status: true,
       message: "Bulk assignment creation completed",
       data: {
-        created: createdAssignments.map(a => ({
+        created: createdAssignments.map((a) => ({
           // @ts-ignore
           id: a.id,
           // @ts-ignore
-          workerId: a.workerId,
+          workerId: a.worker?.id ?? a.workerId,
           // @ts-ignore
-          pitakId: a.pitakId,
+          pitakId: a.pitak?.id ?? a.pitakId,
+          // @ts-ignore
+          sessionId: a.session?.id ?? sessionId,
           // @ts-ignore
           luwangCount: parseFloat(a.luwangCount),
           // @ts-ignore
           assignmentDate: a.assignmentDate,
           // @ts-ignore
-          status: a.status
+          status: a.status,
         })),
         skipped: skippedAssignments,
-        failed: validationErrors
+        failed: validationErrors,
       },
       meta: {
         totalProcessed: assignments.length,
         totalCreated: createdAssignments.length,
         totalSkipped: skippedAssignments.length,
         totalFailed: validationErrors.length,
-        totalLuWangCreated: totalLuWang.toFixed(2)
-      }
+        totalLuWangCreated: totalLuWang.toFixed(2),
+        sessionId,
+      },
     };
-
   } catch (error) {
     console.error("Error in bulk assignment creation:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Bulk creation failed: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

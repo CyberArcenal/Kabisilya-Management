@@ -5,6 +5,7 @@ const { withErrorHandling } = require("../../../utils/errorHandler");
 const { logger } = require("../../../utils/logger");
 const { AppDataSource } = require("../../db/dataSource");
 const UserActivity = require("../../../entities/UserActivity");
+const { farmSessionDefaultSessionId } = require("../../../utils/system");
 
 class PitakHandler {
   constructor() {
@@ -20,18 +21,22 @@ class PitakHandler {
     this.getPitaksByBukid = this.importHandler("./get/by_bukid.ipc");
     this.getActivePitaks = this.importHandler("./get/active.ipc");
     this.getInactivePitaks = this.importHandler("./get/inactive.ipc");
-    this.getHarvestedPitaks = this.importHandler("./get/harvested.ipc");
+    this.getCompletedPitaks = this.importHandler("./get/completed.ipc");
     this.getPitakStats = this.importHandler("./get/stats.ipc");
-    this.getPitakWithAssignments = this.importHandler("./get/with_assignments.ipc");
+    this.getPitakWithAssignments = this.importHandler(
+      "./get/with_assignments.ipc",
+    );
     this.getPitakWithPayments = this.importHandler("./get/with_payments.ipc");
     this.searchPitaks = this.importHandler("./search.ipc");
-    
+
     // 📊 REPORT HANDLERS
     this.getPitakReport = this.importHandler("./get/report.ipc");
     this.getPitakSummaryReport = this.importHandler("./get/summary.ipc");
-    this.getPitakPerformanceReport = this.importHandler("./get/performance.ipc");
+    this.getPitakPerformanceReport = this.importHandler(
+      "./get/performance.ipc",
+    );
     this.getPitakLuWangReport = this.importHandler("./get/luwang_report.ipc");
-    
+
     // ✏️ WRITE OPERATION HANDLERS (with transactions)
     this.createPitak = this.importHandler("./create.ipc.js");
     this.updatePitak = this.importHandler("./update.ipc.js");
@@ -41,24 +46,34 @@ class PitakHandler {
     this.updatePitakLocation = this.importHandler("./update_location.ipc.js");
     this.transferPitakBukid = this.importHandler("./transfer_bukid.ipc.js");
     this.bulkUpdatePitaks = this.importHandler("./bulk_update.ipc.js");
-    
+
     // 🔄 BATCH OPERATIONS
     this.bulkCreatePitaks = this.importHandler("./bulk_create.ipc.js");
     this.importPitaksFromCSV = this.importHandler("./import_csv.ipc.js");
     this.exportPitaksToCSV = this.importHandler("./export_csv.ipc.js");
-    this.exportPitakAssignments = this.importHandler("./export_assignments.ipc.js");
+    this.exportPitakAssignments = this.importHandler(
+      "./export_assignments.ipc.js",
+    );
     this.exportPitakPayments = this.importHandler("./export_payments.ipc.js");
-    
+
     // 📈 ANALYTICS HANDLERS
-    this.getPitakProductivity = this.importHandler("./analytics/productivity.ipc");
-    this.getPitakUtilization = this.importHandler("./analytics/utilization.ipc");
+    this.getPitakProductivity = this.importHandler(
+      "./analytics/productivity.ipc",
+    );
+    this.getPitakUtilization = this.importHandler(
+      "./analytics/utilization.ipc",
+    );
     this.getPitakForecast = this.importHandler("./analytics/forecast.ipc");
     this.getPitakTrends = this.importHandler("./analytics/trends.ipc");
-    
+
     // ⚙️ VALIDATION HANDLERS
     this.validatePitakData = this.importHandler("./validate_data.ipc.js");
-    this.checkPitakAvailability = this.importHandler("./check_availability.ipc.js");
-    this.validateLuWangCapacity = this.importHandler("./validate_capacity.ipc.js");
+    this.checkPitakAvailability = this.importHandler(
+      "./check_availability.ipc.js",
+    );
+    this.validateLuWangCapacity = this.importHandler(
+      "./validate_capacity.ipc.js",
+    );
     this.checkDuplicatePitak = this.importHandler("./check_duplicate.ipc.js");
   }
 
@@ -135,9 +150,9 @@ class PitakHandler {
           // @ts-ignore
           return await this.getInactivePitaks(enrichedParams.filters, userId);
 
-        case "getHarvestedPitaks":
+        case "getCompletedPitaks":
           // @ts-ignore
-          return await this.getHarvestedPitaks(enrichedParams.filters, userId);
+          return await this.getCompletedPitaks(enrichedParams.filters, userId);
 
         case "getPitakStats":
           // @ts-ignore
@@ -388,11 +403,16 @@ class PitakHandler {
       } else {
         activityRepo = AppDataSource.getRepository(UserActivity);
       }
-
+    // ✅ Always require default session
+    const sessionId = await farmSessionDefaultSessionId();
+    if (!sessionId || sessionId === 0) {
+      throw new Error("No default session configured. Please set one in Settings.");
+    }
       const activity = activityRepo.create({
         user_id: user_id,
         action,
         description,
+        session: {id:sessionId},
         ip_address: "127.0.0.1",
         user_agent: "Kabisilya-Management-System",
       });
