@@ -6,7 +6,7 @@ export interface PitakData {
   bukidId: number;
   location?: string | null;
   totalLuwang: number;
-  status: "active" | "inactive" | "harvested";
+  status: "active" | "inactive" | "completed";
   createdAt: string;
   updatedAt: string;
 }
@@ -39,10 +39,6 @@ export interface PitakWithDetails extends PitakData {
     id: number;
     name: string;
     location?: string;
-    kabisilya?: {
-      id: number;
-      name: string;
-    };
   };
   assignments?: AssignmentSummary[];
   payments?: PaymentSummary[];
@@ -611,7 +607,7 @@ class PitakAPI {
     }
   }
 
-  async getHarvestedPitaks(
+  async getCompletedPitaks(
     filters: PitakFilters = {},
   ): Promise<PitakListResponse> {
     try {
@@ -620,16 +616,16 @@ class PitakAPI {
       }
 
       const response = await window.backendAPI.pitak({
-        method: "getHarvestedPitaks",
+        method: "getCompletedPitaks",
         params: this.enrichParams({ filters }),
       });
 
       if (response.status) {
         return response;
       }
-      throw new Error(response.message || "Failed to get harvested pitaks");
+      throw new Error(response.message || "Failed to get completed pitaks");
     } catch (error: any) {
-      throw new Error(error.message || "Failed to get harvested pitaks");
+      throw new Error(error.message || "Failed to get completed pitaks");
     }
   }
 
@@ -1585,9 +1581,9 @@ class PitakAPI {
     notes?: string,
   ): Promise<PitakDetailResponse> {
     try {
-      return await this.updatePitakStatus(id, "harvested", notes);
+      return await this.updatePitakStatus(id, "completed", notes);
     } catch (error: any) {
-      throw new Error(`Failed to mark pitak as harvested: ${error.message}`);
+      throw new Error(`Failed to mark pitak as completed: ${error.message}`);
     }
   }
 

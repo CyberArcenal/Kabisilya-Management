@@ -20,7 +20,7 @@ interface FormData {
   bukidId: number | null;
   location: string;
   totalLuwang: number;
-  status: 'active' | 'inactive' | 'harvested';
+  status: 'active' | 'inactive' | 'completed';
   notes: string;
 }
 
@@ -308,7 +308,7 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <div className="bg-white/80 p-3 rounded-lg border border-[var(--border-color)]">
                 <div className="flex items-center gap-2">
@@ -335,10 +335,10 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                 </div>
                 <div className="mt-1">
                   <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${formData.status === 'active'
-                      ? 'bg-green-100 text-green-800 border border-green-200'
-                      : formData.status === 'inactive'
-                        ? 'bg-gray-100 text-gray-800 border border-gray-200'
-                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : formData.status === 'inactive'
+                      ? 'bg-gray-100 text-gray-800 border border-gray-200'
+                      : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                     }`}>
                     {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
                   </span>
@@ -404,10 +404,10 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                           )}
                           <div className="mt-3">
                             <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${selectedBukid.status === 'active'
-                                ? 'bg-green-100 text-green-800 border border-green-200'
-                                : selectedBukid.status === 'inactive'
-                                  ? 'bg-gray-100 text-gray-800 border border-gray-200'
-                                  : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                              ? 'bg-green-100 text-green-800 border border-green-200'
+                              : selectedBukid.status === 'inactive'
+                                ? 'bg-gray-100 text-gray-800 border border-gray-200'
+                                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                               }`}>
                               {selectedBukid.status.charAt(0).toUpperCase() + selectedBukid.status.slice(1)}
                             </span>
@@ -494,8 +494,8 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                           type="button"
                           onClick={() => handleLuWangExample(example.value)}
                           className={`p-3 rounded-lg text-sm text-left transition-all ${formData.totalLuwang === example.value
-                              ? 'bg-[var(--accent-green-light)] border-2 border-[var(--accent-green)]'
-                              : 'bg-[var(--card-secondary-bg)] border border-[var(--border-color)] hover:border-[var(--accent-green)]'
+                            ? 'bg-[var(--accent-green-light)] border-2 border-[var(--accent-green)]'
+                            : 'bg-[var(--card-secondary-bg)] border border-[var(--border-color)] hover:border-[var(--accent-green)]'
                             }`}
                         >
                           <div className="font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -598,14 +598,14 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                       Plot Status <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-3 gap-3">
-                      {(['active', 'inactive', 'harvested'] as const).map((status) => (
+                      {(['active', 'inactive', 'completed'] as const).map((status) => (
                         <button
                           key={status}
                           type="button"
                           onClick={() => handleChange('status', status)}
                           className={`p-4 rounded-xl transition-all flex flex-col items-center justify-center gap-2 ${formData.status === status
-                              ? 'ring-2 ring-offset-2'
-                              : 'opacity-90 hover:opacity-100 hover:scale-[1.02]'
+                            ? 'ring-2 ring-offset-2'
+                            : 'opacity-90 hover:opacity-100 hover:scale-[1.02]'
                             }`}
                           style={{
                             backgroundColor: formData.status === status
@@ -629,7 +629,7 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                         >
                           {status === 'active' && <CheckCircle className="w-6 h-6" />}
                           {status === 'inactive' && <XCircle className="w-6 h-6" />}
-                          {status === 'harvested' && <Calendar className="w-6 h-6" />}
+                          {status === 'completed' && <Calendar className="w-6 h-6" />}
                           <span className="text-sm font-medium">
                             {status.charAt(0).toUpperCase() + status.slice(1)}
                           </span>
@@ -647,7 +647,7 @@ const PitakFormPage: React.FC<PitakFormPageProps> = () => {
                           <div>Not available for assignments</div>
                         </div>
                         <div className="p-3 rounded-lg bg-[var(--card-secondary-bg)]">
-                          <div className="font-medium mb-1" style={{ color: 'var(--accent-gold)' }}>Harvested</div>
+                          <div className="font-medium mb-1" style={{ color: 'var(--accent-gold)' }}>Completed</div>
                           <div>Completed harvesting cycle</div>
                         </div>
                       </div>

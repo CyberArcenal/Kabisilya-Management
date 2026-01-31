@@ -1,4 +1,5 @@
 import { kabAuthStore } from "../lib/kabAuthStore";
+import type { WorkerData } from "./worker";
 
 // assignmentAPI.ts - API for Assignment Management
 export interface Assignment {
@@ -347,7 +348,26 @@ class AssignmentAPI {
   async getAssignmentsByWorker(
     workerId: number,
     filters?: AssignmentFilters,
-  ): Promise<AssignmentResponse<Assignment[]>> {
+  ): Promise<{
+    status: true;
+    message: string;
+    data: {
+      worker: WorkerData;
+      assignments: Assignment[];
+      statistics: {
+        totalAssignments: number;
+        totalLuWang: string;
+        averageLuWang: string;
+        byStatus: { active: number; completed: number; cancelled: number };
+        byMonth: Array<{
+          month: string;
+          count: number;
+          totalLuWang: number;
+          averageLuWang: string;
+        }>;
+      };
+    };
+  }> {
     try {
       if (!window.backendAPI || !window.backendAPI.assignment) {
         throw new Error("Electron API not available");
@@ -359,10 +379,7 @@ class AssignmentAPI {
       });
 
       if (response.status) {
-        return {
-          ...response,
-          data: this.normalizeAssignments(response.data),
-        };
+        return response;
       }
       throw new Error(
         response.message || "Failed to get assignments by worker",

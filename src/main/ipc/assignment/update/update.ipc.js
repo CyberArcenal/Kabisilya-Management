@@ -1,10 +1,10 @@
 // src/ipc/assignment/update/update.ipc.js
 //@ts-check
 const Assignment = require("../../../../entities/Assignment");
-// @ts-ignore
-const { AppDataSource } = require("../../../db/dataSource");
 const Worker = require("../../../../entities/Worker");
 const Pitak = require("../../../../entities/Pitak");
+const { validateWorkers, findAlreadyAssigned, validatePitak, formatNote } = require("../utils/assignmentUtils");
+
 
 /**
  * Update assignment details
@@ -14,33 +14,17 @@ const Pitak = require("../../../../entities/Pitak");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
-      // @ts-ignore
-      assignmentId,
-      // @ts-ignore
-      workerId,
-      // @ts-ignore
-      pitakId,
-      // @ts-ignore
-      luwangCount,
-      // @ts-ignore
-      assignmentDate,
-      // @ts-ignore
-      notes,
-      // @ts-ignore
-      _userId 
-    } = params;
+    // @ts-ignore
+    const { assignmentId, workerId, pitakId, luwangCount, assignmentDate, notes, _userId } = params;
 
     if (!assignmentId) {
-      return {
-        status: false,
-        message: "Assignment ID is required",
-        data: null
-      };
+      return { status: false, message: "Assignment ID is required", data: null };
     }
 
     const assignmentRepo = queryRunner.manager.getRepository(Assignment);
-    
+    const workerRepo = queryRunner.manager.getRepository(Worker);
+    const pitakRepo = queryRunner.manager.getRepository(Pitak);
+
     // Find assignment
     const assignment = await assignmentRepo.findOne({
       where: { id: assignmentId },
@@ -48,20 +32,20 @@ module.exports = async (params, queryRunner) => {
     });
 
     if (!assignment) {
-      return {
-        status: false,
-        message: "Assignment not found",
-        data: null
-      };
+      return { status: false, message: "Assignment not found", data: null };
     }
 
-    // Track changes
+    // Business rule: only active assignments can be updated
+    if (assignment.status !== "active") {
+      return { status: false, message: `Cannot update a ${assignment.status} assignment`, data: null };
+    }
+
     const changes = [];
     const originalValues = {
       // @ts-ignore
-      workerId: assignment.workerId,
+      workerId: assignment.worker?.id,
       // @ts-ignore
-      pitakId: assignment.pitakId,
+      pitakId: assignment.pitak?.id,
       // @ts-ignore
       luwangCount: parseFloat(assignment.luwangCount),
       assignmentDate: assignment.assignmentDate,
@@ -70,74 +54,47 @@ module.exports = async (params, queryRunner) => {
 
     // Validate and update worker if changed
     // @ts-ignore
-    if (workerId && workerId !== assignment.workerId) {
-      const workerRepo = queryRunner.manager.getRepository(Worker);
-      const newWorker = await workerRepo.findOne({ where: { id: workerId } });
-      
-      if (!newWorker) {
-        return {
-          status: false,
-          message: "New worker not found",
-          data: null
-        };
+    if (workerId && workerId !== assignment.worker?.id) {
+      const workerCheck = await validateWorkers(workerRepo, [workerId]);
+      if (!workerCheck.valid) {
+        return { status: false, message: workerCheck.message, data: null };
       }
+      const newWorker = workerCheck.workers[0];
 
-      // Check if new worker is available for this date
-      const existingAssignment = await assignmentRepo.findOne({
-        where: {
-          // @ts-ignore
-          workerId,
-          assignmentDate: assignment.assignmentDate,
-          status: 'active',
-          id: assignmentId // Exclude current assignment
-        }
-      });
-
-      if (existingAssignment) {
-        return {
-          status: false,
-          message: "New worker already has an active assignment for this date",
-          data: null
-        };
+      // Check if new worker already assigned to same pitak/date
+      // @ts-ignore
+      const skipped = await findAlreadyAssigned(assignmentRepo, [workerId], assignment.pitak?.id);
+      if (skipped.length > 0) {
+        return { status: false, message: "New worker already has an active assignment for this pitak", data: null };
       }
 
       // @ts-ignore
-      changes.push(`Worker changed from ${assignment.worker?.name || 'Unknown'} to ${newWorker.name}`);
+      changes.push(`Worker changed from ${assignment.worker?.name || "Unknown"} to ${newWorker.name}`);
       // @ts-ignore
-      assignment.workerId = workerId;
+      assignment.worker = { id: workerId };
     }
 
     // Validate and update pitak if changed
     // @ts-ignore
-    if (pitakId && pitakId !== assignment.pitakId) {
-      const pitakRepo = queryRunner.manager.getRepository(Pitak);
-      const newPitak = await pitakRepo.findOne({ where: { id: pitakId } });
-      
-      if (!newPitak) {
-        return {
-          status: false,
-          message: "New pitak not found",
-          data: null
-        };
+    if (pitakId && pitakId !== assignment.pitak?.id) {
+      const pitakCheck = await validatePitak(pitakRepo, pitakId);
+      if (!pitakCheck.valid) {
+        return { status: false, message: pitakCheck.message, data: null };
       }
+      const newPitak = pitakCheck.pitak;
 
       // @ts-ignore
-      changes.push(`Pitak changed from ${assignment.pitak?.name || 'Unknown'} to ${newPitak.name}`);
+      changes.push(`Pitak changed from ${assignment.pitak?.name || "Unknown"} to ${newPitak.name}`);
       // @ts-ignore
-      assignment.pitakId = pitakId;
+      assignment.pitak = { id: pitakId };
     }
 
     // Update luwang count if changed
     if (luwangCount !== undefined) {
       const newCount = parseFloat(luwangCount);
       if (isNaN(newCount) || newCount < 0) {
-        return {
-          status: false,
-          message: "LuWang count must be a non-negative number",
-          data: null
-        };
+        return { status: false, message: "LuWang count must be a non-negative number", data: null };
       }
-
       // @ts-ignore
       const oldCount = parseFloat(assignment.luwangCount);
       if (newCount !== oldCount) {
@@ -151,27 +108,17 @@ module.exports = async (params, queryRunner) => {
       const newDate = new Date(assignmentDate);
       // @ts-ignore
       const oldDate = new Date(assignment.assignmentDate);
-      
-      if (newDate.toDateString() !== oldDate.toDateString()) {
-        // Check if worker is available on new date
-        // @ts-ignore
-        const workerIdToCheck = workerId || assignment.workerId;
-        const existingAssignment = await assignmentRepo.findOne({
-          where: {
-            // @ts-ignore
-            workerId: workerIdToCheck,
-            assignmentDate: newDate,
-            status: 'active',
-            id: assignmentId // Exclude current assignment
-          }
-        });
 
+      if (newDate.toDateString() !== oldDate.toDateString()) {
+        // Check if worker already has assignment on new date
+        // @ts-ignore
+        const workerIdToCheck = workerId || assignment.worker?.id;
+        const existingAssignment = await assignmentRepo.findOne({
+          // @ts-ignore
+          where: { worker: { id: workerIdToCheck }, assignmentDate: newDate, status: "active" }
+        });
         if (existingAssignment) {
-          return {
-            status: false,
-            message: "Worker already has an active assignment for the new date",
-            data: null
-          };
+          return { status: false, message: "Worker already has an active assignment for the new date", data: null };
         }
 
         changes.push(`Date changed from ${oldDate.toDateString()} to ${newDate.toDateString()}`);
@@ -180,47 +127,23 @@ module.exports = async (params, queryRunner) => {
     }
 
     // Update notes if provided
-    if (notes !== undefined) {
-      if (notes !== assignment.notes) {
-        changes.push("Notes updated");
-        assignment.notes = notes;
-      }
+    if (notes !== undefined && notes !== assignment.notes) {
+      changes.push("Notes updated");
+      assignment.notes = notes;
     }
 
-    // If no changes were made
     if (changes.length === 0) {
-      return {
-        status: false,
-        message: "No changes detected",
-        data: {
-          assignment: {
-            id: assignment.id,
-            // @ts-ignore
-            worker: assignment.worker,
-            // @ts-ignore
-            pitak: assignment.pitak,
-            // @ts-ignore
-            luwangCount: parseFloat(assignment.luwangCount),
-            assignmentDate: assignment.assignmentDate,
-            status: assignment.status
-          }
-        }
-      };
+      return { status: false, message: "No changes detected", data: { assignment } };
     }
 
-    // Update timestamp and save
     assignment.updatedAt = new Date();
-    
+
     // Append change log to notes
-    const changeLog = `[Update ${new Date().toISOString()}]: ${changes.join(', ')}`;
-    assignment.notes = assignment.notes 
-      ? `${assignment.notes}\n${changeLog}`
-      : changeLog;
+    const changeLog = formatNote(changes.join(", "), "update");
+    assignment.notes = assignment.notes ? `${assignment.notes}\n${changeLog}` : changeLog;
 
     const updatedAssignment = await assignmentRepo.save(assignment);
 
-    // Log activity (called from main handler)
-    
     return {
       status: true,
       message: "Assignment updated successfully",
@@ -230,27 +153,28 @@ module.exports = async (params, queryRunner) => {
         originalValues,
         newValues: {
           // @ts-ignore
-          workerId: updatedAssignment.workerId,
+          workerId: updatedAssignment.worker?.id,
           // @ts-ignore
-          pitakId: updatedAssignment.pitakId,
+          pitakId: updatedAssignment.pitak?.id,
           // @ts-ignore
           luwangCount: parseFloat(updatedAssignment.luwangCount),
           assignmentDate: updatedAssignment.assignmentDate
         },
-        assignment: await assignmentRepo.findOne({
-          where: { id: assignmentId },
-          relations: ["worker", "pitak"]
-        })
+        summary: {
+          assignmentId: updatedAssignment.id,
+          // @ts-ignore
+          pitakId: updatedAssignment.pitak?.id ?? null,
+          // @ts-ignore
+          workerId: updatedAssignment.worker?.id ?? null,
+          status: updatedAssignment.status
+        },
+        assignment: await assignmentRepo.findOne({ where: { id: assignmentId }, relations: ["worker", "pitak"] })
       }
     };
 
   } catch (error) {
     console.error("Error updating assignment:", error);
-    return {
-      status: false,
-      // @ts-ignore
-      message: `Failed to update assignment: ${error.message}`,
-      data: null
-    };
+    // @ts-ignore
+    return { status: false, message: `Failed to update assignment: ${error.message}`, data: null };
   }
 };

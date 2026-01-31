@@ -1,6 +1,8 @@
 // src/ipc/assignment/bulk/bulk_update.ipc.js
 //@ts-check
 const Assignment = require("../../../../entities/Assignment");
+const Pitak = require("../../../../entities/Pitak");
+const { validatePitak, formatNote } = require("../utils/assignmentUtils");
 
 /**
  * Bulk update assignments
@@ -14,91 +16,71 @@ module.exports = async (params, queryRunner) => {
     const { assignments, updateData, filters, _userId } = params;
 
     if (!assignments && !filters) {
-      return {
-        status: false,
-        message: "Either assignments array or filters are required",
-        data: null
-      };
+      return { status: false, message: "Either assignments array or filters are required", data: null };
     }
-
     if (!updateData || Object.keys(updateData).length === 0) {
-      return {
-        status: false,
-        message: "Update data is required",
-        data: null
-      };
+      return { status: false, message: "Update data is required", data: null };
     }
 
     const assignmentRepo = queryRunner.manager.getRepository(Assignment);
-    
-    // Get assignments to update
-    /**
-     * @type {any[]}
-     */
+
+    // @ts-ignore
     let assignmentsToUpdate = [];
-    
     if (assignments && Array.isArray(assignments)) {
-      // Update specific assignments by ID
-      assignmentsToUpdate = await assignmentRepo.findByIds(assignments);
+      // @ts-ignore
+      assignmentsToUpdate = await assignmentRepo.findByIds(assignments, { relations: ["worker", "pitak"] });
     } else if (filters) {
-      // Update assignments based on filters
-      const queryBuilder = assignmentRepo.createQueryBuilder("assignment");
-      
+      const queryBuilder = assignmentRepo.createQueryBuilder("assignment").leftJoinAndSelect("assignment.worker", "worker").leftJoinAndSelect("assignment.pitak", "pitak");
+
       if (filters.dateFrom && filters.dateTo) {
-        queryBuilder.where("assignment.assignmentDate BETWEEN :dateFrom AND :dateTo", {
-          dateFrom: filters.dateFrom,
-          dateTo: filters.dateTo
-        });
+        queryBuilder.where("assignment.assignmentDate BETWEEN :dateFrom AND :dateTo", { dateFrom: filters.dateFrom, dateTo: filters.dateTo });
       }
-      
       if (filters.status) {
         queryBuilder.andWhere("assignment.status = :status", { status: filters.status });
       }
-      
       if (filters.workerId) {
-        queryBuilder.andWhere("assignment.workerId = :workerId", { workerId: filters.workerId });
+        queryBuilder.andWhere("worker.id = :workerId", { workerId: filters.workerId });
       }
-      
       if (filters.pitakId) {
-        queryBuilder.andWhere("assignment.pitakId = :pitakId", { pitakId: filters.pitakId });
+        queryBuilder.andWhere("pitak.id = :pitakId", { pitakId: filters.pitakId });
       }
-      
+
       assignmentsToUpdate = await queryBuilder.getMany();
     }
 
     if (assignmentsToUpdate.length === 0) {
-      return {
-        status: false,
-        message: "No assignments found to update",
-        data: null
-      };
+      return { status: false, message: "No assignments found to update", data: null };
     }
 
-    // Validate update data
-    /**
-     * @type {{ assignmentId: any; errors: string[]; }[]}
-     */
     const validationErrors = [];
-    /**
-     * @type {any[]}
-     */
     const validUpdates = [];
-    
-    assignmentsToUpdate.forEach(assignment => {
+
+    // @ts-ignore
+    for (const assignment of assignmentsToUpdate) {
       const errors = [];
-      
+
+      // Business rule: only active assignments can be updated
+      if (assignment.status !== "active") {
+        errors.push(`Assignment ${assignment.id} is ${assignment.status} and cannot be updated`);
+      }
+
+      // Pitak status check
+      const pitakCheck = await validatePitak(queryRunner.manager.getRepository(Pitak), assignment.pitak?.id);
+      if (!pitakCheck.valid) {
+        errors.push(pitakCheck.message);
+      }
+
       // Validate status update
       if (updateData.status) {
-        const validStatuses = ['active', 'completed', 'cancelled'];
+        const validStatuses = ["active", "completed", "cancelled"];
         if (!validStatuses.includes(updateData.status)) {
           errors.push(`Invalid status: ${updateData.status}`);
         }
-        
-        if (updateData.status === 'cancelled' && assignment.status === 'completed') {
+        if (updateData.status === "cancelled" && assignment.status === "completed") {
           errors.push("Cannot cancel a completed assignment");
         }
       }
-      
+
       // Validate luwang count
       if (updateData.luwangCount !== undefined) {
         const count = parseFloat(updateData.luwangCount);
@@ -106,29 +88,21 @@ module.exports = async (params, queryRunner) => {
           errors.push(`Invalid luwang count: ${updateData.luwangCount}`);
         }
       }
-      
+
       if (errors.length === 0) {
         validUpdates.push(assignment);
       } else {
-        validationErrors.push({
-          assignmentId: assignment.id,
-          errors
-        });
+        validationErrors.push({ assignmentId: assignment.id, errors });
       }
-    });
-
-    if (validUpdates.length === 0) {
-      return {
-        status: false,
-        message: "All updates failed validation",
-        data: { validationErrors }
-      };
     }
 
-    // Apply updates
+    if (validUpdates.length === 0) {
+      return { status: false, message: "All updates failed validation", data: { validationErrors } };
+    }
+
     const updatedAssignments = [];
     const skippedAssignments = [];
-    
+
     for (const assignment of validUpdates) {
       try {
         const originalValues = {
@@ -136,17 +110,14 @@ module.exports = async (params, queryRunner) => {
           luwangCount: parseFloat(assignment.luwangCount),
           notes: assignment.notes
         };
-        
-        // Track changes
+
         const changes = [];
-        
-        // Update status
+
         if (updateData.status && updateData.status !== assignment.status) {
           changes.push(`Status: ${assignment.status} → ${updateData.status}`);
           assignment.status = updateData.status;
         }
-        
-        // Update luwang count
+
         if (updateData.luwangCount !== undefined) {
           const newCount = parseFloat(updateData.luwangCount);
           const oldCount = parseFloat(assignment.luwangCount);
@@ -155,24 +126,19 @@ module.exports = async (params, queryRunner) => {
             assignment.luwangCount = newCount.toFixed(2);
           }
         }
-        
-        // Update notes
+
         if (updateData.notes !== undefined && updateData.notes !== assignment.notes) {
           changes.push("Notes updated");
           assignment.notes = updateData.notes;
         }
-        
-        // Update timestamp
+
         assignment.updatedAt = new Date();
-        
-        // Add change log to notes
+
         if (changes.length > 0) {
-          const changeLog = `[Bulk Update ${new Date().toISOString()}]: ${changes.join(', ')}`;
-          assignment.notes = assignment.notes 
-            ? `${assignment.notes}\n${changeLog}`
-            : changeLog;
+          const changeLog = formatNote(changes.join(", "), "bulk update");
+          assignment.notes = assignment.notes ? `${assignment.notes}\n${changeLog}` : changeLog;
         }
-        
+
         const updatedAssignment = await assignmentRepo.save(assignment);
         updatedAssignments.push({
           id: updatedAssignment.id,
@@ -183,17 +149,13 @@ module.exports = async (params, queryRunner) => {
             luwangCount: parseFloat(updatedAssignment.luwangCount)
           }
         });
-        
+
       } catch (error) {
-        skippedAssignments.push({
-          assignmentId: assignment.id,
-          // @ts-ignore
-          error: error.message
-        });
+        // @ts-ignore
+        skippedAssignments.push({ assignmentId: assignment.id, error: error.message });
       }
     }
 
-    // Calculate summary
     const summary = {
       totalProcessed: assignmentsToUpdate.length,
       totalUpdated: updatedAssignments.length,
@@ -210,21 +172,13 @@ module.exports = async (params, queryRunner) => {
     return {
       status: true,
       message: "Bulk update completed",
-      data: {
-        updatedAssignments,
-        skippedAssignments,
-        failedUpdates: validationErrors
-      },
+      data: { updatedAssignments, skippedAssignments, failedUpdates: validationErrors },
       meta: summary
     };
 
   } catch (error) {
     console.error("Error in bulk assignment update:", error);
-    return {
-      status: false,
-      // @ts-ignore
-      message: `Bulk update failed: ${error.message}`,
-      data: null
-    };
+    // @ts-ignore
+    return { status: false, message: `Bulk update failed: ${error.message}`, data: null };
   }
 };

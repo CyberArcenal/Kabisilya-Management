@@ -24,11 +24,11 @@ const PitakGridView: React.FC<PitakGridViewProps> = ({
     const statusConfig = {
       active: { bg: 'var(--status-planted-bg)', color: 'var(--status-planted)' },
       inactive: { bg: 'var(--status-fallow-bg)', color: 'var(--status-fallow)' },
-      harvested: { bg: 'var(--accent-gold-light)', color: 'var(--accent-gold)' }
+      completed: { bg: 'var(--accent-gold-light)', color: 'var(--accent-gold)' }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
-    
+
     return (
       <span
         className="px-2 py-1 rounded-full text-xs font-medium"
