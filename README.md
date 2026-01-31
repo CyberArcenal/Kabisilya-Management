@@ -108,6 +108,14 @@ Originally designed for kabisilya workflows, now expanded into a **general farm 
 - [ ] Session-based resets per cropping cycle  
 - [ ] Mobile companion app for field data entry  
 
+## 📸 Screenshots
+Here are sample displays of the system
+
+![Screenshot 3](https://github.com/CyberArcenal/Kabisilya-Management/blob/main/screenshots/img3.png?raw=true)
+![Screenshot 2](https://github.com/CyberArcenal/Kabisilya-Management/blob/main/screenshots/img2.png?raw=true)
+![Screenshot 1](https://github.com/CyberArcenal/Kabisilya-Management/blob/main/screenshots/img4.png?raw=true)
+
+
 ---
 
 ## ⚖️ License
