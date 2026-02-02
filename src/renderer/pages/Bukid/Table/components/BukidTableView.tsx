@@ -18,6 +18,10 @@ interface BukidTableViewProps {
   onViewStats: (id: number) => void;
   onImportCSV: (id: number) => void;
   onExportCSV: (id: number) => void;
+    onAddPlot: (id: number) => void;       // NEW
+  onViewPlots: (id: number) => void;     // NEW
+  onViewMap?: (id: number) => void; // NEW
+  onViewNote: (id: number) => void; // NEW
   sortBy: string;
   sortOrder: 'ASC' | 'DESC';
   onSort: (field: string) => void;
@@ -39,7 +43,11 @@ const BukidTableView: React.FC<BukidTableViewProps> = ({
   onExportCSV,
   sortBy,
   sortOrder,
-  onSort
+  onSort,
+  onAddPlot,
+  onViewPlots,
+  onViewMap,
+  onViewNote,
 }) => {
   const [expandedBukid, setExpandedBukid] = useState<number | null>(null);
 
@@ -115,6 +123,10 @@ const BukidTableView: React.FC<BukidTableViewProps> = ({
                   onViewStats={onViewStats}
                   onImportCSV={onImportCSV}
                   onExportCSV={onExportCSV}
+                  onAddPlot={onAddPlot}
+                  onViewPlots={onViewPlots}
+                  onViewMap={onViewMap}
+                  onViewNote={onViewNote}
                 />
               );
             })}

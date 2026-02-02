@@ -20,6 +20,7 @@ interface PitakTableViewProps {
   // New props for assignment viewing
   onViewAssignment: (assignmentId: number) => void;
   onViewPitakAssignments: (pitakId: number) => void;
+  onViewPayment: (paymentId: number) => void;
 }
 
 const PitakTableView: React.FC<PitakTableViewProps> = ({
@@ -39,6 +40,7 @@ const PitakTableView: React.FC<PitakTableViewProps> = ({
   // New props
   onViewAssignment,
   onViewPitakAssignments,
+  onViewPayment,
 }) => {
   const [expandedPitak, setExpandedPitak] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<string>('createdAt');
@@ -153,7 +155,7 @@ const PitakTableView: React.FC<PitakTableViewProps> = ({
                     // Pass new props
                     onViewAssignment={onViewAssignment}
                     onViewPitakAssignments={onViewPitakAssignments}
-                 
+                    onViewPayment={onViewPayment}
                   />
                 ))}
               </tbody>

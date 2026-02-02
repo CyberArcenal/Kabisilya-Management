@@ -474,7 +474,7 @@ const AssignmentTablePage: React.FC = () => {
 
             {/* Table or Grid View */}
             {!loading && assignments.length === 0 ? (
-              <div className="flex items-center justify-center h-64 rounded-xl border-2 border-dashed border-gray-300 bg-white">
+               <div className="flex items-center justify-center h-64 rounded-xl border-2 border-dashed border-gray-300 bg-white">
                 <div className="text-center p-8">
                   <FileText
                     className="w-16 h-16 mx-auto mb-4 opacity-20"
@@ -505,7 +505,14 @@ const AssignmentTablePage: React.FC = () => {
               </div>
             ) : !loading && assignments.length > 0 ? (
               <>
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+                <div
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6"
+                  style={{
+                    maxHeight:
+                      viewMode === "table" ? "calc(100vh - 450px)" : "auto",
+                    overflowY: viewMode === "table" ? "auto" : "visible",
+                  }}
+                >
                   {viewMode === "table" ? (
                     <AssignmentTableView
                       assignments={assignments}
@@ -547,7 +554,7 @@ const AssignmentTablePage: React.FC = () => {
                       currentPage={currentPage}
                       totalPages={totalPages}
                       totalItems={totalItems}
-                      limit={20}
+                      limit={10}
                       onPageChange={setCurrentPage}
                     />
                   </div>

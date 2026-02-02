@@ -6,115 +6,173 @@ const { AppDataSource } = require("../../../db/dataSource");
 
 module.exports = async function getPaymentsByStatus(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      status, 
+      status,
       // @ts-ignore
-      startDate, 
+      startDate,
       // @ts-ignore
-      endDate, 
+      endDate,
       // @ts-ignore
-      limit = 50, 
+      limit = 50,
       // @ts-ignore
       page = 1,
       // @ts-ignore
-      sortBy = 'createdAt',
+      sortBy = "createdAt",
       // @ts-ignore
-      sortOrder = 'DESC'
+      sortOrder = "DESC",
     } = params;
-    
+
     if (!status) {
       return {
         status: false,
-        message: 'Status is required',
-        data: null
+        message: "Status is required",
+        data: null,
       };
     }
 
     // Validate status
-    const validStatuses = ['pending', 'processing', 'completed', 'cancelled', 'partially_paid'];
+    const validStatuses = ["pending", "processing", "completed", "cancelled", "partially_paid"];
     if (!validStatuses.includes(status)) {
       return {
         status: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
-        data: null
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        data: null,
       };
     }
 
     const paymentRepository = AppDataSource.getRepository(Payment);
-    const queryBuilder = paymentRepository.createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.worker', 'worker')
-      .leftJoinAndSelect('payment.pitak', 'pitak')
-      .where('payment.status = :status', { status });
+
+    // Base query: join worker and pitak
+    const queryBuilder = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.worker", "worker")
+      .leftJoinAndSelect("payment.pitak", "pitak")
+      .where("payment.status = :status", { status });
 
     // Apply date filters
     if (startDate) {
-      queryBuilder.andWhere('payment.createdAt >= :startDate', { 
-        startDate: new Date(startDate) 
+      queryBuilder.andWhere("payment.createdAt >= :startDate", {
+        startDate: new Date(startDate),
       });
     }
 
     if (endDate) {
-      queryBuilder.andWhere('payment.createdAt <= :endDate', { 
-        endDate: new Date(endDate) 
+      queryBuilder.andWhere("payment.createdAt <= :endDate", {
+        endDate: new Date(endDate),
       });
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+    // Pagination parsing
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 50);
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const skip = (parsedPage - 1) * parsedLimit;
     const total = await queryBuilder.getCount();
+
+    // Protect sortBy from SQL injection by allowing only specific fields
+    const SORT_FIELD_MAP = {
+      createdAt: "payment.createdAt",
+      paymentDate: "payment.paymentDate",
+      netPay: "payment.netPay",
+      grossPay: "payment.grossPay",
+      id: "payment.id",
+    };
+    // @ts-ignore
+    const orderColumn = SORT_FIELD_MAP[sortBy] || SORT_FIELD_MAP.createdAt;
+    const normalizedSortOrder = (sortOrder || "DESC").toString().toUpperCase();
+    const orderDirection = ["ASC", "DESC"].includes(normalizedSortOrder) ? normalizedSortOrder : "DESC";
 
     // Get paginated results
     const payments = await queryBuilder
-      .orderBy(`payment.${sortBy}`, sortOrder)
+      .orderBy(orderColumn, orderDirection)
       .skip(skip)
-      .take(limit)
+      .take(parsedLimit)
       .getMany();
 
-    // Get status-specific insights
-    const insights = await paymentRepository
-      .createQueryBuilder('payment')
+    // Build insights query with same filters
+    const insightsQB = paymentRepository
+      .createQueryBuilder("payment")
       .select([
-        'COUNT(payment.id) as totalCount',
-        'SUM(payment.netPay) as totalAmount',
-        'AVG(payment.netPay) as averageAmount',
-        'MIN(payment.createdAt) as earliestPayment',
-        'MAX(payment.createdAt) as latestPayment'
+        "COUNT(payment.id) as total_count",
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
+        "COALESCE(AVG(payment.netPay), 0) as average_amount",
+        "MIN(payment.createdAt) as earliest_payment",
+        "MAX(payment.createdAt) as latest_payment",
       ])
-      .where('payment.status = :status', { status })
-      .getRawOne();
+      .where("payment.status = :status", { status });
 
-    // Get worker distribution for this status
-    const workerDistribution = await paymentRepository
-      .createQueryBuilder('payment')
-      .leftJoin('payment.worker', 'worker')
-      .select([
-        'worker.id as workerId',
-        'worker.name as workerName',
-        'COUNT(payment.id) as paymentCount',
-        'SUM(payment.netPay) as totalPaid'
-      ])
-      .where('payment.status = :status', { status })
-      .groupBy('worker.id, worker.name')
-      .orderBy('totalPaid', 'DESC')
-      .limit(10)
-      .getRawMany();
+    if (startDate) insightsQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) insightsQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
 
-    // Get monthly trend for this status
-    const monthlyTrend = await paymentRepository
-      .createQueryBuilder('payment')
+    const insights = await insightsQB.getRawOne();
+
+    // Worker distribution (apply same filters)
+    const workerDistributionQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
       .select([
-        'EXTRACT(YEAR FROM payment.createdAt) as year',
-        'EXTRACT(MONTH FROM payment.createdAt) as month',
-        'COUNT(payment.id) as count',
-        'SUM(payment.netPay) as amount'
+        "worker.id as worker_id",
+        "worker.name as worker_name",
+        "COUNT(payment.id) as payment_count",
+        "COALESCE(SUM(payment.netPay), 0) as total_paid",
       ])
-      .where('payment.status = :status', { status })
-      .groupBy('EXTRACT(YEAR FROM payment.createdAt), EXTRACT(MONTH FROM payment.createdAt)')
-      .orderBy('year', 'DESC')
-      .addOrderBy('month', 'DESC')
-      .limit(6)
-      .getRawMany();
+      .where("payment.status = :status", { status });
+
+    if (startDate) workerDistributionQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) workerDistributionQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+
+    workerDistributionQB.groupBy("worker.id, worker.name").orderBy("total_paid", "DESC").limit(10);
+    const workerDistributionRaw = await workerDistributionQB.getRawMany();
+
+    // Monthly trend for SQLite using strftime
+    const monthlyTrendQB = paymentRepository
+      .createQueryBuilder("payment")
+      .select([
+        "strftime('%Y', payment.createdAt) as year",
+        "strftime('%m', payment.createdAt) as month",
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.netPay), 0) as amount",
+      ])
+      .where("payment.status = :status", { status });
+
+    if (startDate) monthlyTrendQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) monthlyTrendQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+
+    monthlyTrendQB
+      .groupBy("strftime('%Y', payment.createdAt), strftime('%m', payment.createdAt)")
+      .orderBy("year", "DESC")
+      .addOrderBy("month", "DESC")
+      .limit(6);
+
+    const monthlyTrendRaw = await monthlyTrendQB.getRawMany();
+
+    // Normalize outputs
+    const normalizedInsights = {
+      totalCount: parseInt(insights?.total_count || 0, 10),
+      totalAmount: parseFloat(insights?.total_amount || 0),
+      averageAmount: parseFloat(insights?.average_amount || 0),
+      earliestPayment: insights?.earliest_payment || null,
+      latestPayment: insights?.latest_payment || null,
+    };
+
+    const normalizedWorkerDistribution = (workerDistributionRaw || []).map((item) => ({
+      workerId: parseInt(item.worker_id || 0, 10),
+      workerName: item.worker_name || null,
+      paymentCount: parseInt(item.payment_count || 0, 10),
+      totalPaid: parseFloat(item.total_paid || 0),
+    }));
+
+    const normalizedMonthlyTrend = (monthlyTrendRaw || []).map((item) => {
+      const year = parseInt(item.year, 10);
+      const month = parseInt(item.month, 10);
+      return {
+        year,
+        month,
+        period: `${year}-${String(month).padStart(2, "0")}`,
+        count: parseInt(item.count || 0, 10),
+        amount: parseFloat(item.amount || 0),
+      };
+    });
 
     return {
       status: true,
@@ -123,40 +181,23 @@ module.exports = async function getPaymentsByStatus(params = {}) {
         status,
         payments,
         pagination: {
-          page,
-          limit,
+          page: parsedPage,
+          limit: parsedLimit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / parsedLimit),
         },
-        insights: {
-          totalCount: parseInt(insights.totalcount || 0),
-          totalAmount: parseFloat(insights.totalamount || 0),
-          averageAmount: parseFloat(insights.averageamount || 0),
-          earliestPayment: insights.earliestpayment,
-          latestPayment: insights.latestpayment
-        },
-        workerDistribution: workerDistribution.map((/** @type {{ workerid: string; workername: any; paymentcount: string; totalpaid: any; }} */ item) => ({
-          workerId: parseInt(item.workerid),
-          workerName: item.workername,
-          paymentCount: parseInt(item.paymentcount),
-          totalPaid: parseFloat(item.totalpaid || 0)
-        })),
-        monthlyTrend: monthlyTrend.map((/** @type {{ year: string; month: string; count: string; amount: any; }} */ item) => ({
-          year: parseInt(item.year),
-          month: parseInt(item.month),
-          period: `${item.year}-${String(item.month).padStart(2, '0')}`,
-          count: parseInt(item.count),
-          amount: parseFloat(item.amount || 0)
-        }))
-      }
+        insights: normalizedInsights,
+        workerDistribution: normalizedWorkerDistribution,
+        monthlyTrend: normalizedMonthlyTrend,
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentsByStatus:', error);
+    console.error("Error in getPaymentsByStatus:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payments by status: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

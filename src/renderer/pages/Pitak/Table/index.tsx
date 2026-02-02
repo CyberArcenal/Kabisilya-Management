@@ -1,26 +1,26 @@
-import React from 'react';
-import {
-  MapPin, Plus, Download, AlertCircle, RefreshCw
-} from 'lucide-react';
-import PitakStats from './components/PitakStats';
-import PitakFilters from './components/PitakFilters';
-import PitakBulkActions from './components/PitakBulkActions';
-import PitakTableView from './components/PitakTableView';
-import PitakGridView from './components/PitakGridView';
-import PitakPagination from './components/PitakPagination';
-import AssignmentDialog from './dialogs/AssignmentDialog';
-import BulkAssignDialog from './dialogs/BulkAssignDialog';
-import LuWangUpdateDialog from './dialogs/LuWangUpdateDialog';
-import ExportDialog from './dialogs/ExportDialog';
+import React, { useState } from "react";
+import { MapPin, Plus, Download, AlertCircle, RefreshCw } from "lucide-react";
+import PitakStats from "./components/PitakStats";
+import PitakFilters from "./components/PitakFilters";
+import PitakBulkActions from "./components/PitakBulkActions";
+import PitakTableView from "./components/PitakTableView";
+import PitakGridView from "./components/PitakGridView";
+import PitakPagination from "./components/PitakPagination";
+import AssignmentDialog from "./dialogs/AssignmentDialog";
+import BulkAssignDialog from "./dialogs/BulkAssignDialog";
+import LuWangUpdateDialog from "./dialogs/LuWangUpdateDialog";
+import ExportDialog from "./dialogs/ExportDialog";
 // Import new dialogs
-import { usePitakData } from './hooks/usePitakData';
-import { usePitakActions } from './hooks/usePitakActions';
-import ViewMultipleAssignmentsDialog from '../../Assignment/View/Dialogs/ViewMultipleAssignmentsDialog';
-import AssignmentHistoryDialog from '../../Assignment/View/Dialogs/CreateAssignmentHistoryDialog';
-import ViewSingleAssignmentDialog from '../../Assignment/View/Dialogs/ViewSingleAssignmentDialog';
-import PitakFormDialog from '../Dialogs/Form';
-import PitakViewDialog from '../Dialogs/View';
-import ViewAssignedWorkersDialog from '../../Assignment/View/Dialogs/ViewAssignedWorkersDialog';
+import { usePitakData } from "./hooks/usePitakData";
+import { usePitakActions } from "./hooks/usePitakActions";
+import ViewMultipleAssignmentsDialog from "../../Assignment/View/Dialogs/ViewMultipleAssignmentsDialog";
+import AssignmentHistoryDialog from "../../Assignment/View/Dialogs/CreateAssignmentHistoryDialog";
+import ViewSingleAssignmentDialog from "../../Assignment/View/Dialogs/ViewSingleAssignmentDialog";
+import PitakFormDialog from "../Dialogs/Form/Form";
+import PitakViewDialog from "../Dialogs/View";
+import ViewAssignedWorkersDialog from "../../Assignment/View/Dialogs/ViewAssignedWorkersDialog";
+import { dialogs } from "../../../utils/dialogs";
+import PaymentViewDialog from "../../Payment/Table/Dialogs/PaymentViewDialog";
 
 const PitakTablePage: React.FC = () => {
   const {
@@ -42,7 +42,7 @@ const PitakTablePage: React.FC = () => {
     setSelectedPitaks,
     fetchPitaks,
     handleRefresh,
-    setCurrentPage
+    setCurrentPage,
   } = usePitakData();
 
   const {
@@ -95,7 +95,6 @@ const PitakTablePage: React.FC = () => {
     handleViewAssignmentDialog,
     handleViewPitakAssignmentsDialog,
 
-
     isFormDialogOpen,
     openCreateDialog,
     openEditDialog,
@@ -106,26 +105,37 @@ const PitakTablePage: React.FC = () => {
     setSelectPitakId,
     setDialogMode,
 
-
     showAssignedWorkersDialog,
     setShowAssignedWorkersDialog,
     selectedPitakForWorkers,
     setSelectedPitakForWorkers,
   } = usePitakActions(pitaks, fetchPitaks);
+  const [isViewDialogOpen, setIspaymentViewDialogOpen] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(
+    null,
+  );
 
   // Loading skeleton similar to Kabisilya and Assignment
   const renderLoadingSkeleton = () => {
-    if (viewMode === 'table') {
+    if (viewMode === "table") {
       return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr style={{ background: 'var(--table-header-bg)' }}>
+                <tr style={{ background: "var(--table-header-bg)" }}>
                   <th className="p-4 text-left">
                     <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
                   </th>
-                  {['Location', 'Code', 'Total LuWang', 'Assigned LuWang', 'Available LuWang', 'Status', 'Actions'].map((header) => (
+                  {[
+                    "Location",
+                    "Code",
+                    "Total LuWang",
+                    "Assigned LuWang",
+                    "Available LuWang",
+                    "Status",
+                    "Actions",
+                  ].map((header) => (
                     <th key={header} className="p-4 text-left">
                       <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
                     </th>
@@ -156,7 +166,10 @@ const PitakTablePage: React.FC = () => {
                     <td className="p-4">
                       <div className="flex gap-2">
                         {[...Array(6)].map((_, i) => (
-                          <div key={i} className="w-6 h-6 bg-gray-100 rounded animate-pulse"></div>
+                          <div
+                            key={i}
+                            className="w-6 h-6 bg-gray-100 rounded animate-pulse"
+                          ></div>
                         ))}
                       </div>
                     </td>
@@ -222,7 +235,9 @@ const PitakTablePage: React.FC = () => {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center p-8 bg-white rounded-xl border border-gray-200 max-w-md">
             <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-            <p className="text-base font-semibold mb-2 text-gray-900">Error Loading Pitak Data</p>
+            <p className="text-base font-semibold mb-2 text-gray-900">
+              Error Loading Pitak Data
+            </p>
             <p className="text-sm mb-6 text-gray-600">{error}</p>
             <button
               onClick={handleRefresh}
@@ -237,39 +252,44 @@ const PitakTablePage: React.FC = () => {
   }
 
   const toggleSelectAll = () => {
-    setSelectedPitaks(selectedPitaks.length === pitaks.length ? [] : pitaks.map(p => p.id));
+    setSelectedPitaks(
+      selectedPitaks.length === pitaks.length ? [] : pitaks.map((p) => p.id),
+    );
   };
 
   const toggleSelectPitak = (id: number) => {
-    setSelectedPitaks(prev =>
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    setSelectedPitaks((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
   const handleAssignWorkerWithData = (pitakId: number) => {
-    const pitak = pitaks.find(p => p.id === pitakId);
+    const pitak = pitaks.find((p) => p.id === pitakId);
     if (!pitak) return;
     handleAssignWorker(pitakId, pitak);
   };
 
   const handleUpdateLuWangWithData = (pitakId: number) => {
-    const pitak = pitaks.find(p => p.id === pitakId);
+    const pitak = pitaks.find((p) => p.id === pitakId);
     if (!pitak) return;
     handleUpdateLuWang(pitakId, pitak.totalLuwang);
   };
 
   const handleDeletePitakWithData = (id: number) => {
-    const pitak = pitaks.find(p => p.id === id);
+    const pitak = pitaks.find((p) => p.id === id);
     handleDeletePitak(id, pitak?.location as string);
   };
 
   const handleMarkAsHarvestedWithData = (id: number) => {
-    const pitak = pitaks.find(p => p.id === id);
+    const pitak = pitaks.find((p) => p.id === id);
     handleMarkAsHarvested(id, pitak?.location as string);
   };
 
-  const handleUpdatePitakStatusWithData = (id: number, currentStatus: string) => {
-    const pitak = pitaks.find(p => p.id === id);
+  const handleUpdatePitakStatusWithData = (
+    id: number,
+    currentStatus: string,
+  ) => {
+    const pitak = pitaks.find((p) => p.id === id);
     handleUpdatePitakStatus(id, currentStatus, pitak?.location as string);
   };
 
@@ -285,13 +305,24 @@ const PitakTablePage: React.FC = () => {
 
   const handleBulkActivateWithData = () => {
     if (selectedPitaks.length === 0) return;
-    handleBulkStatusChange('active', selectedPitaks);
+    handleBulkStatusChange("active", selectedPitaks);
   };
 
   const handleBulkDeactivateWithData = () => {
     if (selectedPitaks.length === 0) return;
-    handleBulkStatusChange('inactive', selectedPitaks);
+    handleBulkStatusChange("inactive", selectedPitaks);
   };
+
+  const closePaymentViewDialog = () => {
+    setIspaymentViewDialogOpen(false);
+    setSelectedPaymentId(null);
+  };
+  const handleViewPayment = async (paymentId: number) => {
+    setSelectedPaymentId(paymentId);
+    setIspaymentViewDialogOpen(true);
+  };
+
+  const openEditPaymentDialog = async () => {};
 
   return (
     <>
@@ -304,7 +335,8 @@ const PitakTablePage: React.FC = () => {
                 <MapPin className="w-6 h-6" /> Pitak Management
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Manage planting areas, track luwang capacity, and monitor utilization
+                Manage planting areas, track luwang capacity, and monitor
+                utilization
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -362,9 +394,7 @@ const PitakTablePage: React.FC = () => {
 
             {/* Loading State */}
             {loading && !refreshing && (
-              <div className="mb-6">
-                {renderLoadingSkeleton()}
-              </div>
+              <div className="mb-6">{renderLoadingSkeleton()}</div>
             )}
 
             {/* Main Content */}
@@ -372,9 +402,13 @@ const PitakTablePage: React.FC = () => {
               <div className="flex items-center justify-center h-64 rounded-xl border-2 border-dashed border-gray-300 bg-white">
                 <div className="text-center p-8">
                   <MapPin className="w-16 h-16 mx-auto mb-4 opacity-20 text-gray-400" />
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900">No Pitak Found</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900">
+                    No Pitak Found
+                  </h3>
                   <p className="text-sm mb-6 max-w-md mx-auto text-gray-600">
-                    {searchQuery ? `No results found for "${searchQuery}". Try a different search term.` : 'No pitak have been created yet. Get started by creating your first pitak.'}
+                    {searchQuery
+                      ? `No results found for "${searchQuery}". Try a different search term.`
+                      : "No pitak have been created yet. Get started by creating your first pitak."}
                   </p>
                   {!searchQuery && (
                     <button
@@ -388,8 +422,15 @@ const PitakTablePage: React.FC = () => {
               </div>
             ) : !loading && pitaks.length > 0 ? (
               <>
-                {viewMode === 'table' ? (
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+                {viewMode === "table" ? (
+                  <div
+                    className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6"
+                    style={{
+                      maxHeight:
+                        viewMode === "table" ? "calc(100vh - 450px)" : "auto",
+                      overflowY: viewMode === "table" ? "auto" : "visible",
+                    }}
+                  >
                     <PitakTableView
                       pitaks={pitaks}
                       selectedPitaks={selectedPitaks}
@@ -407,6 +448,7 @@ const PitakTablePage: React.FC = () => {
                       // Pass new props
                       onViewAssignment={handleViewAssignmentDialog}
                       onViewPitakAssignments={handleViewPitakAssignmentsDialog}
+                      onViewPayment={handleViewPayment}
                     />
                   </div>
                 ) : (
@@ -429,7 +471,7 @@ const PitakTablePage: React.FC = () => {
                       currentPage={currentPage}
                       totalPages={totalPages}
                       totalItems={totalItems}
-                      limit={20}
+                      limit={10}
                       onPageChange={setCurrentPage}
                     />
                   </div>
@@ -454,7 +496,9 @@ const PitakTablePage: React.FC = () => {
             selectedCount={selectedPitaks.length}
             data={bulkOperationData}
             onChange={setBulkOperationData}
-            onSubmit={() => handleSubmitBulkAssign(selectedPitaks, bulkOperationData)}
+            onSubmit={() =>
+              handleSubmitBulkAssign(selectedPitaks, bulkOperationData)
+            }
             onClose={() => setShowBulkAssignDialog(false)}
           />
         )}
@@ -494,13 +538,9 @@ const PitakTablePage: React.FC = () => {
             onClose={() => setShowSingleAssignmentDialog(false)}
             onEdit={() => {
               setShowSingleAssignmentDialog(false);
-              // Handle edit functionality
-              // navigate(`/assignments/edit/${selectedAssignmentId}`);
             }}
             onDelete={() => {
               setShowSingleAssignmentDialog(false);
-              // Handle delete functionality
-              // showConfirm dialog for deletion
             }}
             onViewHistory={() => {
               setShowSingleAssignmentDialog(false);
@@ -538,6 +578,14 @@ const PitakTablePage: React.FC = () => {
               fetchPitaks();
               closeFormDialog();
             }}
+          />
+        )}
+
+        {/* Payment View Dialog */}
+        {isViewDialogOpen && selectedPaymentId && (
+          <PaymentViewDialog
+            paymentId={selectedPaymentId}
+            onClose={closePaymentViewDialog}
           />
         )}
 

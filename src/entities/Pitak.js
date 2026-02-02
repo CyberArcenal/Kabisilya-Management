@@ -7,17 +7,40 @@ const Pitak = new EntitySchema({
   columns: {
     id: { type: Number, primary: true, generated: true },
     location: { type: String, nullable: true },
+
+    // total luwang (computed)
     totalLuwang: {
       type: "decimal",
-      precision: 5,
+      precision: 7, // mas malaki para safe
       scale: 2,
       default: 0.0,
     },
-    // status: "active", "inactive", "completed"
+
+    // bagong fields
+    layoutType: {
+      type: String,
+      default: "square", // "square" | "rectangle" | "triangle" | "circle"
+    },
+
+    // JSON field para sa mga side lengths (flexible)
+    sideLengths: {
+      type: "simple-json", // stores array/object as JSON
+      nullable: true,
+    },
+
+    areaSqm: {
+      type: "decimal",
+      precision: 10,
+      scale: 2,
+      default: 0.0,
+    },
+    notes: {type: String, nullable: true},
+
     status: {
       type: String,
       default: "active",
     },
+
     createdAt: { type: Date, createDate: true },
     updatedAt: { type: Date, updateDate: true },
   },

@@ -1,0 +1,98 @@
+/* Traditional Measurement Form Styling */
+.traditional-input-group {
+  position: relative;
+}
+
+.traditional-input-label {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background: white;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #4b5563;
+  z-index: 10;
+}
+
+.traditional-unit-badge {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Shape visualization */
+.shape-visualization {
+  transition: all 0.3s ease;
+}
+
+.shape-visualization:hover {
+  transform: scale(1.05);
+}
+
+/* Conversion display */
+.conversion-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #fefce8 100%);
+  border-left: 4px solid #0ea5e9;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .shape-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .input-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .shape-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .traditional-unit-badge {
+    position: static;
+    margin-top: 4px;
+    display: inline-block;
+  }
+}
+
+/* Animation for calculations */
+@keyframes calculatePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.calculating {
+  animation: calculatePulse 0.5s ease;
+}
+
+/* Print styles for field use */
+@media print {
+  .traditional-form {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #000 !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .results-grid {
+    break-inside: avoid;
+  }
+}

@@ -1,9 +1,21 @@
 // components/Bukid/components/BukidActionsDropdown.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 import {
-  Eye, Edit, CheckCircle, XCircle, Trash2,
-  FileText, BarChart2, Upload, Download, MoreVertical, PlusCircle
-} from 'lucide-react';
+  Eye,
+  Edit,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  FileText,
+  BarChart2,
+  Upload,
+  Download,
+  MoreVertical,
+  PlusCircle,
+  Layers,
+  Map,
+  BookOpen,
+} from "lucide-react";
 
 interface BukidActionsDropdownProps {
   bukid: any;
@@ -15,6 +27,10 @@ interface BukidActionsDropdownProps {
   onViewStats: (id: number) => void;
   onImportCSV: (id: number) => void;
   onExportCSV: (id: number) => void;
+  onAddPlot: (id: number) => void;
+  onViewPlots: (id: number) => void;
+  onViewMap?: (id: number) => void; // NEW
+  onViewNote?: (id: number) => void; // NEW
 }
 
 const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
@@ -26,7 +42,11 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
   onAddNote,
   onViewStats,
   onImportCSV,
-  onExportCSV
+  onExportCSV,
+  onAddPlot,
+  onViewPlots,
+  onViewMap,
+  onViewNote,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -40,21 +60,23 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const getDropdownPosition = () => {
     if (!buttonRef.current) return {};
-
     const rect = buttonRef.current.getBoundingClientRect();
-    const dropdownHeight = 400;
+    const dropdownHeight = 440;
     const windowHeight = window.innerHeight;
 
     if (rect.bottom + dropdownHeight > windowHeight) {
@@ -63,7 +85,6 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
         right: `${window.innerWidth - rect.right}px`,
       };
     }
-
     return {
       top: `${rect.bottom + 5}px`,
       right: `${window.innerWidth - rect.right}px`,
@@ -74,11 +95,14 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
     <div className="bukid-actions-dropdown-container" ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={handleToggle}
-        className="p-1.5 rounded hover:bg-gray-100 transition-colors relative"
+        onClick={(e)=> {e.stopPropagation(); handleToggle();}}
+        className="p-1.5 rounded hover:bg-gray-100 transition-colors relative cursor-pointer"
         title="More Actions"
       >
-        <MoreVertical className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+        <MoreVertical
+          className="w-4 h-4"
+          style={{ color: "var(--text-secondary)" }}
+        />
       </button>
 
       {isOpen && (
@@ -88,53 +112,126 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
         >
           <div className="py-1">
             {/* General */}
-            <button onClick={() => handleAction(() => onView(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
+            <button
+              onClick={(e)=> {e.stopPropagation();handleAction(() => onView(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
               <Eye className="w-4 h-4 text-sky-500" /> <span>View Details</span>
             </button>
-            <button onClick={() => handleAction(() => onEdit(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              <Edit className="w-4 h-4 text-yellow-500" /> <span>Edit Bukid</span>
+            <button
+              onClick={(e)=> {e.stopPropagation(); handleAction(() => onEdit(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <Edit className="w-4 h-4 text-yellow-500" />{" "}
+              <span>Edit Bukid</span>
             </button>
-            <button onClick={() => handleAction(() => onAddNote(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              <FileText className="w-4 h-4 text-blue-500" /> <span>Add Note</span>
+            <button
+              onClick={(e)=> {e.stopPropagation();handleAction(() => onAddNote(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <FileText className="w-4 h-4 text-blue-500" />{" "}
+              <span>Add Note</span>
             </button>
 
-            {/* Status */}
-            <button onClick={() => handleAction(() => onUpdateStatus(bukid.id, bukid.status === 'active' ? 'inactive' : 'active'))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              {bukid.status === 'active' ? (
-                <>
-                  <XCircle className="w-4 h-4 text-red-500" /> <span>Deactivate</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 text-green-500" /> <span>Activate</span>
-                </>
-              )}
+            {/* Plot Actions */}
+            <button
+              onClick={(e)=> {e.stopPropagation();handleAction(() => onAddPlot(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <PlusCircle className="w-4 h-4 text-green-600" />{" "}
+              <span>Add Plot</span>
             </button>
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-1"></div>
 
             {/* Statistics */}
-            <button onClick={() => handleAction(() => onViewStats(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              <BarChart2 className="w-4 h-4 text-purple-500" /> <span>View Stats</span>
+            <button
+                onClick={(e)=> {e.stopPropagation();handleAction(() => onViewStats(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <BarChart2 className="w-4 h-4 text-purple-500" />{" "}
+              <span>View Stats</span>
             </button>
+            <button
+              onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewPlots(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <Layers className="w-4 h-4 text-purple-600" />{" "}
+              <span>View Plots</span>
+            </button>
+
+            {bukid.notes && onViewNote && (
+              <button
+                onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewNote(bukid.id))}}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+              >
+                <BookOpen className="w-4 h-4 text-indigo-500" />
+                <span>View Note</span>
+              </button>
+            )}
+
+            {/* Map View (Future) */}
+            {onViewMap && (
+              <button
+                onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewMap(bukid.id))}}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+              >
+                <Map className="w-4 h-4 text-indigo-600" />{" "}
+                <span>View Map</span>
+              </button>
+            )}
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-1"></div>
 
             {/* Batch / Import / Export */}
-            <button onClick={() => handleAction(() => onImportCSV(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              <Upload className="w-4 h-4 text-blue-600" /> <span>Import CSV</span>
+            <button
+              onClick={(e)=> {e.stopPropagation(); handleAction(() => onImportCSV(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <Upload className="w-4 h-4 text-blue-600" />{" "}
+              <span>Import CSV</span>
             </button>
-            <button onClick={() => handleAction(() => onExportCSV(bukid.id))} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100">
-              <Download className="w-4 h-4 text-green-600" /> <span>Export CSV</span>
+            <button
+              onClick={(e)=> {e.stopPropagation(); handleAction(() => onExportCSV(bukid.id))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <Download className="w-4 h-4 text-green-600" />{" "}
+              <span>Export CSV</span>
             </button>
 
             {/* Divider */}
             <div className="border-t border-gray-200 my-1"></div>
-
+            {/* Status */}
+            <button
+              onClick={(e)=> {e.stopPropagation();
+                handleAction(() =>
+                  onUpdateStatus(
+                    bukid.id,
+                    bukid.status === "active" ? "inactive" : "active",
+                  ),
+                )
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              {bukid.status === "active" ? (
+                <>
+                  <XCircle className="w-4 h-4 text-red-500" />{" "}
+                  <span>Deactivate</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-500" />{" "}
+                  <span>Activate</span>
+                </>
+              )}
+            </button>
             {/* Delete */}
-            <button onClick={() => handleAction(() => onDelete(bukid.id, bukid.name))} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+            <button
+              onClick={(e)=> {e.stopPropagation(); handleAction(() => onDelete(bukid.id, bukid.name))}}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
               <Trash2 className="w-4 h-4" /> <span>Delete Bukid</span>
             </button>
           </div>

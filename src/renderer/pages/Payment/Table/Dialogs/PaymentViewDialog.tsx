@@ -11,7 +11,7 @@ import type { PaymentData, WorkerData, PitakData } from '../../../../apis/paymen
 interface PaymentViewDialogProps {
     paymentId: number;
     onClose: () => void;
-    onEdit: (id: number) => void;
+    // onEdit: (id: number) => void;
     onGenerateSlip?: () => void;
     onViewHistory?: () => void;
 }
@@ -19,7 +19,7 @@ interface PaymentViewDialogProps {
 const PaymentViewDialog: React.FC<PaymentViewDialogProps> = ({
     paymentId,
     onClose,
-    onEdit,
+    // onEdit,
     onGenerateSlip
 }) => {
     const [payment, setPayment] = useState<PaymentData | null>(null);
@@ -307,7 +307,7 @@ const PaymentViewDialog: React.FC<PaymentViewDialogProps> = ({
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-xs text-gray-600">Status:</span>
                                                     <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-                                                        {payment.worker.status.toUpperCase()}
+                                                        {payment.worker.status?.toUpperCase()}
                                                     </span>
                                                 </div>
                                             </div>
@@ -571,12 +571,12 @@ const PaymentViewDialog: React.FC<PaymentViewDialogProps> = ({
                                     Slip
                                 </button>
                             )}
-                            <button
+                            {/* <button
                                 onClick={() => onEdit(paymentId)}
                                 className="px-3 py-1.5 rounded text-sm font-medium border border-gray-300 hover:bg-gray-100 text-gray-700"
                             >
                                 Edit
-                            </button>
+                            </button> */}
                             <button
                                 onClick={onClose}
                                 className="px-3 py-1.5 rounded text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white"

@@ -1,10 +1,18 @@
 // components/Pitak/components/PitakActionsDropdown.tsx
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 import {
-  User, BookOpen, Layers, FileText,
-  CheckCircle, XCircle, Crop, Trash2, MoreVertical,
-  Users, History
-} from 'lucide-react';
+  User,
+  BookOpen,
+  Layers,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Crop,
+  Trash2,
+  MoreVertical,
+  Users,
+  History,
+} from "lucide-react";
 
 interface PitakActionsDropdownProps {
   pitak: any;
@@ -27,7 +35,7 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
   onViewReport,
   onUpdateStatus,
   onMarkAsHarvested,
-  onDelete
+  onDelete,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,14 +51,16 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current && !buttonRef.current.contains(event.target as Node)
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Adaptive positioning
@@ -73,71 +83,118 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
   };
 
   return (
-    <div className="pitak-actions-dropdown-container relative" ref={dropdownRef}>
+    <div className="bukid-actions-dropdown-container" ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={handleToggle}
-        className="p-1.5 rounded hover:bg-gray-100 transition-colors relative z-50"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggle();
+        }}
+        className="p-1.5 rounded hover:bg-gray-100 transition-colors relative cursor-pointer"
         title="More Actions"
       >
-        <MoreVertical className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+        <MoreVertical
+          className="w-4 h-4"
+          style={{ color: "var(--text-secondary)" }}
+        />
       </button>
 
       {isOpen && (
         <div
-          className="fixed bg-white rounded-lg shadow-xl border border-gray-200 min-w-[200px] z-50 max-h-80 overflow-y-auto"
+          className="fixed bg-white rounded-lg shadow-xl border border-gray-200 w-64 z-50 max-h-96 overflow-y-auto"
           style={getDropdownPosition()}
         >
           <div className="py-2">
             {/* Header */}
-            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+            <div
+              className="px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--text-secondary)" }}
+            >
               Pitak Actions
             </div>
 
             {/* Assignments Section */}
-            <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+            <div
+              className="px-4 py-1 text-xs font-medium uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Assignments
             </div>
-            <button onClick={() => handleAction(onAssign)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-              <User className="w-4 h-4 text-sky-500" /> <span>Assign Worker</span>
+            <button
+              onClick={() => handleAction(onAssign)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <User className="w-4 h-4 text-sky-500" />{" "}
+              <span>Assign Worker</span>
             </button>
-            <button onClick={() => handleAction(onViewAssignments)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-              <BookOpen className="w-4 h-4 text-green-500" /> <span>View Assignments</span>
+            <button
+              onClick={() => handleAction(onViewAssignments)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <BookOpen className="w-4 h-4 text-green-500" />{" "}
+              <span>View Assignments</span>
             </button>
-            <button onClick={() => handleAction(onViewAssignedWorkers)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-              <Users className="w-4 h-4 text-amber-600" /> <span>Assigned Workers</span>
+            <button
+              onClick={() => handleAction(onViewAssignedWorkers)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <Users className="w-4 h-4 text-amber-600" />{" "}
+              <span>Assigned Workers</span>
             </button>
 
             {/* Management Section */}
-            <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+            <div
+              className="px-4 py-1 text-xs font-medium uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Management
             </div>
-            <button onClick={() => handleAction(onUpdateLuWang)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-              <Layers className="w-4 h-4 text-yellow-500" /> <span>Update LuWang</span>
+            <button
+              onClick={() => handleAction(onUpdateLuWang)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <Layers className="w-4 h-4 text-yellow-500" />{" "}
+              <span>Update LuWang</span>
             </button>
-            <button onClick={() => handleAction(onViewReport)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-              <FileText className="w-4 h-4 text-blue-500" /> <span>Generate Report</span>
+            <button
+              onClick={() => handleAction(onViewReport)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <FileText className="w-4 h-4 text-blue-500" />{" "}
+              <span>Generate Report</span>
             </button>
 
             {/* Status Section */}
-            <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+            <div
+              className="px-4 py-1 text-xs font-medium uppercase tracking-wider"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Status
             </div>
-            {pitak.status !== 'completed' && (
+            {pitak.status !== "completed" && (
               <>
-                <button onClick={() => handleAction(onUpdateStatus)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-                  {pitak.status === 'active' ? (
+                <button
+                  onClick={() => handleAction(onUpdateStatus)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+                >
+                  {pitak.status === "active" ? (
                     <>
-                      <XCircle className="w-4 h-4 text-red-500" /> <span>Deactivate Pitak</span>
+                      <XCircle className="w-4 h-4 text-red-500" />{" "}
+                      <span>Deactivate Pitak</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="w-4 h-4 text-green-500" /> <span>Activate Pitak</span>
+                      <CheckCircle className="w-4 h-4 text-green-500" />{" "}
+                      <span>Activate Pitak</span>
                     </>
                   )}
                 </button>
-                <button onClick={() => handleAction(onMarkAsHarvested)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50">
-                  <Crop className="w-4 h-4 text-orange-500" /> <span>Mark as Completed</span>
+                <button
+                  onClick={() => handleAction(onMarkAsHarvested)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
+                >
+                  <Crop className="w-4 h-4 text-orange-500" />{" "}
+                  <span>Mark as Completed</span>
                 </button>
               </>
             )}
@@ -147,7 +204,10 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
             <div className="px-4 py-1 text-xs font-medium uppercase tracking-wider text-red-600">
               Danger Zone
             </div>
-            <button onClick={() => handleAction(onDelete)} className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-red-50 text-red-600">
+            <button
+              onClick={() => handleAction(onDelete)}
+              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-red-50 text-red-600"
+            >
               <Trash2 className="w-4 h-4" /> <span>Delete Pitak</span>
             </button>
 

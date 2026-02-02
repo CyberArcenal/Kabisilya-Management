@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { 
-  MapPin, Home, Hash, Package, Users, Eye, Edit, 
-  MoreVertical, Trash2, User, BookOpen, Layers, 
-  FileText, CheckCircle, XCircle, Crop, ChevronRight,
-  Calendar, History, List
-} from 'lucide-react';
-import PitakActionsDropdown from './PitakActionsDropdown';
-import { formatDate, formatNumber } from '../../../../utils/formatters';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  MapPin,
+  Home,
+  Hash,
+  Package,
+  Users,
+  Eye,
+  Edit,
+  ChevronRight,
+  CreditCard,
+} from "lucide-react";
+import PitakActionsDropdown from "./PitakActionsDropdown";
+import { formatDate, formatNumber } from "../../../../utils/formatters";
+import assignmentAPI from "../../../../apis/assignment";
+import type { Assignment } from "../../../../apis/assignment";
+import paymentAPI from "../../../../apis/payment";
+import type { PaymentData } from "../../../../apis/payment";
+import { getStatusBadge } from "../expanded/utils/statusUtils";
+import ExpandedView from "../expanded/ExpandedView";
 
 interface PitakTableRowProps {
   pitak: any;
@@ -23,9 +34,9 @@ interface PitakTableRowProps {
   onViewReport: (id: number) => void;
   onMarkAsHarvested: (id: number) => void;
   onUpdateStatus: (id: number, currentStatus: string) => void;
-  // New props for assignment viewing
   onViewAssignment: (assignmentId: number) => void;
   onViewPitakAssignments: (pitakId: number) => void;
+  onViewPayment: (paymentId: number) => void;
 }
 
 const PitakTableRow: React.FC<PitakTableRowProps> = ({
@@ -45,198 +56,202 @@ const PitakTableRow: React.FC<PitakTableRowProps> = ({
   onUpdateStatus,
   onViewAssignment,
   onViewPitakAssignments,
+  onViewPayment,
 }) => {
-  const getStatusBadge = (status: string = 'active') => {
-    const statusConfig = {
-      active: {
-        text: 'Active',
-        bg: 'var(--status-planted-bg)',
-        color: 'var(--status-planted)',
-        border: 'rgba(56, 161, 105, 0.3)',
-        icon: CheckCircle
-      },
-      inactive: {
-        text: 'Inactive',
-        bg: 'var(--status-fallow-bg)',
-        color: 'var(--status-fallow)',
-        border: 'rgba(113, 128, 150, 0.3)',
-        icon: XCircle
-      },
-      completed: {
-        text: 'Completed',
-        bg: 'var(--accent-gold-light)',
-        color: 'var(--accent-gold)',
-        border: 'rgba(214, 158, 46, 0.3)',
-        icon: Crop
+  const [paymentDetails, setPaymentDetails] = useState<any>(null);
+  const [payments, setPayments] = useState<PaymentData[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [assignedWorkers, setAssignedWorkers] = useState<any[]>([]);
+  const [assignmentStats, setAssignmentStats] = useState({
+    totalAssignments: 0,
+    totalLuWang: 0,
+    completedCount: 0,
+    activeCount: 0,
+  });
+
+  const paymentsFetchedRef = useRef(false);
+
+  // Fetch assignments for this pitak on component mount
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      setIsLoadingAssignments(true);
+      try {
+        const response = await assignmentAPI.getAssignmentsByPitak(pitak.id);
+        if (response.status && response.data.assignments) {
+          const assignmentsData = response.data.assignments;
+          setAssignments(assignmentsData);
+          
+          // Calculate assignment statistics
+          const totalLuWang = assignmentsData.reduce(
+            (sum: number, assignment: Assignment) => 
+              sum + (typeof assignment.luwangCount === 'string' ? 
+                parseFloat(assignment.luwangCount) : assignment.luwangCount || 0), 
+            0
+          );
+          
+          const completedCount = assignmentsData.filter(
+            (a: Assignment) => a.status === 'completed'
+          ).length;
+          
+          const activeCount = assignmentsData.filter(
+            (a: Assignment) => a.status === 'active'
+          ).length;
+          
+          setAssignmentStats({
+            totalAssignments: assignmentsData.length,
+            totalLuWang,
+            completedCount,
+            activeCount
+          });
+          
+          // Calculate assigned workers
+          const workersMap = new Map();
+          assignmentsData.forEach((assignment: Assignment) => {
+            if (assignment.worker) {
+              const workerId = assignment.worker.id;
+              if (!workersMap.has(workerId)) {
+                workersMap.set(workerId, {
+                  id: assignment.worker.id,
+                  name: assignment.worker.name,
+                  code: assignment.worker.code,
+                  totalAssignments: 0,
+                  totalLuWang: 0,
+                  assignments: [],
+                });
+              }
+              
+              const worker = workersMap.get(workerId);
+              worker.totalAssignments += 1;
+              const luwangCount = typeof assignment.luwangCount === 'string' ? 
+                parseFloat(assignment.luwangCount) : assignment.luwangCount || 0;
+              worker.totalLuWang += luwangCount;
+              worker.assignments.push({
+                id: assignment.id,
+                date: assignment.assignmentDate,
+                luwangCount: luwangCount,
+                status: assignment.status,
+              });
+            }
+          });
+          
+          setAssignedWorkers(Array.from(workersMap.values()));
+          
+          // Calculate payment details
+          const LUWANG_RATE = 230;
+          const totalGrossPay = totalLuWang * LUWANG_RATE;
+          const estimatedPaid = completedCount * LUWANG_RATE * 0.7;
+          const totalPending = totalGrossPay - estimatedPaid;
+
+          setPaymentDetails({
+            LUWANG_RATE,
+            totalLuWang,
+            totalGrossPay,
+            totalPaid: estimatedPaid,
+            totalPending,
+            assignmentsCount: assignmentsData.length,
+            completedCount,
+            averagePerAssignment: assignmentsData.length > 0 ? 
+              totalGrossPay / assignmentsData.length : 0,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching assignments:", error);
+      } finally {
+        setIsLoadingAssignments(false);
       }
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
-    const Icon = config.icon;
+    fetchAssignments();
+  }, [pitak.id]);
 
-    return (
-      <span
-        className="px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 whitespace-nowrap"
-        style={{
-          background: config.bg,
-          color: config.color,
-          border: `1px solid ${config.border}`
-        }}
-      >
-        <Icon className="w-3 h-3" />
-        {config.text}
-      </span>
-    );
-  };
+  // Fixed: Fetch payments only when expanded and reset when collapsed
+  const fetchPayments = useCallback(async () => {
+    if (isExpanded && !paymentsFetchedRef.current) {
+      setIsLoadingPayments(true);
+      paymentsFetchedRef.current = true;
+      
+      try {
+        const response = await paymentAPI.getPaymentsByPitak(pitak.id);
+        if (response.status && response.data.payments) {
+          setPayments(response.data.payments);
+        }
+      } catch (error) {
+        console.error("Error fetching payments:", error);
+        paymentsFetchedRef.current = false;
+      } finally {
+        setIsLoadingPayments(false);
+      }
+    }
+  }, [isExpanded, pitak.id]);
 
-  const ExpandedView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-3">
-      <div className="p-3 rounded-lg border" style={{ 
-        background: 'var(--card-bg)',
-        borderColor: 'var(--border-color)'
-      }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Package className="w-4 h-4" style={{ color: 'var(--accent-sky)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Assignments
-          </span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {pitak.stats?.assignments.total || 0}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {pitak.stats?.assignments.active || 0}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Completed:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {pitak.stats?.assignments.completed || 0}
-            </span>
-          </div>
-        </div>
-      </div>
+  // Use effect to fetch payments when expanded
+  useEffect(() => {
+    fetchPayments();
+    
+    // Reset the fetched flag when collapsed
+    if (!isExpanded) {
+      paymentsFetchedRef.current = false;
+    }
+  }, [isExpanded, fetchPayments]);
 
-      <div className="p-3 rounded-lg border" style={{ 
-        background: 'var(--card-bg)',
-        borderColor: 'var(--border-color)'
-      }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Hash className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Luwang
-          </span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Capacity:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {formatNumber(pitak.totalLuwang)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Assigned:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {formatNumber(pitak.stats?.assignments.totalLuWangAssigned || 0)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Utilization:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {pitak.stats?.utilizationRate ? `${pitak.stats.utilizationRate.toFixed(1)}%` : '0%'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-3 rounded-lg border" style={{ 
-        background: 'var(--card-bg)',
-        borderColor: 'var(--border-color)'
-      }}>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Payments
-          </span>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              {pitak.stats?.payments.total || 0}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Gross Pay:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              ₱{formatNumber(pitak.stats?.payments.totalGrossPay || 0)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Net Pay:</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-              ₱{formatNumber(pitak.stats?.payments.totalNetPay || 0)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-3 rounded-lg border" style={{ 
-        background: 'var(--card-bg)',
-        borderColor: 'var(--border-color)'
-      }}>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Last Updated
-          </span>
-        </div>
-        <div className="space-y-2">
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {formatDate(pitak.updatedAt, 'MMM dd, yyyy HH:mm')}
-          </div>
-          <div className="text-xs pt-2" style={{ color: 'var(--text-tertiary)' }}>
-            ID: {pitak.id}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      paymentsFetchedRef.current = false;
+    };
+  }, []);
 
   return (
     <>
-      <tr className="hover:bg-gray-50 transition-colors border-b border-gray-200">
+      <tr className="hover:bg-gray-50 transition-colors border-b border-gray-200 pointer-events-auto cursor-pointer" onClick={(e) => {e.stopPropagation(); onToggleExpand()}}>
         <td className="p-3">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={onSelect}
             className="rounded border-gray-300 focus:ring-blue-500"
-            style={{ borderColor: 'var(--border-color)' }}
+            style={{ borderColor: "var(--border-color)" }}
           />
         </td>
         <td className="p-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg" style={{ background: 'var(--accent-green-light)' }}>
-              <MapPin className="w-4 h-4" style={{ color: 'var(--accent-green)' }} />
+            <div
+              className="p-2 rounded-lg"
+              style={{ background: "var(--accent-green-light)" }}
+            >
+              <MapPin
+                className="w-4 h-4"
+                style={{ color: "var(--accent-green)" }}
+              />
             </div>
             <div className="min-w-0">
-              <div className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                {pitak.location || 'No location'}
+              <div
+                className="font-medium text-sm truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {pitak.location || "No location"}
               </div>
-              {pitak.stats && (
+              {isLoadingAssignments ? (
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : (
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                     <Package className="w-3 h-3 inline mr-1" />
-                    {pitak.stats.assignments.total} assignments
+                    {assignmentStats.totalAssignments} assignments
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                     <Users className="w-3 h-3 inline mr-1" />
-                    {pitak.stats.assignments.active} active
+                    {assignedWorkers.length} workers
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                    <CreditCard className="w-3 h-3 inline mr-1" />₱
+                    {paymentDetails ? formatNumber(paymentDetails.totalGrossPay) : "0"}
                   </span>
                 </div>
               )}
@@ -245,91 +260,117 @@ const PitakTableRow: React.FC<PitakTableRowProps> = ({
         </td>
         <td className="p-3">
           <div className="flex items-center gap-2">
-            <Home className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
-            <span className="text-sm truncate" style={{ color: 'var(--text-secondary)', maxWidth: '150px' }}>
+            <Home
+              className="w-4 h-4"
+              style={{ color: "var(--text-tertiary)" }}
+            />
+            <span
+              className="text-sm truncate"
+              style={{ color: "var(--text-secondary)", maxWidth: "150px" }}
+            >
               {pitak.bukid?.name || `Bukid #${pitak.bukidId}`}
             </span>
           </div>
         </td>
         <td className="p-3">
           <div className="flex items-center gap-2">
-            <Hash className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
-            <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+            <Hash className="w-4 h-4" style={{ color: "var(--accent-gold)" }} />
+            <span
+              className="font-medium text-sm"
+              style={{ color: "var(--text-primary)" }}
+            >
               {formatNumber(pitak.totalLuwang)}
             </span>
           </div>
-          {pitak.stats && (
-            <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-              Used: {formatNumber(pitak.stats.assignments.totalLuWangAssigned)} ({pitak.stats.utilizationRate?.toFixed(1) || 0}%)
+          {!isLoadingAssignments && assignmentStats.totalLuWang > 0 && (
+            <div
+              className="text-xs mt-1"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Used: {formatNumber(assignmentStats.totalLuWang)}{" "}
+              ({pitak.totalLuwang > 0 ? 
+                ((assignmentStats.totalLuWang / pitak.totalLuwang) * 100).toFixed(1) : "0"}%)
             </div>
           )}
         </td>
+        <td className="p-3">{getStatusBadge(pitak.status)}</td>
         <td className="p-3">
-          {getStatusBadge(pitak.status)}
-        </td>
-        <td className="p-3">
-          <div className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
-            {formatDate(pitak.createdAt, 'MMM dd, yyyy')}
+          <div
+            className="text-sm whitespace-nowrap"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {formatDate(pitak.createdAt, "MMM dd, yyyy")}
           </div>
         </td>
         <td className="p-3">
           <div className="flex items-center gap-1">
             <button
-              onClick={() => onView(pitak.id)}
+              onClick={(e) => {e.stopPropagation(); onView(pitak.id)}}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="View Details"
             >
-              <Eye className="w-4 h-4" style={{ color: 'var(--accent-sky)' }} />
+              <Eye className="w-4 h-4" style={{ color: "var(--accent-sky)" }} />
             </button>
             <button
-              onClick={() => onEdit(pitak.id)}
+              onClick={(e) => {e.stopPropagation(); onEdit(pitak.id)}}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="Edit"
             >
-              <Edit className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
+              <Edit
+                className="w-4 h-4"
+                style={{ color: "var(--accent-gold)" }}
+              />
             </button>
-            
-            {/* Updated Actions Dropdown with Windows-friendly design */}
+
             <PitakActionsDropdown
               pitak={pitak}
               onAssign={() => onAssign(pitak.id, pitak)}
-              // onViewAssignments={() => onViewPitakAssignments(pitak.id)}
-              onViewAssignedWorkers={() => onViewAssignedWorkers(pitak.id, pitak.location)}
+              onViewAssignments={() => onViewPitakAssignments(pitak.id)}
+              onViewAssignedWorkers={() =>
+                onViewAssignedWorkers(pitak.id, pitak.location)
+              }
               onUpdateLuWang={() => onUpdateLuWang(pitak.id, pitak.totalLuwang)}
               onViewReport={() => onViewReport(pitak.id)}
               onUpdateStatus={() => onUpdateStatus(pitak.id, pitak.status)}
               onMarkAsHarvested={() => onMarkAsHarvested(pitak.id)}
               onDelete={() => onDelete(pitak.id)}
-              // New assignment viewing options
-              onViewAssignments={() => {
-                // Get first assignment ID if available
-                const firstAssignment = pitak.assignments?.[0];
-                if (firstAssignment) {
-                  onViewAssignment(firstAssignment.id);
-                } else {
-                  // Fallback to viewing all assignments
-                  onViewPitakAssignments(pitak.id);
-                }
-              }}
             />
-            
+
             <button
-              onClick={onToggleExpand}
+              onClick={(e) => {e.stopPropagation(); onToggleExpand()}}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="More Details"
             >
-              <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+              <ChevronRight
+                className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+              />
             </button>
           </div>
         </td>
       </tr>
-      
+
       {/* Expanded Row */}
       {isExpanded && (
-        <tr>
+        <tr className={isExpanded ? "expanded-row" : "collapsed-row"}>
           <td colSpan={7} className="p-0 border-b border-gray-200">
-            <div className="px-4 py-3" style={{ background: 'var(--card-secondary-bg)' }}>
-              <ExpandedView />
+            <div
+              className="px-4 py-3"
+              style={{ background: "var(--card-secondary-bg)" }}
+            >
+              <ExpandedView
+                isLoadingAssignments={isLoadingAssignments}
+                isLoadingPayments={isLoadingPayments}
+                assignedWorkers={assignedWorkers}
+                paymentDetails={paymentDetails}
+                payments={payments}
+                pitak={pitak}
+                onAssign={() => onAssign(pitak.id, pitak)}
+                onViewAssignedWorkers={() => onViewAssignedWorkers(pitak.id, pitak.location)}
+                onViewReport={() => onViewReport(pitak.id)}
+                onViewPitakAssignments={() => onViewPitakAssignments(pitak.id)}
+                onViewAssignment={onViewAssignment}
+                onViewPayment={onViewPayment}
+              />
             </div>
           </td>
         </tr>

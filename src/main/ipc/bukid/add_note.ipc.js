@@ -45,6 +45,7 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
 
     // Add note (assuming Bukid entity has a `notes` field)
     const currentNotes = bukid.notes || "";
+    console.log(currentNotes)
     const newNotes = currentNotes
       ? `${currentNotes}\n${new Date().toISOString()}: ${note}`
       : `${new Date().toISOString()}: ${note}`;

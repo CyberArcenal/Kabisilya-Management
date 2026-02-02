@@ -53,12 +53,11 @@ export const useBukidData = () => {
 
       if (response.status) {
         setBukids(response.data.bukids || []);
-        setTotalPages(response.data.pagination.totalPages);
-        setTotalItems(response.data.pagination.total);
+        setTotalPages(response.data.pagination.totalPages || 1);
+        setTotalItems(response.data.pagination.total || 0);
       } else {
         throw new Error(response.message || 'Failed to fetch bukid data');
       }
-
     } catch (err: any) {
       setError(err.message);
       showError(err.message);
@@ -69,21 +68,21 @@ export const useBukidData = () => {
     }
   }, [currentPage, limit, searchQuery, statusFilter, sortBy, sortOrder]);
 
-  // Fetch summary and stats
-  const fetchSummaryAndStats = async () => {
+  // Fetch summary and stats separately
+  const fetchSummaryAndStats = useCallback(async () => {
     try {
-      const [summaryRes, statsRes] = await Promise.all([
+      const [statsRes, activeRes] = await Promise.all([
         bukidAPI.getStats(),
-        bukidAPI.getActive({ limit: 5 })
+        bukidAPI.getActive({ limit: 5 }),
       ]);
 
-      if (summaryRes.status) {
-        setStats(summaryRes.data.summary);
+      if (statsRes.status) {
+        setStats(statsRes.data.summary);
       }
 
-      if (statsRes.status && statsRes.data.bukids) {
+      if (activeRes.status && activeRes.data.bukids) {
         const summaryData = await Promise.all(
-          statsRes.data.bukids.map(async (bukid) => {
+          activeRes.data.bukids.map(async (bukid) => {
             try {
               const summary = await bukidAPI.getSummary(bukid.id!);
               return summary.status ? summary.data.summary : null;
@@ -97,26 +96,27 @@ export const useBukidData = () => {
     } catch (err) {
       console.error('Failed to fetch summary/stats:', err);
     }
-  };
+  }, []);
 
   // Initial load
   useEffect(() => {
     fetchBukids();
     fetchSummaryAndStats();
-  }, [fetchBukids]);
+  }, [fetchBukids, fetchSummaryAndStats]);
 
   // Search handler with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-      } else {
-        fetchBukids();
-      }
+      setCurrentPage(1);
+      fetchBukids();
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchQuery, fetchBukids]);
+
+  // Reset selections on page change
+  useEffect(() => {
+    setSelectedBukids([]);
+  }, [currentPage]);
 
   // Refresh function
   const handleRefresh = async () => {
@@ -148,6 +148,6 @@ export const useBukidData = () => {
     sortBy,
     setSortBy,
     sortOrder,
-    setSortOrder
+    setSortOrder,
   };
 };

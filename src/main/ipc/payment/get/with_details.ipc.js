@@ -11,282 +11,325 @@ const { AppDataSource } = require("../../../db/dataSource");
 module.exports = async function getPaymentWithDetails(params = {}) {
   try {
     // @ts-ignore
-    const { paymentId } = params;
-    
+    let { paymentId } = params;
+
     if (!paymentId) {
       return {
         status: false,
-        message: 'Payment ID is required',
-        data: null
+        message: "Payment ID is required",
+        data: null,
+      };
+    }
+
+    paymentId = parseInt(paymentId, 10);
+    if (Number.isNaN(paymentId) || paymentId <= 0) {
+      return {
+        status: false,
+        message: "Payment ID must be a valid positive integer",
+        data: null,
       };
     }
 
     const paymentRepository = AppDataSource.getRepository(Payment);
-    
-    // Get payment with all related data
+
+    // Get payment with related data
     const payment = await paymentRepository.findOne({
       where: { id: paymentId },
       relations: [
-        'worker',
-        'pitak',
-        'pitak.bukid',
-        'history',
-        'debtPayments',
-        'debtPayments.debt'
-      ]
+        "worker",
+        "pitak",
+        "pitak.bukid",
+        "history",
+        "debtPayments",
+        "debtPayments.debt",
+        "assignment",
+        "session",
+      ],
     });
 
     if (!payment) {
       return {
         status: false,
-        message: 'Payment not found',
-        data: null
+        message: "Payment not found",
+        data: null,
       };
     }
 
-    // Get additional worker information
-    const workerRepository = AppDataSource.getRepository(Worker);
-    const worker = await workerRepository.findOne({
-      // @ts-ignore
-      where: { id: payment.worker.id },
-      relations: ['kabisilya']
-    });
+    // Helper to safely parse decimals returned as strings by SQLite
+    // @ts-ignore
+    const safeNumber = (v) => {
+      if (v === null || v === undefined) return 0;
+      const n = parseFloat(v);
+      return Number.isNaN(n) ? 0 : n;
+    };
 
-    // Get worker's active debts for context
-    const debtRepository = AppDataSource.getRepository(Debt);
-    const workerDebts = await debtRepository.find({
-      where: { 
+    // Load worker details if available
+    let worker = null;
+    // @ts-ignore
+    if (payment.worker && payment.worker.id) {
+      const workerRepository = AppDataSource.getRepository(Worker);
+      worker = await workerRepository.findOne({
         // @ts-ignore
-        worker: { id: payment.worker.id },
-        status: ['pending', 'partially_paid']
-      },
-      order: { dueDate: 'ASC' }
-    });
+        where: { id: payment.worker.id },
+      });
+    }
 
-    // Get detailed payment history
+    // Worker debts
+    // @ts-ignore
+    let workerDebts = [];
+    // @ts-ignore
+    if (payment.worker && payment.worker.id) {
+      const debtRepository = AppDataSource.getRepository(Debt);
+      workerDebts = await debtRepository.find({
+        where: {
+          // @ts-ignore
+          worker: { id: payment.worker.id },
+          status: ["pending", "partially_paid"],
+        },
+        order: { dueDate: "ASC" },
+      });
+    }
+
+    // Payment history
     const paymentHistoryRepository = AppDataSource.getRepository(PaymentHistory);
     const paymentHistory = await paymentHistoryRepository.find({
       // @ts-ignore
       where: { payment: { id: paymentId } },
-      order: { changeDate: 'DESC' }
+      order: { changeDate: "DESC" },
     });
 
-    // Get all debt payments linked to this payment
+    // Linked debt payments
     const debtHistoryRepository = AppDataSource.getRepository(DebtHistory);
     const linkedDebtPayments = await debtHistoryRepository.find({
       // @ts-ignore
       where: { payment: { id: paymentId } },
-      relations: ['debt'],
-      order: { transactionDate: 'DESC' }
+      relations: ["debt"],
+      order: { transactionDate: "DESC" },
     });
 
-    // Calculate deduction breakdown
-    const deductionBreakdown = {
-      // @ts-ignore
-      total: parseFloat(payment.totalDebtDeduction) + 
-             // @ts-ignore
-             parseFloat(payment.manualDeduction || 0) + 
-             // @ts-ignore
-             parseFloat(payment.otherDeductions || 0),
-      byCategory: {
-        // @ts-ignore
-        debt: parseFloat(payment.totalDebtDeduction),
-        // @ts-ignore
-        manual: parseFloat(payment.manualDeduction || 0),
-        // @ts-ignore
-        other: parseFloat(payment.otherDeductions || 0)
-      },
-      detailed: payment.deductionBreakdown || {}
-    };
-
-    // Calculate worker payment statistics
-    const workerStats = await paymentRepository
-      .createQueryBuilder('payment')
-      .select([
-        'COUNT(payment.id) as totalPayments',
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'AVG(payment.netPay) as averagePayment'
-      ])
-      // @ts-ignore
-      .where('payment.workerId = :workerId', { workerId: payment.worker.id })
-      .andWhere('payment.status = :status', { status: 'completed' })
-      .getRawOne();
-
-    // Calculate pitak payment statistics (if applicable)
-    let pitakStats = null;
+    // Worker statistics (use joined aliases to avoid direct column usage)
+    let workerStats = { total_payments: 0, total_gross: 0, total_net: 0, average_payment: 0 };
     // @ts-ignore
-    if (payment.pitak) {
-      pitakStats = await paymentRepository
-        .createQueryBuilder('payment')
+    if (payment.worker && payment.worker.id) {
+      workerStats = (await paymentRepository
+        .createQueryBuilder("payment")
+        .leftJoin("payment.worker", "worker")
         .select([
-          'COUNT(payment.id) as totalPayments',
-          'SUM(payment.netPay) as totalPaid',
-          'COUNT(DISTINCT payment.workerId) as uniqueWorkers'
+          "COUNT(payment.id) as total_payments",
+          "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+          "COALESCE(SUM(payment.netPay), 0) as total_net",
+          "COALESCE(AVG(payment.netPay), 0) as average_payment",
         ])
         // @ts-ignore
-        .where('payment.pitakId = :pitakId', { pitakId: payment.pitak.id })
-        .getRawOne();
+        .where("worker.id = :workerId", { workerId: payment.worker.id })
+        .andWhere("payment.status = :status", { status: "completed" })
+        .getRawOne()) || workerStats;
     }
 
-    // Format the detailed response
+    // Pitak statistics (use joined aliases)
+    let pitakStats = null;
+    // @ts-ignore
+    if (payment.pitak && payment.pitak.id) {
+      pitakStats = (await paymentRepository
+        .createQueryBuilder("payment")
+        .leftJoin("payment.pitak", "pitak")
+        .select([
+          "COUNT(payment.id) as total_payments",
+          "COALESCE(SUM(payment.netPay), 0) as total_paid",
+          "COUNT(DISTINCT payment.worker) as unique_workers",
+        ])
+        // @ts-ignore
+        .where("pitak.id = :pitakId", { pitakId: payment.pitak.id })
+        .getRawOne()) || null;
+    }
+
+    // Deduction breakdown
+    const deductionBreakdown = {
+      total:
+        safeNumber(payment.totalDebtDeduction) +
+        safeNumber(payment.manualDeduction || 0) +
+        safeNumber(payment.otherDeductions || 0),
+      byCategory: {
+        debt: safeNumber(payment.totalDebtDeduction),
+        manual: safeNumber(payment.manualDeduction || 0),
+        other: safeNumber(payment.otherDeductions || 0),
+      },
+      detailed: payment.deductionBreakdown || {},
+    };
+
+    // Format linked debt payments safely
+    const formattedLinkedDebtPayments = (linkedDebtPayments || []).map((dp) => ({
+      id: dp.id,
+      amountPaid: safeNumber(dp.amountPaid),
+      previousBalance: safeNumber(dp.previousBalance),
+      newBalance: safeNumber(dp.newBalance),
+      transactionType: dp.transactionType || null,
+      paymentMethod: dp.paymentMethod || null,
+      referenceNumber: dp.referenceNumber || null,
+      notes: dp.notes || null,
+      // @ts-ignore
+      transactionDate: dp.transactionDate ? new Date(dp.transactionDate).toISOString() : null,
+      debt:
+        // @ts-ignore
+        dp.debt
+          ? {
+              // @ts-ignore
+              id: dp.debt.id,
+              // @ts-ignore
+              originalAmount: safeNumber(dp.debt.originalAmount),
+              // @ts-ignore
+              amount: safeNumber(dp.debt.amount),
+              // @ts-ignore
+              balance: safeNumber(dp.debt.balance),
+              // @ts-ignore
+              reason: dp.debt.reason || null,
+              // @ts-ignore
+              status: dp.debt.status || null,
+            }
+          : null,
+    }));
+
+    // Format worker debts safely
+    // @ts-ignore
+    const formattedWorkerDebts = (workerDebts || []).map((d) => ({
+      id: d.id,
+      originalAmount: safeNumber(d.originalAmount),
+      amount: safeNumber(d.amount),
+      balance: safeNumber(d.balance),
+      reason: d.reason || null,
+      status: d.status || null,
+      dueDate: d.dueDate ? new Date(d.dueDate).toISOString() : null,
+      interestRate: safeNumber(d.interestRate),
+      totalInterest: safeNumber(d.totalInterest),
+      totalPaid: safeNumber(d.totalPaid),
+    }));
+
+    // Format payment history safely
+    const formattedPaymentHistory = (paymentHistory || []).map((record) => ({
+      id: record.id,
+      actionType: record.actionType || null,
+      changedField: record.changedField || null,
+      oldValue: record.oldValue ?? null,
+      newValue: record.newValue ?? null,
+      oldAmount: record.oldAmount != null ? safeNumber(record.oldAmount) : null,
+      newAmount: record.newAmount != null ? safeNumber(record.newAmount) : null,
+      notes: record.notes || null,
+      performedBy: record.performedBy || null,
+      // @ts-ignore
+      changeDate: record.changeDate ? new Date(record.changeDate).toISOString() : null,
+    }));
+
+    // Build detailed response with normalized numeric and date fields
     const detailedPayment = {
       payment: {
-        ...payment,
+        id: payment.id,
+        grossPay: safeNumber(payment.grossPay),
+        manualDeduction: safeNumber(payment.manualDeduction || 0),
+        netPay: safeNumber(payment.netPay),
+        status: payment.status || null,
         // @ts-ignore
-        grossPay: parseFloat(payment.grossPay),
+        paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toISOString() : null,
+        paymentMethod: payment.paymentMethod || null,
+        referenceNumber: payment.referenceNumber || null,
         // @ts-ignore
-        netPay: parseFloat(payment.netPay),
+        periodStart: payment.periodStart ? new Date(payment.periodStart).toISOString() : null,
         // @ts-ignore
-        totalDebtDeduction: parseFloat(payment.totalDebtDeduction),
+        periodEnd: payment.periodEnd ? new Date(payment.periodEnd).toISOString() : null,
+        totalDebtDeduction: safeNumber(payment.totalDebtDeduction),
+        otherDeductions: safeNumber(payment.otherDeductions || 0),
+        deductionBreakdown: payment.deductionBreakdown || {},
+        notes: payment.notes || null,
+        idempotencyKey: payment.idempotencyKey || null,
         // @ts-ignore
-        manualDeduction: parseFloat(payment.manualDeduction || 0),
+        createdAt: payment.createdAt ? new Date(payment.createdAt).toISOString() : null,
         // @ts-ignore
-        otherDeductions: parseFloat(payment.otherDeductions || 0),
+        updatedAt: payment.updatedAt ? new Date(payment.updatedAt).toISOString() : null,
         // @ts-ignore
-        createdAt: payment.createdAt.toISOString(),
+        assignment: payment.assignment ? { id: payment.assignment.id } : null,
         // @ts-ignore
-        updatedAt: payment.updatedAt.toISOString(),
-        // @ts-ignore
-        paymentDate: payment.paymentDate ? payment.paymentDate.toISOString() : null,
-        // @ts-ignore
-        periodStart: payment.periodStart ? payment.periodStart.toISOString() : null,
-        // @ts-ignore
-        periodEnd: payment.periodEnd ? payment.periodEnd.toISOString() : null
+        session: payment.session ? { id: payment.session.id } : null,
       },
-      worker: {
-        ...worker,
-        // @ts-ignore
-        totalDebt: parseFloat(worker.totalDebt),
-        // @ts-ignore
-        totalPaid: parseFloat(worker.totalPaid),
-        // @ts-ignore
-        currentBalance: parseFloat(worker.currentBalance),
-        // @ts-ignore
-        hireDate: worker.hireDate ? worker.hireDate.toISOString() : null,
-        // @ts-ignore
-        createdAt: worker.createdAt.toISOString(),
-        // @ts-ignore
-        updatedAt: worker.updatedAt.toISOString()
-      },
+      worker: worker
+        ? {
+            id: worker.id,
+            name: worker.name || null,
+            totalDebt: safeNumber(worker.totalDebt),
+            totalPaid: safeNumber(worker.totalPaid),
+            currentBalance: safeNumber(worker.currentBalance),
+            // @ts-ignore
+            hireDate: worker.hireDate ? new Date(worker.hireDate).toISOString() : null,
+            // @ts-ignore
+            createdAt: worker.createdAt ? new Date(worker.createdAt).toISOString() : null,
+            // @ts-ignore
+            updatedAt: worker.updatedAt ? new Date(worker.updatedAt).toISOString() : null,
+          }
+        : null,
       // @ts-ignore
-      pitak: payment.pitak ? {
-        // @ts-ignore
-        ...payment.pitak,
-        // @ts-ignore
-        totalLuwang: parseFloat(payment.pitak.totalLuwang),
-        // @ts-ignore
-        createdAt: payment.pitak.createdAt.toISOString(),
-        // @ts-ignore
-        updatedAt: payment.pitak.updatedAt.toISOString()
-      } : null,
-      // @ts-ignore
-      bukid: payment.pitak && payment.pitak.bukid ? payment.pitak.bukid : null,
-      // @ts-ignore
-      kabisilya: worker.kabisilya || null,
+      pitak: payment.pitak
+        ? {
+            // @ts-ignore
+            id: payment.pitak.id,
+            // @ts-ignore
+            location: payment.pitak.location || null,
+            // @ts-ignore
+            totalLuwang: safeNumber(payment.pitak.totalLuwang),
+            // @ts-ignore
+            status: payment.pitak.status || null,
+            // @ts-ignore
+            createdAt: payment.pitak.createdAt ? new Date(payment.pitak.createdAt).toISOString() : null,
+            // @ts-ignore
+            updatedAt: payment.pitak.updatedAt ? new Date(payment.pitak.updatedAt).toISOString() : null,
+            // @ts-ignore
+            bukid: payment.pitak.bukid ? { id: payment.pitak.bukid.id, name: payment.pitak.bukid.name || null } : null,
+          }
+        : null,
       deductionBreakdown,
-      history: paymentHistory.map(record => ({
-        id: record.id,
-        actionType: record.actionType,
-        changedField: record.changedField,
-        oldValue: record.oldValue,
-        newValue: record.newValue,
-        // @ts-ignore
-        oldAmount: record.oldAmount ? parseFloat(record.oldAmount) : null,
-        // @ts-ignore
-        newAmount: record.newAmount ? parseFloat(record.newAmount) : null,
-        notes: record.notes,
-        performedBy: record.performedBy,
-        // @ts-ignore
-        changeDate: record.changeDate.toISOString()
-      })),
-      linkedDebtPayments: linkedDebtPayments.map(dp => ({
-        id: dp.id,
-        // @ts-ignore
-        amountPaid: parseFloat(dp.amountPaid),
-        // @ts-ignore
-        previousBalance: parseFloat(dp.previousBalance),
-        // @ts-ignore
-        newBalance: parseFloat(dp.newBalance),
-        transactionType: dp.transactionType,
-        paymentMethod: dp.paymentMethod,
-        referenceNumber: dp.referenceNumber,
-        notes: dp.notes,
-        // @ts-ignore
-        transactionDate: dp.transactionDate.toISOString(),
-        debt: {
-          // @ts-ignore
-          id: dp.debt.id,
-          // @ts-ignore
-          originalAmount: parseFloat(dp.debt.originalAmount),
-          // @ts-ignore
-          amount: parseFloat(dp.debt.amount),
-          // @ts-ignore
-          balance: parseFloat(dp.debt.balance),
-          // @ts-ignore
-          reason: dp.debt.reason,
-          // @ts-ignore
-          status: dp.debt.status
-        }
-      })),
-      workerDebts: workerDebts.map(debt => ({
-        id: debt.id,
-        // @ts-ignore
-        originalAmount: parseFloat(debt.originalAmount),
-        // @ts-ignore
-        amount: parseFloat(debt.amount),
-        // @ts-ignore
-        balance: parseFloat(debt.balance),
-        reason: debt.reason,
-        status: debt.status,
-        // @ts-ignore
-        dueDate: debt.dueDate ? debt.dueDate.toISOString() : null,
-        // @ts-ignore
-        interestRate: parseFloat(debt.interestRate),
-        // @ts-ignore
-        totalInterest: parseFloat(debt.totalInterest),
-        // @ts-ignore
-        totalPaid: parseFloat(debt.totalPaid)
-      })),
+      history: formattedPaymentHistory,
+      linkedDebtPayments: formattedLinkedDebtPayments,
+      workerDebts: formattedWorkerDebts,
       statistics: {
         worker: {
-          totalPayments: parseInt(workerStats.totalpayments || 0),
-          totalGross: parseFloat(workerStats.totalgross || 0),
-          totalNet: parseFloat(workerStats.totalnet || 0),
-          averagePayment: parseFloat(workerStats.averagepayment || 0)
+          // @ts-ignore
+          totalPayments: parseInt(workerStats.total_payments || 0, 10),
+          totalGross: safeNumber(workerStats.total_gross || 0),
+          totalNet: safeNumber(workerStats.total_net || 0),
+          averagePayment: safeNumber(workerStats.average_payment || 0),
         },
-        pitak: pitakStats ? {
-          totalPayments: parseInt(pitakStats.totalpayments || 0),
-          totalPaid: parseFloat(pitakStats.totalpaid || 0),
-          uniqueWorkers: parseInt(pitakStats.uniqueworkers || 0)
-        } : null
+        pitak: pitakStats
+          ? {
+              totalPayments: parseInt(pitakStats.total_payments || 0, 10),
+              totalPaid: safeNumber(pitakStats.total_paid || 0),
+              uniqueWorkers: parseInt(pitakStats.unique_workers || 0),
+            }
+          : null,
       },
       timeline: {
         // @ts-ignore
-        created: payment.createdAt.toISOString(),
+        created: payment.createdAt ? new Date(payment.createdAt).toISOString() : null,
         // @ts-ignore
-        lastUpdated: payment.updatedAt.toISOString(),
+        lastUpdated: payment.updatedAt ? new Date(payment.updatedAt).toISOString() : null,
         // @ts-ignore
-        paymentDate: payment.paymentDate ? payment.paymentDate.toISOString() : null,
-        period: payment.periodStart && payment.periodEnd 
-          // @ts-ignore
-          ? `${payment.periodStart.toISOString().split('T')[0]} to ${payment.periodEnd.toISOString().split('T')[0]}`
-          : null
-      }
+        paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toISOString() : null,
+        period:
+          payment.periodStart && payment.periodEnd
+            // @ts-ignore
+            ? `${new Date(payment.periodStart).toISOString().split("T")[0]} to ${new Date(payment.periodEnd).toISOString().split("T")[0]}`
+            : null,
+      },
     };
 
     return {
       status: true,
-      message: 'Payment with details retrieved successfully',
-      data: detailedPayment
+      message: "Payment with details retrieved successfully",
+      data: detailedPayment,
     };
   } catch (error) {
-    console.error('Error in getPaymentWithDetails:', error);
+    console.error("Error in getPaymentWithDetails:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payment with details: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

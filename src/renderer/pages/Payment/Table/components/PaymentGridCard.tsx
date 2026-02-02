@@ -21,7 +21,6 @@ interface PaymentGridCardProps {
     isSelected: boolean;
     onSelect: (id: number) => void;
     onView: (id: number) => void;
-    onEdit: (id: number) => void;
     onProcessPayment: (id: number) => void;
     onGenerateSlip: (id: number) => void;
 }
@@ -31,7 +30,6 @@ const PaymentGridCard: React.FC<PaymentGridCardProps> = ({
     isSelected,
     onSelect,
     onView,
-    onEdit,
     onProcessPayment,
     onGenerateSlip
 }) => {
@@ -213,13 +211,6 @@ const PaymentGridCard: React.FC<PaymentGridCardProps> = ({
                         title="View"
                     >
                         <Eye className="w-4 h-4" style={{ color: 'var(--accent-sky)' }} />
-                    </button>
-                    <button
-                        onClick={() => onEdit(payment.id)}
-                        className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-                        title="Edit"
-                    >
-                        <Edit className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
                     </button>
                     {payment.status === 'pending' && (
                         <button

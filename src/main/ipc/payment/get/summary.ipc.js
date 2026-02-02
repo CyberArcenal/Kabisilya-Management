@@ -8,92 +8,109 @@ module.exports = async function getPaymentSummary(params = {}) {
   try {
     // @ts-ignore
     const { startDate, endDate, workerId, pitakId } = params;
-    
+
     const paymentRepository = AppDataSource.getRepository(Payment);
-    const queryBuilder = paymentRepository.createQueryBuilder('payment');
 
-    // Apply date filters
-    if (startDate) {
-      queryBuilder.andWhere('payment.createdAt >= :startDate', { 
-        startDate: new Date(startDate) 
-      });
-    }
+    // Helper to apply filters to a query builder
+    // @ts-ignore
+    const applyFilters = (qb) => {
+      if (startDate) {
+        qb.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+      }
+      if (endDate) {
+        qb.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+      }
+      if (workerId) {
+        // use joined alias for worker relation
+        qb.leftJoin("payment.worker", "worker").andWhere("worker.id = :workerId", { workerId });
+      }
+      if (pitakId) {
+        // use joined alias for pitak relation
+        qb.leftJoin("payment.pitak", "pitak").andWhere("pitak.id = :pitakId", { pitakId });
+      }
+      return qb;
+    };
 
-    if (endDate) {
-      queryBuilder.andWhere('payment.createdAt <= :endDate', { 
-        endDate: new Date(endDate) 
-      });
-    }
+    // Summary (fresh QB)
+    const summaryQB = paymentRepository.createQueryBuilder("payment").select([
+      "COUNT(payment.id) as total_payments",
+      "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+      "COALESCE(SUM(payment.netPay), 0) as total_net",
+      "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt_deductions",
+      "COALESCE(SUM(payment.manualDeduction), 0) as total_manual_deductions",
+      "COALESCE(SUM(payment.otherDeductions), 0) as total_other_deductions",
+    ]);
+    applyFilters(summaryQB);
+    const summaryRaw = (await summaryQB.getRawOne()) || {};
 
-    if (workerId) {
-      queryBuilder.andWhere('payment.workerId = :workerId', { workerId });
-    }
-
-    if (pitakId) {
-      queryBuilder.andWhere('payment.pitakId = :pitakId', { pitakId });
-    }
-
-    // Get total counts and amounts
-    const summary = await queryBuilder
+    // Status breakdown (fresh QB)
+    const statusQB = paymentRepository.createQueryBuilder("payment")
       .select([
-        'COUNT(payment.id) as totalPayments',
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'SUM(payment.totalDebtDeduction) as totalDebtDeductions',
-        'SUM(payment.manualDeduction) as totalManualDeductions',
-        'SUM(payment.otherDeductions) as totalOtherDeductions'
-      ])
-      .getRawOne();
+        "payment.status as status",
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
+      ]);
+    applyFilters(statusQB);
+    statusQB.groupBy("payment.status");
+    const statusBreakdownRaw = await statusQB.getRawMany();
 
-    // Get status breakdown
-    const statusBreakdown = await paymentRepository
-      .createQueryBuilder('payment')
+    // Top workers by payment amount (fresh QB)
+    const topWorkersQB = paymentRepository.createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
       .select([
-        'payment.status',
-        'COUNT(payment.id) as count',
-        'SUM(payment.netPay) as totalAmount'
-      ])
-      .groupBy('payment.status')
-      .getRawMany();
+        "worker.id as worker_id",
+        "worker.name as worker_name",
+        "COUNT(payment.id) as payment_count",
+        "COALESCE(SUM(payment.netPay), 0) as total_paid",
+      ]);
+    applyFilters(topWorkersQB);
+    topWorkersQB.groupBy("worker.id, worker.name").orderBy("total_paid", "DESC").limit(10);
+    const topWorkersRaw = await topWorkersQB.getRawMany();
 
-    // Get top workers by payment amount
-    const topWorkers = await paymentRepository
-      .createQueryBuilder('payment')
-      .leftJoin('payment.worker', 'worker')
-      .select([
-        'worker.id as workerId',
-        'worker.name as workerName',
-        'COUNT(payment.id) as paymentCount',
-        'SUM(payment.netPay) as totalPaid'
-      ])
-      .groupBy('worker.id, worker.name')
-      .orderBy('totalPaid', 'DESC')
-      .limit(10)
-      .getRawMany();
+    // Normalizers
+    // @ts-ignore
+    const safeInt = (v) => parseInt(v || 0, 10);
+    // @ts-ignore
+    const safeFloat = (v) => parseFloat(v || 0);
+
+    const summary = {
+      totalPayments: safeInt(summaryRaw.total_payments),
+      totalGross: safeFloat(summaryRaw.total_gross),
+      totalNet: safeFloat(summaryRaw.total_net),
+      totalDebtDeductions: safeFloat(summaryRaw.total_debt_deductions),
+      totalManualDeductions: safeFloat(summaryRaw.total_manual_deductions),
+      totalOtherDeductions: safeFloat(summaryRaw.total_other_deductions),
+    };
+
+    const statusBreakdown = (statusBreakdownRaw || []).map((r) => ({
+      status: r.status,
+      count: safeInt(r.count),
+      totalAmount: safeFloat(r.total_amount),
+    }));
+
+    const topWorkers = (topWorkersRaw || []).map((r) => ({
+      workerId: safeInt(r.worker_id),
+      workerName: r.worker_name || null,
+      paymentCount: safeInt(r.payment_count),
+      totalPaid: safeFloat(r.total_paid),
+    }));
 
     return {
       status: true,
-      message: 'Payment summary retrieved successfully',
+      message: "Payment summary retrieved successfully",
       data: {
-        summary: {
-          totalPayments: parseInt(summary.totalPayments || 0),
-          totalGross: parseFloat(summary.totalGross || 0),
-          totalNet: parseFloat(summary.totalNet || 0),
-          totalDebtDeductions: parseFloat(summary.totalDebtDeductions || 0),
-          totalManualDeductions: parseFloat(summary.totalManualDeductions || 0),
-          totalOtherDeductions: parseFloat(summary.totalOtherDeductions || 0)
-        },
+        summary,
         statusBreakdown,
-        topWorkers
-      }
+        topWorkers,
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentSummary:', error);
+    console.error("Error in getPaymentSummary:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payment summary: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

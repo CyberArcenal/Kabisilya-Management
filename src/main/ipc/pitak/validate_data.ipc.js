@@ -6,21 +6,24 @@ const Bukid = require("../../../entities/Bukid");
 const { AppDataSource } = require("../../db/dataSource");
 const { Not } = require("typeorm");
 
-module.exports = async (
-  /** @type {{ bukidId: any; location: any; totalLuwang: any; status: any; excludePitakId?: null | undefined; }} */ params,
-) => {
+// @ts-ignore
+module.exports = async (params) => {
   try {
     const {
       bukidId,
       location,
       totalLuwang,
       status,
+      layoutType,
+      sideLengths,
+      areaSqm,
       excludePitakId = null, // For update validation
     } = params;
 
     const errors = [];
     const warnings = [];
     const validStatuses = ["active", "inactive", "completed"];
+    const validLayouts = ["square", "rectangle", "triangle", "circle"];
 
     // Validate bukidId
     if (bukidId === undefined) {
@@ -33,7 +36,7 @@ module.exports = async (
       }
     }
 
-    // Validate location (if provided)
+    // Validate location
     if (location !== undefined && location !== null) {
       if (typeof location !== "string") {
         errors.push("location must be a string");
@@ -54,26 +57,24 @@ module.exports = async (
         const existing = await pitakRepo.findOne({ where: whereClause });
         if (existing) {
           errors.push(
-            `A pitak already exists at location "${location}" in the same bukid`,
+            `A pitak already exists at location "${location}" in the same bukid`
           );
         }
       }
     }
 
     // Validate totalLuwang
+    let totalLuwangNum;
     if (totalLuwang !== undefined) {
-      const totalLuwangNum = parseFloat(totalLuwang);
+      totalLuwangNum = parseFloat(totalLuwang);
       if (isNaN(totalLuwangNum)) {
         errors.push("totalLuwang must be a valid number");
       } else if (totalLuwangNum < 0) {
         errors.push("totalLuwang cannot be negative");
       } else if (totalLuwangNum > 999.99) {
         errors.push("totalLuwang cannot exceed 999.99");
-      } else {
-        // Check if totalLuwang is reasonable
-        if (totalLuwangNum > 100) {
-          warnings.push("totalLuwang seems unusually high");
-        }
+      } else if (totalLuwangNum > 100) {
+        warnings.push("totalLuwang seems unusually high");
       }
     }
 
@@ -84,17 +85,47 @@ module.exports = async (
       }
     }
 
+    // 🆕 Validate layoutType
+    if (layoutType !== undefined && layoutType !== null) {
+      if (!validLayouts.includes(layoutType)) {
+        errors.push(`layoutType must be one of: ${validLayouts.join(", ")}`);
+      }
+    }
+
+    // 🆕 Validate sideLengths
+    if (sideLengths !== undefined && sideLengths !== null) {
+      if (typeof sideLengths !== "object") {
+        errors.push("sideLengths must be an object or array");
+      } else {
+        // basic sanity check
+        const values = Array.isArray(sideLengths)
+          ? sideLengths
+          : Object.values(sideLengths);
+        if (values.some((v) => isNaN(parseFloat(v)) || parseFloat(v) <= 0)) {
+          errors.push("sideLengths must contain positive numeric values");
+        }
+      }
+    }
+
+    // 🆕 Validate areaSqm
+    if (areaSqm !== undefined) {
+      const areaNum = parseFloat(areaSqm);
+      if (isNaN(areaNum)) {
+        errors.push("areaSqm must be a valid number");
+      } else if (areaNum < 0) {
+        errors.push("areaSqm cannot be negative");
+      } else if (areaNum > 100000) {
+        warnings.push("areaSqm seems unusually high");
+      }
+    }
+
     // Additional business rule validations
-    if (bukidId && location && totalLuwang !== undefined) {
-      // Check if location matches pattern if needed
+    if (bukidId && location && totalLuwangNum !== undefined) {
       const locationPattern = /^[A-Za-z0-9\s\-_,.#]+$/;
       if (location && !locationPattern.test(location)) {
-        warnings.push(
-          "location contains special characters that may be invalid",
-        );
+        warnings.push("location contains special characters that may be invalid");
       }
 
-      // Check totalLuwang against bukid's existing pitaks
       const pitakRepo = AppDataSource.getRepository(Pitak);
       const bukidPitaks = await pitakRepo.find({
         // @ts-ignore
@@ -102,19 +133,15 @@ module.exports = async (
         select: ["totalLuwang"],
       });
 
-      // @ts-ignore
       const totalBukidLuWang = bukidPitaks.reduce(
-        (
-          /** @type {number} */ sum,
-          /** @type {{ totalLuwang: string; }} */ p,
-        ) => sum + parseFloat(p.totalLuwang),
-        0,
+        // @ts-ignore
+        (sum, p) => sum + parseFloat(p.totalLuwang),
+        0
       );
 
-      // @ts-ignore
       if (totalLuwangNum > 0 && totalLuwangNum > totalBukidLuWang * 2) {
         warnings.push(
-          "totalLuwang is significantly higher than other pitaks in this bukid",
+          "totalLuwang is significantly higher than other pitaks in this bukid"
         );
       }
     }
@@ -133,6 +160,9 @@ module.exports = async (
           location: location !== undefined ? "provided" : "missing",
           totalLuwang: totalLuwang !== undefined ? "provided" : "missing",
           status: status !== undefined ? "provided" : "missing",
+          layoutType: layoutType !== undefined ? "provided" : "missing",
+          sideLengths: sideLengths !== undefined ? "provided" : "missing",
+          areaSqm: areaSqm !== undefined ? "provided" : "missing",
         },
       },
     };

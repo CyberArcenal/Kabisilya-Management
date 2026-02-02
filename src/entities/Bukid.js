@@ -8,6 +8,7 @@ const Bukid = new EntitySchema({
     id: { type: Number, primary: true, generated: true },
     name: { type: String, nullable: false },
     status: { type: String, default: "active" }, // active | inactive | archived
+    notes: { type: String, nullable: true },
     location: { type: String, nullable: true },
     createdAt: { type: Date, createDate: true },
     updatedAt: { type: Date, updateDate: true },

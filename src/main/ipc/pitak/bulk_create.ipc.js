@@ -76,7 +76,7 @@ module.exports = async (params, queryRunner) => {
         const existing = await pitakRepo.findOne({
           where: {
             // @ts-ignore
-            bukidId: pitakData.bukidId,
+            bukid: { id: pitakData.bukidId },
             location: pitakData.location || null,
           },
         });
@@ -93,11 +93,17 @@ module.exports = async (params, queryRunner) => {
         // ✅ Create pitak tied to session
         const newPitak = pitakRepo.create({
           // @ts-ignore
-          bukidId: pitakData.bukidId,
+          bukid: { id: pitakData.bukidId },
           location: pitakData.location || null,
           totalLuwang: pitakData.totalLuwang || 0.0,
           status: pitakData.status || "active",
-          session: { id: sessionId }, // 🔑 tie to default session
+          layoutType: pitakData.layoutType || "square", // 🆕 layout type
+          sideLengths: pitakData.sideLengths
+            ? JSON.stringify(pitakData.sideLengths)
+            : null, // 🆕 side lengths
+          areaSqm: pitakData.areaSqm || 0.0, // 🆕 area sqm
+          session: { id: sessionId },
+          notes: pitakData.notes || null,
         });
 
         const savedPitak = await pitakRepo.save(newPitak);
@@ -125,11 +131,17 @@ module.exports = async (params, queryRunner) => {
           // @ts-ignore
           id: p.id,
           // @ts-ignore
-          bukidId: p.bukidId,
+          bukidId: p.bukid?.id,
           // @ts-ignore
           location: p.location,
           // @ts-ignore
           totalLuwang: parseFloat(p.totalLuwang),
+          // @ts-ignore
+          areaSqm: parseFloat(p.areaSqm),       // 🆕 return area
+          // @ts-ignore
+          layoutType: p.layoutType,             // 🆕 return layout
+          // @ts-ignore
+          sideLengths: p.sideLengths,           // 🆕 return side lengths
           // @ts-ignore
           status: p.status,
           sessionId,

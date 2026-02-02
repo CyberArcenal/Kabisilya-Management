@@ -14,7 +14,7 @@ interface BukidFormDialogProps {
     id?: number;
     mode: 'add' | 'edit';
     onClose: () => void;
-    onSuccess?: (bukid: BukidData) => void;
+    onSuccess: (bukid: BukidData) => void;
 }
 
 interface FormData {
@@ -170,12 +170,7 @@ const BukidFormDialog: React.FC<BukidFormDialogProps> = ({
                         ? 'Bukid created successfully!'
                         : 'Bukid updated successfully!'
                 );
-
-                if (onSuccess && response.data.bukid) {
-                    onSuccess(response.data.bukid);
-                }
-
-                onClose();
+                onSuccess(response.data.bukid)
             } else {
                 throw new Error(response?.message || 'Failed to save bukid');
             }

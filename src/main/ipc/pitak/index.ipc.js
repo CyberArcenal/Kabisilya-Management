@@ -136,7 +136,7 @@ class PitakHandler {
         case "getPitaksByBukid":
           return await this.getPitaksByBukid(
             // @ts-ignore
-            enrichedParams.bukid_id,
+            enrichedParams.bukidId,
             // @ts-ignore
             enrichedParams.filters,
             userId,
@@ -193,7 +193,7 @@ class PitakHandler {
         case "getPitakSummaryReport":
           return await this.getPitakSummaryReport(
             // @ts-ignore
-            enrichedParams.bukid_id,
+            enrichedParams.bukidId,
             // @ts-ignore
             enrichedParams.status,
             userId,
@@ -301,7 +301,7 @@ class PitakHandler {
         case "getPitakUtilization":
           return await this.getPitakUtilization(
             // @ts-ignore
-            enrichedParams.bukid_id,
+            enrichedParams.bukidId,
             // @ts-ignore
             enrichedParams.date_range,
             userId,
@@ -310,7 +310,7 @@ class PitakHandler {
         case "getPitakForecast":
           return await this.getPitakForecast(
             // @ts-ignore
-            enrichedParams.bukid_id,
+            enrichedParams.bukidId,
             // @ts-ignore
             enrichedParams.period,
             userId,
@@ -319,7 +319,7 @@ class PitakHandler {
         case "getPitakTrends":
           return await this.getPitakTrends(
             // @ts-ignore
-            enrichedParams.bukid_id,
+            enrichedParams.bukidId,
             // @ts-ignore
             enrichedParams.period,
             userId,

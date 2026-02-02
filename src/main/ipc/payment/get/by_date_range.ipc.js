@@ -6,30 +6,30 @@ const { AppDataSource } = require("../../../db/dataSource");
 
 module.exports = async function getPaymentsByDateRange(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      startDate, 
+      startDate,
       // @ts-ignore
-      endDate, 
+      endDate,
       // @ts-ignore
-      status, 
+      status,
       // @ts-ignore
       workerId,
       // @ts-ignore
       pitakId,
       // @ts-ignore
-      limit = 50, 
+      limit = 50,
       // @ts-ignore
       page = 1,
       // @ts-ignore
-      groupBy = 'day' // 'day', 'week', 'month', 'year'
+      groupBy = "day", // 'day', 'week', 'month', 'year'
     } = params;
-    
+
     if (!startDate || !endDate) {
       return {
         status: false,
-        message: 'Start date and end date are required',
-        data: null
+        message: "Start date and end date are required",
+        data: null,
       };
     }
 
@@ -40,8 +40,8 @@ module.exports = async function getPaymentsByDateRange(params = {}) {
     if (start > end) {
       return {
         status: false,
-        message: 'Start date must be before end date',
-        data: null
+        message: "Start date must be before end date",
+        data: null,
       };
     }
 
@@ -53,163 +53,194 @@ module.exports = async function getPaymentsByDateRange(params = {}) {
       return {
         status: false,
         message: `Date range cannot exceed ${maxDays} days`,
-        data: null
+        data: null,
       };
     }
 
     const paymentRepository = AppDataSource.getRepository(Payment);
-    const queryBuilder = paymentRepository.createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.worker', 'worker')
-      .leftJoinAndSelect('payment.pitak', 'pitak')
-      .where('payment.createdAt BETWEEN :start AND :end', { start, end });
+
+    // Base query: join worker and pitak
+    const queryBuilder = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.worker", "worker")
+      .leftJoinAndSelect("payment.pitak", "pitak")
+      .where("payment.createdAt BETWEEN :start AND :end", { start, end });
 
     // Apply additional filters
     if (status) {
-      queryBuilder.andWhere('payment.status = :status', { status });
+      queryBuilder.andWhere("payment.status = :status", { status });
     }
 
     if (workerId) {
-      queryBuilder.andWhere('payment.workerId = :workerId', { workerId });
+      queryBuilder.andWhere("worker.id = :workerId", { workerId });
     }
 
     if (pitakId) {
-      queryBuilder.andWhere('payment.pitakId = :pitakId', { pitakId });
+      queryBuilder.andWhere("pitak.id = :pitakId", { pitakId });
     }
 
     // Calculate pagination
-    const skip = (page - 1) * limit;
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 50);
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const skip = (parsedPage - 1) * parsedLimit;
     const total = await queryBuilder.getCount();
 
     // Get paginated results
     const payments = await queryBuilder
-      .orderBy('payment.createdAt', 'DESC')
+      .orderBy("payment.createdAt", "DESC")
       .skip(skip)
-      .take(limit)
+      .take(parsedLimit)
       .getMany();
 
-    // Get aggregated data by time period
-    let groupByClause;
+    // Build groupBy clause and date format for SQLite (strftime)
+    let groupByExpr;
     let dateFormat;
-    
     switch (groupBy) {
-      case 'day':
-        groupByClause = 'DATE(payment.createdAt)';
-        dateFormat = '%Y-%m-%d';
+      case "week":
+        // Year-week (ISO week number may vary; using %Y-%W)
+        groupByExpr = "strftime('%Y-%W', payment.createdAt)";
+        dateFormat = "%Y Week %W";
         break;
-      case 'week':
-        groupByClause = 'YEARWEEK(payment.createdAt)';
-        dateFormat = '%Y Week %v';
+      case "month":
+        groupByExpr = "strftime('%Y-%m', payment.createdAt)";
+        dateFormat = "%Y-%m";
         break;
-      case 'month':
-        groupByClause = 'DATE_FORMAT(payment.createdAt, "%Y-%m")';
-        dateFormat = '%Y-%m';
+      case "year":
+        groupByExpr = "strftime('%Y', payment.createdAt)";
+        dateFormat = "%Y";
         break;
-      case 'year':
-        groupByClause = 'YEAR(payment.createdAt)';
-        dateFormat = '%Y';
-        break;
+      case "day":
       default:
-        groupByClause = 'DATE(payment.createdAt)';
-        dateFormat = '%Y-%m-%d';
+        groupByExpr = "strftime('%Y-%m-%d', payment.createdAt)";
+        dateFormat = "%Y-%m-%d";
+        break;
     }
 
-    const aggregatedData = await paymentRepository
-      .createQueryBuilder('payment')
+    // Aggregated data (apply same filters)
+    const aggregatedQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        `${groupByClause} as period`,
-        'COUNT(payment.id) as count',
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'AVG(payment.netPay) as averageNet'
+        `${groupByExpr} as period`,
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+        "COALESCE(SUM(payment.netPay), 0) as total_net",
+        "COALESCE(AVG(payment.netPay), 0) as average_net",
       ])
-      .where('payment.createdAt BETWEEN :start AND :end', { start, end })
-      .groupBy(groupByClause)
-      .orderBy('period', 'DESC')
-      .getRawMany();
+      .where("payment.createdAt BETWEEN :start AND :end", { start, end });
 
-    // Calculate summary for the date range
-    const summary = await paymentRepository
-      .createQueryBuilder('payment')
-      .select([
-        'COUNT(payment.id) as totalPayments',
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'SUM(payment.totalDebtDeduction) as totalDebt',
-        'SUM(payment.manualDeduction) as totalManual',
-        'SUM(payment.otherDeductions) as totalOther',
-        'AVG(payment.netPay) as averagePayment'
-      ])
-      .where('payment.createdAt BETWEEN :start AND :end', { start, end })
-      .getRawOne();
+    if (status) aggregatedQB.andWhere("payment.status = :status", { status });
+    if (workerId) aggregatedQB.andWhere("worker.id = :workerId", { workerId });
+    if (pitakId) aggregatedQB.andWhere("pitak.id = :pitakId", { pitakId });
 
-    // Get top performers in this date range
-    const topPerformers = await paymentRepository
-      .createQueryBuilder('payment')
-      .leftJoin('payment.worker', 'worker')
+    aggregatedQB.groupBy(groupByExpr).orderBy("period", "DESC");
+    const aggregatedData = await aggregatedQB.getRawMany();
+
+    // Summary for the date range (apply same filters)
+    const summaryQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        'worker.id as workerId',
-        'worker.name as workerName',
-        'COUNT(payment.id) as paymentCount',
-        'SUM(payment.netPay) as totalEarned'
+        "COUNT(payment.id) as total_payments",
+        "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+        "COALESCE(SUM(payment.netPay), 0) as total_net",
+        "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt",
+        "COALESCE(SUM(payment.manualDeduction), 0) as total_manual",
+        "COALESCE(SUM(payment.otherDeductions), 0) as total_other",
+        "COALESCE(AVG(payment.netPay), 0) as average_payment",
       ])
-      .where('payment.createdAt BETWEEN :start AND :end', { start, end })
-      .groupBy('worker.id, worker.name')
-      .orderBy('totalEarned', 'DESC')
-      .limit(10)
-      .getRawMany();
+      .where("payment.createdAt BETWEEN :start AND :end", { start, end });
+
+    if (status) summaryQB.andWhere("payment.status = :status", { status });
+    if (workerId) summaryQB.andWhere("worker.id = :workerId", { workerId });
+    if (pitakId) summaryQB.andWhere("pitak.id = :pitakId", { pitakId });
+
+    const summary = await summaryQB.getRawOne();
+
+    // Top performers (apply same filters)
+    const topPerformersQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
+      .select([
+        "worker.id as worker_id",
+        "worker.name as worker_name",
+        "COUNT(payment.id) as payment_count",
+        "COALESCE(SUM(payment.netPay), 0) as total_earned",
+      ])
+      .where("payment.createdAt BETWEEN :start AND :end", { start, end });
+
+    if (status) topPerformersQB.andWhere("payment.status = :status", { status });
+    if (workerId) topPerformersQB.andWhere("worker.id = :workerId", { workerId });
+    if (pitakId) topPerformersQB.andWhere("pitak.id = :pitakId", { pitakId });
+
+    topPerformersQB.groupBy("worker.id, worker.name").orderBy("total_earned", "DESC").limit(10);
+    const topPerformers = await topPerformersQB.getRawMany();
+
+    // Normalize aggregatedData
+    const normalizedAggregated = (aggregatedData || []).map((item) => ({
+      period: item.period,
+      count: parseInt(item.count || 0, 10),
+      totalGross: parseFloat(item.total_gross || 0),
+      totalNet: parseFloat(item.total_net || 0),
+      averageNet: parseFloat(item.average_net || 0),
+    }));
+
+    // Normalize summary
+    const normalizedSummary = {
+      totalPayments: parseInt(summary?.total_payments || 0, 10),
+      totalGross: parseFloat(summary?.total_gross || 0),
+      totalNet: parseFloat(summary?.total_net || 0),
+      totalDeductions:
+        parseFloat(summary?.total_debt || 0) +
+        parseFloat(summary?.total_manual || 0) +
+        parseFloat(summary?.total_other || 0),
+      averagePayment: parseFloat(summary?.average_payment || 0),
+    };
+
+    // Normalize top performers
+    const normalizedTop = (topPerformers || []).map((item) => ({
+      workerId: parseInt(item.worker_id, 10),
+      workerName: item.worker_name,
+      paymentCount: parseInt(item.payment_count || 0, 10),
+      totalEarned: parseFloat(item.total_earned || 0),
+    }));
 
     return {
       status: true,
-      message: 'Payments by date range retrieved successfully',
+      message: "Payments by date range retrieved successfully",
       data: {
         dateRange: {
-          startDate: start.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0],
-          days: diffDays
+          startDate: start.toISOString().split("T")[0],
+          endDate: end.toISOString().split("T")[0],
+          days: diffDays,
         },
         payments,
         pagination: {
-          page,
-          limit,
+          page: parsedPage,
+          limit: parsedLimit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / parsedLimit),
         },
-        aggregatedData: aggregatedData.map((/** @type {{ period: any; count: string; totalgross: any; totalnet: any; averagenet: any; }} */ item) => ({
-          period: item.period,
-          count: parseInt(item.count),
-          totalGross: parseFloat(item.totalgross || 0),
-          totalNet: parseFloat(item.totalnet || 0),
-          averageNet: parseFloat(item.averagenet || 0)
-        })),
-        summary: {
-          totalPayments: parseInt(summary.totalpayments || 0),
-          totalGross: parseFloat(summary.totalgross || 0),
-          totalNet: parseFloat(summary.totalnet || 0),
-          totalDeductions: parseFloat(summary.totaldebt || 0) + 
-                         parseFloat(summary.totalmanual || 0) + 
-                         parseFloat(summary.totalother || 0),
-          averagePayment: parseFloat(summary.averagepayment || 0)
-        },
-        topPerformers: topPerformers.map((/** @type {{ workerid: string; workername: any; paymentcount: string; totalearned: any; }} */ item) => ({
-          workerId: parseInt(item.workerid),
-          workerName: item.workername,
-          paymentCount: parseInt(item.paymentcount),
-          totalEarned: parseFloat(item.totalearned || 0)
-        })),
+        aggregatedData: normalizedAggregated,
+        summary: normalizedSummary,
+        topPerformers: normalizedTop,
         periodAnalysis: {
           groupBy,
           format: dateFormat,
-          dataPoints: aggregatedData.length
-        }
-      }
+          dataPoints: normalizedAggregated.length,
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentsByDateRange:', error);
+    console.error("Error in getPaymentsByDateRange:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payments by date range: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

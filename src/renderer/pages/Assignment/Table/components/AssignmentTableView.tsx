@@ -18,7 +18,7 @@ interface AssignmentTableViewProps {
   sortOrder: "asc" | "desc";
   onSort: (field: string) => void;
 
-  onAddNote: (id: number, name:string) => void;
+  onAddNote: (id: number, name: string) => void;
   onReassignWorker: (id: number) => void;
   onUpdateLuWang: (id: number) => void;
 }

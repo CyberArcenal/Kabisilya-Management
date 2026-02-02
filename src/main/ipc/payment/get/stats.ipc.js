@@ -8,206 +8,194 @@ module.exports = async function getPaymentStats(params = {}) {
   try {
     // @ts-ignore
     const { year, month } = params;
-    
+
     const paymentRepository = AppDataSource.getRepository(Payment);
-    
-    // Base query for all payments
-    let queryBuilder = paymentRepository.createQueryBuilder('payment');
 
-    // Apply year/month filters
+    // Build date filters
+    let startDate = null;
+    let endDate = null;
     if (year) {
-      const startDate = new Date(`${year}-01-01`);
-      const endDate = new Date(`${year}-12-31`);
-      queryBuilder = queryBuilder.where('payment.createdAt BETWEEN :start AND :end', {
-        start: startDate,
-        end: endDate
-      });
+      startDate = new Date(`${year}-01-01`);
+      endDate = new Date(`${year}-12-31T23:59:59.999Z`);
+    }
+    if (year && month) {
+      startDate = new Date(`${year}-${String(month).padStart(2, "0")}-01`);
+      // endDate = last day of month
+      endDate = new Date(year, month, 0);
+      endDate.setHours(23, 59, 59, 999);
     }
 
-    if (month && year) {
-      const startDate = new Date(`${year}-${month.toString().padStart(2, '0')}-01`);
-      const endDate = new Date(year, month, 0);
-      queryBuilder = queryBuilder.where('payment.createdAt BETWEEN :start AND :end', {
-        start: startDate,
-        end: endDate
-      });
-    }
-
-    // Get overall statistics
-    const overallStats = await queryBuilder
-      .select([
-        'COUNT(payment.id) as totalPayments',
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'AVG(payment.netPay) as averagePayment',
-        'MIN(payment.netPay) as minPayment',
-        'MAX(payment.netPay) as maxPayment'
-      ])
-      .getRawOne();
-
-    // Ensure overallStats is not null/undefined
-    const safeOverallStats = overallStats || {
-      totalpayments: 0,
-      totalgross: 0,
-      totalnet: 0,
-      averagepayment: 0,
-      minpayment: 0,
-      maxpayment: 0
+    // Helper to apply date filter to a query builder
+    // @ts-ignore
+    const applyDateFilter = (qb) => {
+      if (startDate && endDate) {
+        qb.andWhere("payment.createdAt BETWEEN :start AND :end", { start: startDate, end: endDate });
+      } else if (startDate) {
+        qb.andWhere("payment.createdAt >= :start", { start: startDate });
+      } else if (endDate) {
+        qb.andWhere("payment.createdAt <= :end", { end: endDate });
+      }
+      return qb;
     };
 
-    // Get status distribution
-    const statusStats = await queryBuilder
-      .select([
-        'payment.status',
-        'COUNT(payment.id) as count',
-        'SUM(payment.netPay) as totalAmount',
-        'AVG(payment.netPay) as averageAmount'
-      ])
-      .groupBy('payment.status')
-      .getRawMany();
+    // Overall statistics (use a fresh QB)
+    const overallQB = paymentRepository.createQueryBuilder("payment").select([
+      "COUNT(payment.id) as total_payments",
+      "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+      "COALESCE(SUM(payment.netPay), 0) as total_net",
+      "COALESCE(AVG(payment.netPay), 0) as average_payment",
+      "COALESCE(MIN(payment.netPay), 0) as min_payment",
+      "COALESCE(MAX(payment.netPay), 0) as max_payment",
+    ]);
+    applyDateFilter(overallQB);
+    const overallStats = (await overallQB.getRawOne()) || {};
 
-    // Get monthly trend (if year is specified, show monthly breakdown)
+    // Status distribution (fresh QB)
+    const statusQB = paymentRepository.createQueryBuilder("payment")
+      .select([
+        "payment.status as status",
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
+        "COALESCE(AVG(payment.netPay), 0) as average_amount",
+      ]);
+    applyDateFilter(statusQB);
+    statusQB.groupBy("payment.status");
+    const statusStats = await statusQB.getRawMany();
+
+    // Monthly trend (SQLite-compatible using strftime) when year specified
     let monthlyTrend = [];
     if (year) {
-      monthlyTrend = await paymentRepository
-        .createQueryBuilder('payment')
+      const monthlyQB = paymentRepository.createQueryBuilder("payment")
         .select([
-          'EXTRACT(MONTH FROM payment.createdAt) as month',
-          'COUNT(payment.id) as count',
-          'SUM(payment.netPay) as totalAmount',
-          'AVG(payment.netPay) as averageAmount'
+          "CAST(strftime('%m', payment.createdAt) AS INTEGER) as month",
+          "COUNT(payment.id) as count",
+          "COALESCE(SUM(payment.netPay), 0) as total_amount",
+          "COALESCE(AVG(payment.netPay), 0) as average_amount",
         ])
-        .where('EXTRACT(YEAR FROM payment.createdAt) = :year', { year })
-        .groupBy('EXTRACT(MONTH FROM payment.createdAt)')
-        .orderBy('month', 'ASC')
-        .getRawMany();
+        .where("strftime('%Y', payment.createdAt) = :year", { year: String(year) });
+      // If month filter was provided we already narrowed overall; but keep applyDateFilter for consistency
+      applyDateFilter(monthlyQB);
+      monthlyQB.groupBy("strftime('%m', payment.createdAt)").orderBy("month", "ASC");
+      monthlyTrend = await monthlyQB.getRawMany();
     }
 
-    // Get top workers by payment amount
-    const topWorkers = await queryBuilder
-      .leftJoin('payment.worker', 'worker')
+    // Top workers by payment amount (apply date filter)
+    const topWorkersQB = paymentRepository.createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
       .select([
-        'worker.id as workerId',
-        'worker.name as workerName',
-        'COUNT(payment.id) as paymentCount',
-        'SUM(payment.netPay) as totalPaid',
-        'AVG(payment.netPay) as averagePayment'
-      ])
-      .groupBy('worker.id, worker.name')
-      .orderBy('totalPaid', 'DESC')
-      .limit(10)
-      .getRawMany();
+        "worker.id as worker_id",
+        "worker.name as worker_name",
+        "COUNT(payment.id) as payment_count",
+        "COALESCE(SUM(payment.netPay), 0) as total_paid",
+        "COALESCE(AVG(payment.netPay), 0) as average_payment",
+      ]);
+    applyDateFilter(topWorkersQB);
+    topWorkersQB.groupBy("worker.id, worker.name").orderBy("total_paid", "DESC").limit(10);
+    const topWorkers = await topWorkersQB.getRawMany();
 
-    // Get payment method distribution
-    const methodStats = await queryBuilder
+    // Payment method distribution
+    const methodQB = paymentRepository.createQueryBuilder("payment")
       .select([
-        'payment.paymentMethod',
-        'COUNT(payment.id) as count',
-        'SUM(payment.netPay) as totalAmount'
+        "payment.paymentMethod as method",
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
       ])
-      .where('payment.paymentMethod IS NOT NULL')
-      .groupBy('payment.paymentMethod')
-      .getRawMany();
+      .where("payment.paymentMethod IS NOT NULL");
+    applyDateFilter(methodQB);
+    methodQB.groupBy("payment.paymentMethod");
+    const methodStats = await methodQB.getRawMany();
 
-    // Get deduction statistics
-    const deductionStats = await queryBuilder
+    // Deduction statistics
+    const deductionQB = paymentRepository.createQueryBuilder("payment")
       .select([
-        'SUM(payment.totalDebtDeduction) as totalDebtDeductions',
-        'SUM(payment.manualDeduction) as totalManualDeductions',
-        'SUM(payment.otherDeductions) as totalOtherDeductions',
-        'AVG(payment.totalDebtDeduction) as averageDebtDeduction'
-      ])
-      .getRawOne();
+        "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt_deductions",
+        "COALESCE(SUM(payment.manualDeduction), 0) as total_manual_deductions",
+        "COALESCE(SUM(payment.otherDeductions), 0) as total_other_deductions",
+        "COALESCE(AVG(payment.totalDebtDeduction), 0) as average_debt_deduction",
+      ]);
+    applyDateFilter(deductionQB);
+    const deductionStats = (await deductionQB.getRawOne()) || {};
 
-    // Ensure deductionStats is not null/undefined
-    const safeDeductionStats = deductionStats || {
-      totaldebtdeductions: 0,
-      totalmanualdeductions: 0,
-      totalotherdeductions: 0,
-      averagedebtdeduction: 0
-    };
-
-    // Calculate completion rate (completed vs total)
-    const completionRate = await paymentRepository
-      .createQueryBuilder('payment')
+    // Completion rate (completed vs total) with date filter
+    const completionQB = paymentRepository.createQueryBuilder("payment")
       .select([
-        'SUM(CASE WHEN payment.status = "completed" THEN 1 ELSE 0 END) as completedCount',
-        'COUNT(payment.id) as totalCount'
-      ])
-      .getRawOne();
+        "SUM(CASE WHEN payment.status = 'completed' THEN 1 ELSE 0 END) as completed_count",
+        "COUNT(payment.id) as total_count",
+      ]);
+    applyDateFilter(completionQB);
+    const completionRate = (await completionQB.getRawOne()) || { completed_count: 0, total_count: 0 };
 
-    // Ensure completionRate is not null/undefined
-    const safeCompletionRate = completionRate || {
-      completedcount: 0,
-      totalcount: 0
-    };
+    // Normalize and return
+    // @ts-ignore
+    const safeParseInt = (v) => parseInt(v || 0, 10);
+    // @ts-ignore
+    const safeParseFloat = (v) => parseFloat(v || 0);
 
     return {
       status: true,
-      message: 'Payment statistics retrieved successfully',
+      message: "Payment statistics retrieved successfully",
       data: {
-        period: year 
-          ? (month 
-              ? `${year}-${String(month).padStart(2, '0')}` 
-              : `${year}`)
-          : 'All time',
+        period: year ? (month ? `${year}-${String(month).padStart(2, "0")}` : `${year}`) : "All time",
         overall: {
-          totalPayments: parseInt(safeOverallStats.totalpayments || 0),
-          totalGross: parseFloat(safeOverallStats.totalgross || 0),
-          totalNet: parseFloat(safeOverallStats.totalnet || 0),
-          averagePayment: parseFloat(safeOverallStats.averagepayment || 0),
-          minPayment: parseFloat(safeOverallStats.minpayment || 0),
-          maxPayment: parseFloat(safeOverallStats.maxpayment || 0),
-          completionRate: safeCompletionRate.totalcount > 0 
-            ? (parseInt(safeCompletionRate.completedcount || 0) / parseInt(safeCompletionRate.totalcount)) * 100
-            : 0
+          totalPayments: safeParseInt(overallStats.total_payments),
+          totalGross: safeParseFloat(overallStats.total_gross),
+          totalNet: safeParseFloat(overallStats.total_net),
+          averagePayment: safeParseFloat(overallStats.average_payment),
+          minPayment: safeParseFloat(overallStats.min_payment),
+          maxPayment: safeParseFloat(overallStats.max_payment),
+          completionRate:
+            parseInt(completionRate.total_count || 0, 10) > 0
+              ? (parseInt(completionRate.completed_count || 0, 10) / parseInt(completionRate.total_count || 0, 10)) * 100
+              : 0,
         },
-        statusDistribution: statusStats.map((/** @type {{ payment_status: any; count: string; totalamount: any; averageamount: any; }} */ item) => ({
-          status: item.payment_status,
-          count: parseInt(item.count),
-          totalAmount: parseFloat(item.totalamount || 0),
-          averageAmount: parseFloat(item.averageamount || 0),
-          percentage: safeOverallStats.totalpayments > 0 
-            ? (parseInt(item.count) / parseInt(safeOverallStats.totalpayments)) * 100
-            : 0
+        statusDistribution: (statusStats || []).map((item) => ({
+          status: item.status,
+          count: safeParseInt(item.count),
+          totalAmount: safeParseFloat(item.total_amount),
+          averageAmount: safeParseFloat(item.average_amount),
+          percentage:
+            safeParseInt(overallStats.total_payments) > 0
+              ? (safeParseInt(item.count) / safeParseInt(overallStats.total_payments)) * 100
+              : 0,
         })),
-        monthlyTrend: monthlyTrend.map((/** @type {{ month: string; count: string; totalamount: any; averageamount: any; }} */ item) => ({
-          month: parseInt(item.month),
-          monthName: new Date(2000, parseInt(item.month) - 1, 1).toLocaleString('default', { month: 'long' }),
-          count: parseInt(item.count),
-          totalAmount: parseFloat(item.totalamount || 0),
-          averageAmount: parseFloat(item.averageamount || 0)
+        monthlyTrend: (monthlyTrend || []).map((item) => ({
+          month: safeParseInt(item.month),
+          monthName: new Date(2000, safeParseInt(item.month) - 1, 1).toLocaleString("default", { month: "long" }),
+          count: safeParseInt(item.count),
+          totalAmount: safeParseFloat(item.total_amount),
+          averageAmount: safeParseFloat(item.average_amount),
         })),
-        topWorkers: topWorkers.map((/** @type {{ workerid: string; workername: any; paymentcount: string; totalpaid: any; averagepayment: any; }} */ item) => ({
-          workerId: parseInt(item.workerid),
-          workerName: item.workername,
-          paymentCount: parseInt(item.paymentcount),
-          totalPaid: parseFloat(item.totalpaid || 0),
-          averagePayment: parseFloat(item.averagepayment || 0)
+        topWorkers: (topWorkers || []).map((item) => ({
+          workerId: safeParseInt(item.worker_id),
+          workerName: item.worker_name,
+          paymentCount: safeParseInt(item.payment_count),
+          totalPaid: safeParseFloat(item.total_paid),
+          averagePayment: safeParseFloat(item.average_payment),
         })),
-        paymentMethods: methodStats.map((/** @type {{ payment_paymentmethod: any; count: string; totalamount: any; }} */ item) => ({
-          method: item.payment_paymentmethod,
-          count: parseInt(item.count),
-          totalAmount: parseFloat(item.totalamount || 0)
+        paymentMethods: (methodStats || []).map((item) => ({
+          method: item.method,
+          count: safeParseInt(item.count),
+          totalAmount: safeParseFloat(item.total_amount),
         })),
         deductions: {
-          totalDebtDeductions: parseFloat(safeDeductionStats.totaldebtdeductions || 0),
-          totalManualDeductions: parseFloat(safeDeductionStats.totalmanualdeductions || 0),
-          totalOtherDeductions: parseFloat(safeDeductionStats.totalotherdeductions || 0),
-          averageDebtDeduction: parseFloat(safeDeductionStats.averagedebtdeduction || 0),
-          totalDeductions: parseFloat(safeDeductionStats.totaldebtdeductions || 0) + 
-                         parseFloat(safeDeductionStats.totalmanualdeductions || 0) + 
-                         parseFloat(safeDeductionStats.totalotherdeductions || 0)
-        }
-      }
+          totalDebtDeductions: safeParseFloat(deductionStats.total_debt_deductions),
+          totalManualDeductions: safeParseFloat(deductionStats.total_manual_deductions),
+          totalOtherDeductions: safeParseFloat(deductionStats.total_other_deductions),
+          averageDebtDeduction: safeParseFloat(deductionStats.average_debt_deduction),
+          totalDeductions:
+            safeParseFloat(deductionStats.total_debt_deductions) +
+            safeParseFloat(deductionStats.total_manual_deductions) +
+            safeParseFloat(deductionStats.total_other_deductions),
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentStats:', error);
+    console.error("Error in getPaymentStats:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payment statistics: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

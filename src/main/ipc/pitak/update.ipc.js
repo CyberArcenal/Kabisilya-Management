@@ -4,16 +4,16 @@
 const Pitak = require("../../../entities/Pitak");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async (/** @type {{ id: any; location: any; totalLuwang: any; status: any; _userId: any; }} */ params, /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner) => {
+// @ts-ignore
+module.exports = async (params, queryRunner) => {
   try {
-    const { id, location, totalLuwang, status, _userId } = params;
+    const { id, location, totalLuwang, status, layoutType, sideLengths, areaSqm, _userId } = params;
 
     if (!id) {
       return { status: false, message: "Pitak ID is required", data: null };
     }
 
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
-    // @ts-ignore
     const pitak = await pitakRepo.findOne({ where: { id } });
 
     if (!pitak) {
@@ -24,14 +24,20 @@ module.exports = async (/** @type {{ id: any; location: any; totalLuwang: any; s
     const oldValues = {
       location: pitak.location,
       totalLuwang: pitak.totalLuwang,
-      status: pitak.status
+      status: pitak.status,
+      layoutType: pitak.layoutType,
+      sideLengths: pitak.sideLengths,
+      areaSqm: pitak.areaSqm,
     };
 
     // Update fields
     if (location !== undefined) pitak.location = location;
     if (totalLuwang !== undefined) pitak.totalLuwang = parseFloat(totalLuwang);
     if (status !== undefined) pitak.status = status;
-    
+    if (layoutType !== undefined) pitak.layoutType = layoutType;
+    if (sideLengths !== undefined) pitak.sideLengths = JSON.stringify(sideLengths);
+    if (areaSqm !== undefined) pitak.areaSqm = parseFloat(areaSqm);
+
     pitak.updatedAt = new Date();
 
     const updatedPitak = await pitakRepo.save(pitak);
@@ -39,16 +45,19 @@ module.exports = async (/** @type {{ id: any; location: any; totalLuwang: any; s
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
       user_id: _userId,
-      action: 'update_pitak',
-      entity: 'Pitak',
+      action: "update_pitak",
+      entity: "Pitak",
       entity_id: updatedPitak.id,
       details: JSON.stringify({
         changes: {
           location: location !== undefined ? { old: oldValues.location, new: location } : undefined,
           totalLuwang: totalLuwang !== undefined ? { old: oldValues.totalLuwang, new: totalLuwang } : undefined,
-          status: status !== undefined ? { old: oldValues.status, new: status } : undefined
-        }
-      })
+          status: status !== undefined ? { old: oldValues.status, new: status } : undefined,
+          layoutType: layoutType !== undefined ? { old: oldValues.layoutType, new: layoutType } : undefined,
+          sideLengths: sideLengths !== undefined ? { old: oldValues.sideLengths, new: sideLengths } : undefined,
+          areaSqm: areaSqm !== undefined ? { old: oldValues.areaSqm, new: areaSqm } : undefined,
+        },
+      }),
     });
 
     return {
@@ -59,18 +68,20 @@ module.exports = async (/** @type {{ id: any; location: any; totalLuwang: any; s
         bukidId: updatedPitak.bukidId,
         location: updatedPitak.location,
         totalLuwang: parseFloat(updatedPitak.totalLuwang),
+        areaSqm: parseFloat(updatedPitak.areaSqm),
+        layoutType: updatedPitak.layoutType,
+        sideLengths: updatedPitak.sideLengths,
         status: updatedPitak.status,
-        updatedAt: updatedPitak.updatedAt
-      }
+        updatedAt: updatedPitak.updatedAt,
+      },
     };
-
   } catch (error) {
     console.error("Error updating pitak:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update pitak: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

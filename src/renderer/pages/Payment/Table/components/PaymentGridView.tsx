@@ -8,8 +8,6 @@ interface PaymentGridViewProps {
     selectedPayments: number[];
     toggleSelectPayment: (id: number) => void;
     onView: (id: number) => void;
-    onEdit: (id: number) => void;
-    onDelete: (id: number) => void;
     onUpdateStatus: (id: number, currentStatus: string, newStatus: string) => void;
     onProcessPayment: (id: number) => void;
     onGenerateSlip: (id: number) => void;
@@ -20,9 +18,6 @@ const PaymentGridView: React.FC<PaymentGridViewProps> = ({
     selectedPayments,
     toggleSelectPayment,
     onView,
-    onEdit,
-    onDelete,
-    onUpdateStatus,
     onProcessPayment,
     onGenerateSlip
 }) => {
@@ -35,7 +30,6 @@ const PaymentGridView: React.FC<PaymentGridViewProps> = ({
                     isSelected={selectedPayments.includes(payment.id)}
                     onSelect={toggleSelectPayment}
                     onView={onView}
-                    onEdit={onEdit}
                     onProcessPayment={onProcessPayment}
                     onGenerateSlip={onGenerateSlip}
                 />

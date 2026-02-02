@@ -216,7 +216,7 @@ const AssignmentGridCard: React.FC<AssignmentGridCardProps> = ({
                         <button
                             ref={buttonRef}
                             onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-                            className="p-1.5 rounded hover:bg-gray-100 transition-colors relative"
+                            className="p-1.5 rounded hover:bg-gray-100 transition-colors relative cursor-pointer"
                             title="More Actions"
                         >
                             <MoreVertical className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />

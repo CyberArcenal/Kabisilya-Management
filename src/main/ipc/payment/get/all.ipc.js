@@ -28,12 +28,14 @@ module.exports = async function getAllPayments(params = {}) {
     } = params;
 
     const paymentRepository = AppDataSource.getRepository(Payment);
+
+    // Base query: join worker and pitak
     const queryBuilder = paymentRepository
       .createQueryBuilder("payment")
       .leftJoinAndSelect("payment.worker", "worker")
       .leftJoinAndSelect("payment.pitak", "pitak");
 
-    // Apply filters
+    // Apply filters to main list
     if (status) {
       queryBuilder.andWhere("payment.status = :status", { status });
     }
@@ -51,58 +53,85 @@ module.exports = async function getAllPayments(params = {}) {
     }
 
     if (workerId) {
-      queryBuilder.andWhere("payment.workerId = :workerId", { workerId });
+      queryBuilder.andWhere("worker.id = :workerId", { workerId });
     }
 
     if (pitakId) {
-      queryBuilder.andWhere("payment.pitakId = :pitakId", { pitakId });
+      queryBuilder.andWhere("pitak.id = :pitakId", { pitakId });
     }
 
-    // Pagination
-    const skip = (page - 1) * limit;
+    // Pagination parsing
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 50);
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const skip = (parsedPage - 1) * parsedLimit;
     const total = await queryBuilder.getCount();
 
-    // Normalize sortOrder to uppercase
+    // Protect sortBy from SQL injection by allowing only specific fields
+    const SORT_FIELD_MAP = {
+      createdAt: "payment.createdAt",
+      paymentDate: "payment.paymentDate",
+      netPay: "payment.netPay",
+      grossPay: "payment.grossPay",
+      id: "payment.id",
+    };
+    // @ts-ignore
+    const orderColumn = SORT_FIELD_MAP[sortBy] || SORT_FIELD_MAP.createdAt;
     const normalizedSortOrder = (sortOrder || "DESC").toString().toUpperCase();
-    if (!["ASC", "DESC"].includes(normalizedSortOrder)) {
-      throw new Error(`Invalid sortOrder: ${sortOrder}`);
-    }
+    const orderDirection = ["ASC", "DESC"].includes(normalizedSortOrder) ? normalizedSortOrder : "DESC";
 
     // Get paginated results with sorting
     const payments = await queryBuilder
-      .orderBy(`payment.${sortBy}`, normalizedSortOrder)
+      .orderBy(orderColumn, orderDirection)
       .skip(skip)
-      .take(limit)
+      .take(parsedLimit)
       .getMany();
 
-    // Summary statistics
-    const summary = await paymentRepository
+    // Summary statistics (apply same filters)
+    const summaryQB = paymentRepository
       .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        "SUM(payment.grossPay) as totalGross",
-        "SUM(payment.netPay) as totalNet",
-        "SUM(payment.totalDebtDeduction) as totalDebtDeductions",
-        "SUM(payment.manualDeduction) as totalManualDeductions",
-        "SUM(payment.otherDeductions) as totalOtherDeductions",
-        "COUNT(payment.id) as totalCount",
-      ])
-      .getRawOne();
+        "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+        "COALESCE(SUM(payment.netPay), 0) as total_net",
+        "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt_deductions",
+        "COALESCE(SUM(payment.manualDeduction), 0) as total_manual_deductions",
+        "COALESCE(SUM(payment.otherDeductions), 0) as total_other_deductions",
+        "COUNT(payment.id) as total_count",
+      ]);
 
-    // Status distribution
-    const statusDistributionRaw = await paymentRepository
+    if (status) summaryQB.andWhere("payment.status = :status", { status });
+    if (startDate) summaryQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) summaryQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+    if (workerId) summaryQB.andWhere("worker.id = :workerId", { workerId });
+    if (pitakId) summaryQB.andWhere("pitak.id = :pitakId", { pitakId });
+
+    const summary = await summaryQB.getRawOne();
+
+    // Status distribution (apply same filters)
+    const statusDistQB = paymentRepository
       .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
         "payment.status as status",
         "COUNT(payment.id) as count",
-        "SUM(payment.netPay) as totalAmount",
-      ])
-      .groupBy("payment.status")
-      .getRawMany();
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
+      ]);
+
+    if (status) statusDistQB.andWhere("payment.status = :status", { status });
+    if (startDate) statusDistQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) statusDistQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+    if (workerId) statusDistQB.andWhere("worker.id = :workerId", { workerId });
+    if (pitakId) statusDistQB.andWhere("pitak.id = :pitakId", { pitakId });
+
+    statusDistQB.groupBy("payment.status");
+    const statusDistributionRaw = await statusDistQB.getRawMany();
 
     const statusDistribution = statusDistributionRaw.map((item) => ({
       status: item.status,
       count: parseInt(item.count || 0, 10),
-      totalAmount: parseFloat(item.totalAmount || 0),
+      totalAmount: parseFloat(item.total_amount || 0),
     }));
 
     return {
@@ -111,18 +140,18 @@ module.exports = async function getAllPayments(params = {}) {
       data: {
         payments,
         pagination: {
-          page: parseInt(page, 10),
-          limit: parseInt(limit, 10),
+          page: parsedPage,
+          limit: parsedLimit,
           total,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(total / parsedLimit),
         },
         summary: {
-          totalGross: parseFloat(summary?.totalGross || 0),
-          totalNet: parseFloat(summary?.totalNet || 0),
-          totalDebtDeductions: parseFloat(summary?.totalDebtDeductions || 0),
-          totalManualDeductions: parseFloat(summary?.totalManualDeductions || 0),
-          totalOtherDeductions: parseFloat(summary?.totalOtherDeductions || 0),
-          totalCount: parseInt(summary?.totalCount || 0, 10),
+          totalGross: parseFloat(summary?.total_gross || 0),
+          totalNet: parseFloat(summary?.total_net || 0),
+          totalDebtDeductions: parseFloat(summary?.total_debt_deductions || 0),
+          totalManualDeductions: parseFloat(summary?.total_manual_deductions || 0),
+          totalOtherDeductions: parseFloat(summary?.total_other_deductions || 0),
+          totalCount: parseInt(summary?.total_count || 0, 10),
         },
         statusDistribution,
       },

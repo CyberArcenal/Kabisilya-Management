@@ -12,8 +12,13 @@ module.exports = async (params, queryRunner) => {
     const {
       bukidId,
       location,
+      notes = null,
       totalLuwang = 0.0,
       status = "active",
+      layoutType = "square", // 🆕 new field
+      sideLengths = null, // 🆕 new field (JSON)
+      areaSqm = 0.0, // 🆕 new field
+
       _userId,
     } = params;
 
@@ -40,10 +45,10 @@ module.exports = async (params, queryRunner) => {
 
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
 
-    // Check for duplicate location in same bukid
+    // ✅ Check for duplicate location in same bukid
     if (location) {
       const existing = await pitakRepo.findOne({
-        where: { bukidId, location },
+        where: { bukid: { id: bukidId }, location },
       });
       if (existing) {
         return {
@@ -54,13 +59,17 @@ module.exports = async (params, queryRunner) => {
       }
     }
 
-    // ✅ Create pitak tied to session
+    // ✅ Create pitak tied to bukid + session
     const newPitak = pitakRepo.create({
-      bukidId,
+      bukid: { id: bukidId },
       location,
       totalLuwang: parseFloat(totalLuwang),
       status,
-      session: { id: sessionId }, // 🔑 tie to default session
+      layoutType, // 🆕 save layout type
+      sideLengths: sideLengths ? JSON.stringify(sideLengths) : null, // 🆕 save side lengths
+      areaSqm: parseFloat(areaSqm), // 🆕 save computed area
+      session: { id: sessionId },
+      notes: notes,
     });
 
     const savedPitak = await pitakRepo.save(newPitak);
@@ -72,7 +81,15 @@ module.exports = async (params, queryRunner) => {
       entity: "Pitak",
       entity_id: savedPitak.id,
       session: { id: sessionId },
-      details: JSON.stringify({ bukidId, location, totalLuwang, status }),
+      details: JSON.stringify({
+        bukidId,
+        location,
+        totalLuwang,
+        status,
+        layoutType,
+        sideLengths,
+        areaSqm,
+      }),
       created_at: new Date(),
     });
 
@@ -81,9 +98,12 @@ module.exports = async (params, queryRunner) => {
       message: "Pitak created successfully",
       data: {
         id: savedPitak.id,
-        bukidId: savedPitak.bukidId,
+        bukidId: savedPitak.bukid?.id,
         location: savedPitak.location,
         totalLuwang: parseFloat(savedPitak.totalLuwang),
+        areaSqm: parseFloat(savedPitak.areaSqm), // 🆕 return area
+        layoutType: savedPitak.layoutType, // 🆕 return layout
+        sideLengths: savedPitak.sideLengths, // 🆕 return side lengths
         status: savedPitak.status,
         sessionId,
         createdAt: savedPitak.createdAt,

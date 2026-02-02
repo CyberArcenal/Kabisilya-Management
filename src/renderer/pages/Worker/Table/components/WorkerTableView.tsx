@@ -91,9 +91,6 @@ const WorkerTableView: React.FC<WorkerTableViewProps> = ({
                             </button>
                         </th>
                         <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Kabisilya
-                        </th>
-                        <th className="p-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions
                         </th>
                     </tr>

@@ -162,6 +162,23 @@
   --gradient-earth: linear-gradient(135deg, #d4a574 0%, #b5895c 100%);
 }
 
+/* globals.css */
+* {
+  transition-delay: 200ms; /* lahat ng transitions may delay */
+}
+
+.expanded-row {
+  transition: all 0.3s ease;
+  opacity: 1;
+  height: auto;
+}
+.collapsed-row {
+  transition: all 0.3s ease;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 /* Kabisilya Specific Components */
 .farm-card {
   background: var(--card-bg);
@@ -1127,4 +1144,85 @@ select:focus {
 .bg-gradient-to-br {
   background-size: 200% 200%;
   background-position: 0% 0%;
+}
+
+
+
+
+
+
+/* Idagdag sa existing CSS */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modalSlideIn {
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+/* Book page lines */
+.book-page-lines {
+  background: linear-gradient(transparent, transparent 28px, #f0f0f0 28px);
+  background-size: 100% 30px;
+  line-height: 30px;
+}
+
+/* Paper texture */
+.paper-texture {
+  background-color: #f9f7f2;
+  background-image: 
+    radial-gradient(#d4a574 1px, transparent 1px),
+    radial-gradient(#d4a574 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: 0 0, 25px 25px;
+}
+
+/* Book spine effect */
+.book-spine {
+  background: linear-gradient(to right, #1a472a 0%, #2a623d 100%);
+  position: relative;
+}
+
+.book-spine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(to bottom, #975a16 0%, #b7791f 100%);
+}
+
+/* Note icon animation */
+.note-indicator {
+  transition: all 0.2s ease;
+}
+
+.note-indicator:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2);
+}
+
+/* Page turn animation */
+@keyframes pageTurn {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(-10deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+.page-turn {
+  animation: pageTurn 0.5s ease;
 }

@@ -6,7 +6,12 @@ export interface PitakData {
   bukidId: number;
   location?: string | null;
   totalLuwang: number;
+  // 🆕 New fields for geometry and area
+  layoutType?: "square" | "rectangle" | "triangle" | "circle" | string;
+  sideLengths?: any; // JSON field for flexible side lengths
+  areaSqm?: number;
   status: "active" | "inactive" | "completed";
+  sessionId?: number; // 🆕 Added session context
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +40,7 @@ export interface PaymentSummary {
 }
 
 export interface PitakWithDetails extends PitakData {
+  notes: string;
   bukid?: {
     id: number;
     name: string;
@@ -113,6 +119,8 @@ export interface PitakUtilizationData {
   pitakUtilization: Array<{
     pitakId: number;
     location: string;
+    layoutType?: string;
+    areaSqm?: number;
     utilizationRate: number;
     assignments: number;
   }>;
@@ -239,6 +247,11 @@ export interface DuplicateCheck {
 export interface CapacityValidation {
   pitakId: number;
   location?: string;
+  // 🆕 New geometry fields
+  layoutType?: string;
+  sideLengths?: any;
+  areaSqm?: number;
+  
   totalCapacity: number;
   currentlyAssigned: number;
   remainingCapacity: number;
@@ -255,6 +268,12 @@ export interface CapacityValidation {
       name: string;
     };
   }>;
+  dateAnalysis?: {
+    date: string;
+    assignmentsCount: number;
+    totalLuWangOnDate: number;
+    workersAssigned: string[];
+  };
   recommendations: Array<{
     type: string;
     message: string;
@@ -280,6 +299,7 @@ export interface BulkCreateResult {
     totalSkipped: number;
     totalFailed: number;
     totalLuWangCreated: number;
+    sessionId?: number;
   };
 }
 
@@ -440,6 +460,7 @@ export interface PitakFilters {
   sortOrder?: "asc" | "desc";
   page?: number;
   limit?: number;
+  layoutType?: string;
 }
 
 export interface DateRange {
@@ -822,6 +843,10 @@ class PitakAPI {
     location?: string;
     totalLuwang?: number;
     status?: string;
+    // 🆕 New geometry fields
+    layoutType?: "square" | "rectangle" | "triangle" | "circle" | string;
+    sideLengths?: any;
+    areaSqm?: number;
   }): Promise<PitakDetailResponse> {
     try {
       if (!window.backendAPI || !window.backendAPI.pitak) {
@@ -848,6 +873,10 @@ class PitakAPI {
       location?: string;
       totalLuwang?: number;
       status?: string;
+      // 🆕 New geometry fields
+      layoutType?: "square" | "rectangle" | "triangle" | "circle" | string;
+      sideLengths?: any;
+      areaSqm?: number;
     },
   ): Promise<PitakDetailResponse> {
     try {
@@ -921,6 +950,10 @@ class PitakAPI {
     totalLuwang: number,
     adjustmentType: "add" | "subtract" | "set" = "set",
     notes?: string,
+    // 🆕 Optional new fields
+    areaSqm?: number,
+    layoutType?: string,
+    sideLengths?: any,
   ): Promise<PitakDetailResponse> {
     try {
       if (!window.backendAPI || !window.backendAPI.pitak) {
@@ -929,7 +962,15 @@ class PitakAPI {
 
       const response = await window.backendAPI.pitak({
         method: "updatePitakLuWang",
-        params: this.enrichParams({ id, totalLuwang, adjustmentType, notes }),
+        params: this.enrichParams({ 
+          id, 
+          totalLuwang, 
+          adjustmentType, 
+          notes,
+          areaSqm,
+          layoutType,
+          sideLengths 
+        }),
       });
 
       if (response.status) {
@@ -993,6 +1034,10 @@ class PitakAPI {
       location?: string;
       totalLuwang?: number;
       status?: string;
+      // 🆕 New geometry fields
+      layoutType?: string;
+      sideLengths?: any;
+      areaSqm?: number;
     },
   ): Promise<PitakResponse> {
     try {
@@ -1022,6 +1067,10 @@ class PitakAPI {
       location?: string;
       totalLuwang?: number;
       status?: string;
+      // 🆕 New geometry fields
+      layoutType?: string;
+      sideLengths?: any;
+      areaSqm?: number;
     }>,
   ): Promise<BulkCreateResponse> {
     try {
@@ -1239,6 +1288,10 @@ class PitakAPI {
       location?: string;
       totalLuwang?: number;
       status?: string;
+      // 🆕 New geometry fields
+      layoutType?: string;
+      sideLengths?: any;
+      areaSqm?: number;
     },
     excludePitakId?: number,
   ): Promise<ValidationResponse> {
@@ -1342,6 +1395,10 @@ class PitakAPI {
     location?: string;
     totalLuwang?: number;
     status?: string;
+    // 🆕 New geometry fields
+    layoutType?: string;
+    sideLengths?: any;
+    areaSqm?: number;
   }): Promise<PitakDetailResponse> {
     try {
       // First validate
@@ -1525,6 +1582,10 @@ class PitakAPI {
       location?: string;
       totalLuwang?: number;
       status?: string;
+      // 🆕 New geometry fields
+      layoutType?: string;
+      sideLengths?: any;
+      areaSqm?: number;
     },
   ): Promise<PitakDetailResponse> {
     try {
@@ -1567,10 +1628,22 @@ class PitakAPI {
     amount: number,
     operation: "increase" | "decrease" = "increase",
     notes?: string,
+    // 🆕 Optional new fields
+    areaSqm?: number,
+    layoutType?: string,
+    sideLengths?: any,
   ): Promise<PitakDetailResponse> {
     try {
       const adjustmentType = operation === "increase" ? "add" : "subtract";
-      return await this.updatePitakLuWang(id, amount, adjustmentType, notes);
+      return await this.updatePitakLuWang(
+        id, 
+        amount, 
+        adjustmentType, 
+        notes,
+        areaSqm,
+        layoutType,
+        sideLengths
+      );
     } catch (error: any) {
       throw new Error(`Failed to adjust pitak LuWang: ${error.message}`);
     }

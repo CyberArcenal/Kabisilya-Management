@@ -7,150 +7,190 @@ const { AppDataSource } = require("../../../db/dataSource");
 
 module.exports = async function getPaymentsByPitak(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      pitakId, 
+      pitakId,
       // @ts-ignore
-      status, 
+      status,
       // @ts-ignore
-      startDate, 
+      startDate,
       // @ts-ignore
-      endDate, 
+      endDate,
       // @ts-ignore
-      limit = 50, 
+      limit = 50,
       // @ts-ignore
       page = 1,
       // @ts-ignore
-      sortBy = 'createdAt',
+      sortBy = "createdAt",
       // @ts-ignore
-      sortOrder = 'DESC'
+      sortOrder = "DESC",
     } = params;
-    
+
     if (!pitakId) {
       return {
         status: false,
-        message: 'Pitak ID is required',
-        data: null
+        message: "Pitak ID is required",
+        data: null,
       };
     }
 
     // Check if pitak exists
     const pitakRepository = AppDataSource.getRepository(Pitak);
     const pitak = await pitakRepository.findOne({
-      where: { id: pitakId }
+      where: { id: pitakId },
     });
 
     if (!pitak) {
       return {
         status: false,
-        message: 'Pitak not found',
-        data: null
+        message: "Pitak not found",
+        data: null,
       };
     }
 
     const paymentRepository = AppDataSource.getRepository(Payment);
-    const queryBuilder = paymentRepository.createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.worker', 'worker')
-      .leftJoinAndSelect('payment.pitak', 'pitak')
-      .where('payment.pitakId = :pitakId', { pitakId });
+
+    // Protect sortBy from SQL injection by allowing only specific fields
+    const SORT_FIELD_MAP = {
+      createdAt: "payment.createdAt",
+      paymentDate: "payment.paymentDate",
+      netPay: "payment.netPay",
+      grossPay: "payment.grossPay",
+      id: "payment.id",
+    };
+    // @ts-ignore
+    const orderColumn = SORT_FIELD_MAP[sortBy] || SORT_FIELD_MAP.createdAt;
+    const orderDirection = String(sortOrder).toUpperCase() === "ASC" ? "ASC" : "DESC";
+
+    // Base query: join worker and pitak
+    const queryBuilder = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.worker", "worker")
+      .leftJoinAndSelect("payment.pitak", "pitak")
+      .where("pitak.id = :pitakId", { pitakId });
 
     // Apply filters
     if (status) {
-      queryBuilder.andWhere('payment.status = :status', { status });
+      queryBuilder.andWhere("payment.status = :status", { status });
     }
 
     if (startDate) {
-      queryBuilder.andWhere('payment.createdAt >= :startDate', { 
-        startDate: new Date(startDate) 
+      queryBuilder.andWhere("payment.createdAt >= :startDate", {
+        startDate: new Date(startDate),
       });
     }
 
     if (endDate) {
-      queryBuilder.andWhere('payment.createdAt <= :endDate', { 
-        endDate: new Date(endDate) 
+      queryBuilder.andWhere("payment.createdAt <= :endDate", {
+        endDate: new Date(endDate),
       });
     }
 
     // Calculate pagination
-    const skip = (page - 1) * limit;
+    const skip = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
     const total = await queryBuilder.getCount();
 
     // Get paginated results
     const payments = await queryBuilder
-      .orderBy(`payment.${sortBy}`, sortOrder)
+      .orderBy(orderColumn, orderDirection)
       .skip(skip)
-      .take(limit)
+      .take(parseInt(limit, 10))
       .getMany();
 
-    // Calculate pitak-specific summary
-    const summary = await paymentRepository
-      .createQueryBuilder('payment')
+    // Build summary query with same filters
+    const summaryQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'SUM(payment.totalDebtDeduction) as totalDebtDeductions',
-        'COUNT(payment.id) as paymentCount',
-        'COUNT(DISTINCT payment.workerId) as uniqueWorkers'
+        "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+        "COALESCE(SUM(payment.netPay), 0) as total_net",
+        "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt_deductions",
+        "COUNT(payment.id) as payment_count",
+        "COUNT(DISTINCT worker.id) as unique_workers",
       ])
-      .where('payment.pitakId = :pitakId', { pitakId })
-      .getRawOne();
+      .where("pitak.id = :pitakId", { pitakId });
 
-    // Get payment timeline
-    const timeline = await paymentRepository
-      .createQueryBuilder('payment')
+    if (status) summaryQB.andWhere("payment.status = :status", { status });
+    if (startDate) summaryQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) summaryQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+
+    const summary = await summaryQB.getRawOne();
+
+    // Timeline for SQLite using strftime
+    const timelineQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        'EXTRACT(YEAR FROM payment.createdAt) as year',
-        'EXTRACT(MONTH FROM payment.createdAt) as month',
-        'COUNT(payment.id) as count',
-        'SUM(payment.netPay) as totalAmount'
+        "strftime('%Y', payment.createdAt) as year",
+        "strftime('%m', payment.createdAt) as month",
+        "COUNT(payment.id) as count",
+        "COALESCE(SUM(payment.netPay), 0) as total_amount",
       ])
-      .where('payment.pitakId = :pitakId', { pitakId })
-      .groupBy('EXTRACT(YEAR FROM payment.createdAt), EXTRACT(MONTH FROM payment.createdAt)')
-      .orderBy('year', 'DESC')
-      .addOrderBy('month', 'DESC')
-      .limit(12)
-      .getRawMany();
+      .where("pitak.id = :pitakId", { pitakId });
+
+    if (status) timelineQB.andWhere("payment.status = :status", { status });
+    if (startDate) timelineQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) timelineQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+
+    timelineQB
+      .groupBy("strftime('%Y', payment.createdAt), strftime('%m', payment.createdAt)")
+      .orderBy("year", "DESC")
+      .addOrderBy("month", "DESC")
+      .limit(12);
+
+    const timeline = await timelineQB.getRawMany();
+
+    // Normalize summary values (handle nulls)
+    const normalizedSummary = {
+      totalGross: parseFloat(summary?.total_gross || 0),
+      totalNet: parseFloat(summary?.total_net || 0),
+      totalDebtDeductions: parseFloat(summary?.total_debt_deductions || 0),
+      paymentCount: parseInt(summary?.payment_count || 0, 10),
+      uniqueWorkers: parseInt(summary?.unique_workers || 0, 10),
+    };
+
+    // Normalize timeline
+    const normalizedTimeline = (timeline || []).map((item) => {
+      const year = parseInt(item.year, 10);
+      const month = parseInt(item.month, 10);
+      return {
+        year,
+        month,
+        period: `${year}-${String(month).padStart(2, "0")}`,
+        count: parseInt(item.count || 0, 10),
+        totalAmount: parseFloat(item.total_amount || 0),
+      };
+    });
 
     return {
       status: true,
-      message: 'Payments by pitak retrieved successfully',
+      message: "Payments by pitak retrieved successfully",
       data: {
         pitak: {
           id: pitak.id,
           location: pitak.location,
           totalLuwang: pitak.totalLuwang,
-          status: pitak.status
+          status: pitak.status,
         },
         payments,
         pagination: {
           page,
           limit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limit),
         },
-        summary: {
-          totalGross: parseFloat(summary.totalGross || 0),
-          totalNet: parseFloat(summary.totalNet || 0),
-          totalDebtDeductions: parseFloat(summary.totalDebtDeductions || 0),
-          paymentCount: parseInt(summary.paymentCount || 0),
-          uniqueWorkers: parseInt(summary.uniqueworkers || 0)
-        },
-        timeline: timeline.map(item => ({
-          year: parseInt(item.year),
-          month: parseInt(item.month),
-          period: `${item.year}-${String(item.month).padStart(2, '0')}`,
-          count: parseInt(item.count),
-          totalAmount: parseFloat(item.totalamount || 0)
-        }))
-      }
+        summary: normalizedSummary,
+        timeline: normalizedTimeline,
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentsByPitak:', error);
+    console.error("Error in getPaymentsByPitak:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payments by pitak: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

@@ -1,7 +1,11 @@
 // PitakViewDialog.tsx
 import React, { useState, useEffect } from 'react';
 import {
-    X, MapPin, TreePalm, Calendar, FileText, LandPlot, Ruler, Info, ClipboardList, DollarSign, TrendingUp, Clock, CheckCircle, XCircle, Copy, Edit
+    X, MapPin, TreePalm, Calendar, FileText, LandPlot, Ruler, Info, ClipboardList, 
+    DollarSign, TrendingUp, Clock, CheckCircle, XCircle, Copy, Edit,
+    Square, Triangle, Circle, Calculator, Maximize, Minimize,
+    AreaChart, Box, Grid3x3, Hash, Crop,
+    RectangleCircle
 } from 'lucide-react';
 import type { PitakWithDetails } from '../../../apis/pitak';
 import pitakAPI from '../../../apis/pitak';
@@ -14,6 +18,14 @@ interface PitakViewDialogProps {
     onEdit?: (id: number) => void;
 }
 
+interface GeometryDetails {
+    layoutType?: string;
+    sideLengths?: any;
+    areaSqm?: number;
+    totalLuwang?: number;
+    hectareEquivalent?: number;
+}
+
 const PitakViewDialog: React.FC<PitakViewDialogProps> = ({
     id,
     onClose,
@@ -21,7 +33,17 @@ const PitakViewDialog: React.FC<PitakViewDialogProps> = ({
 }) => {
     const [loading, setLoading] = useState(true);
     const [pitak, setPitak] = useState<PitakWithDetails | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'assignments' | 'payments' | 'stats'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'assignments' | 'payments' | 'stats' | 'geometry'>('details');
+    const [geometryDetails, setGeometryDetails] = useState<GeometryDetails>({});
+
+    // Layout type icons and descriptions
+    const layoutIcons = {
+        square: Square,
+        rectangle: RectangleCircle,
+        triangle: Triangle,
+        circle: Circle,
+        default: Box
+    };
 
     // Fetch pitak data
     useEffect(() => {
@@ -31,7 +53,20 @@ const PitakViewDialog: React.FC<PitakViewDialogProps> = ({
                 const response = await pitakAPI.getPitakById(id);
 
                 if (response.status && response.data) {
-                    setPitak(response.data);
+                    const pitakData = response.data;
+                    setPitak(pitakData);
+
+                    // Parse and calculate geometry details
+                    const geoDetails: GeometryDetails = {
+                        layoutType: pitakData.layoutType,
+                        sideLengths: typeof pitakData.sideLengths === 'string' 
+                            ? JSON.parse(pitakData.sideLengths)
+                            : pitakData.sideLengths,
+                        areaSqm: pitakData.areaSqm,
+                        totalLuwang: pitakData.totalLuwang,
+                        hectareEquivalent: pitakData.areaSqm ? pitakData.areaSqm / 10000 : 0
+                    };
+                    setGeometryDetails(geoDetails);
                 } else {
                     showError('Failed to load pitak data');
                     onClose();
@@ -91,15 +126,64 @@ const PitakViewDialog: React.FC<PitakViewDialogProps> = ({
         }
     };
 
+    // Get layout icon component
+    const getLayoutIcon = () => {
+        if (geometryDetails.layoutType && layoutIcons[geometryDetails.layoutType as keyof typeof layoutIcons]) {
+            return layoutIcons[geometryDetails.layoutType as keyof typeof layoutIcons];
+        }
+        return layoutIcons.default;
+    };
+
+    // Get layout description
+    const getLayoutDescription = () => {
+        if (!geometryDetails.layoutType) return 'Not specified';
+        
+        const descriptions: Record<string, string> = {
+            square: 'All sides equal',
+            rectangle: 'Length × Width',
+            triangle: 'Base × Height / 2',
+            circle: 'π × Radius²'
+        };
+        return descriptions[geometryDetails.layoutType] || geometryDetails.layoutType;
+    };
+
+    // Format side lengths for display
+    const formatSideLengths = () => {
+        if (!geometryDetails.sideLengths || typeof geometryDetails.sideLengths !== 'object') {
+            return [];
+        }
+
+        return Object.entries(geometryDetails.sideLengths).map(([key, value]) => ({
+            label: key.charAt(0).toUpperCase() + key.slice(1),
+            value: value as number,
+            unit: 'm'
+        }));
+    };
+
+    // Calculate remaining capacity
+    const calculateRemainingCapacity = () => {
+        if (!pitak) return 0;
+        const assigned = pitak.stats?.assignments?.totalLuWangAssigned || 0;
+        return pitak.totalLuwang - assigned;
+    };
+
     // Handle copy to clipboard
     const handleCopyDetails = () => {
         if (!pitak) return;
+
+        let geometryText = '';
+        if (geometryDetails.layoutType) {
+            geometryText = `\nPlot Shape: ${geometryDetails.layoutType}`;
+            if (geometryDetails.areaSqm) {
+                geometryText += `\nArea: ${geometryDetails.areaSqm.toFixed(2)} m²`;
+            }
+        }
 
         const details = `
 Pitak #${pitak.id}
 Farm: ${pitak.bukid?.name || 'N/A'}
 Location: ${pitak.location || 'N/A'}
-LuWang Capacity: ${pitak.totalLuwang.toFixed(2)}
+LuWang Capacity: ${pitak.totalLuwang.toFixed(2)}${geometryText}
 Status: ${pitak.status}
 Utilization: ${pitak.stats?.utilizationRate || 0}%
 Created: ${formatDate(pitak.createdAt)}
@@ -129,6 +213,9 @@ Updated: ${formatDate(pitak.updatedAt)}
 
     const statusBadge = getStatusBadge(pitak.status);
     const StatusIcon = statusBadge.icon;
+    const LayoutIcon = getLayoutIcon();
+    const sideLengths = formatSideLengths();
+    const remainingCapacity = calculateRemainingCapacity();
 
     return (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -186,12 +273,12 @@ Updated: ${formatDate(pitak.updatedAt)}
 
                 {/* Tabs */}
                 <div className="border-b border-gray-200 bg-gray-50">
-                    <div className="flex px-4">
-                        {['details', 'assignments', 'payments', 'stats'].map((tab) => (
+                    <div className="flex px-4 overflow-x-auto">
+                        {['details', 'geometry', 'assignments', 'payments', 'stats'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab as any)}
-                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab
+                                className={`px-4 py-3 text-sm font-medium border-b-2 transition-all flex-shrink-0 ${activeTab === tab
                                     ? 'border-green-600 text-green-700 bg-white'
                                     : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                     }`}
@@ -243,18 +330,14 @@ Updated: ${formatDate(pitak.updatedAt)}
                                 <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-xl border border-purple-200">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <div className="text-xs text-gray-600 mb-1">Assignments</div>
+                                            <div className="text-xs text-gray-600 mb-1">Area</div>
                                             <div className="text-2xl font-bold text-gray-900">
-                                                {pitak.stats?.assignments?.total || 0}
+                                                {geometryDetails.areaSqm ? `${geometryDetails.areaSqm.toFixed(2)}` : 'N/A'}
                                             </div>
-                                            <div className="text-xs text-gray-500 mt-1 flex gap-1">
-                                                <span className="text-green-600">{pitak.stats?.assignments?.completed || 0} done</span>
-                                                <span>•</span>
-                                                <span>{pitak.stats?.assignments?.active || 0} active</span>
-                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">Square meters</div>
                                         </div>
                                         <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                                            <ClipboardList className="w-5 h-5 text-purple-600" />
+                                            <AreaChart className="w-5 h-5 text-purple-600" />
                                         </div>
                                     </div>
                                 </div>
@@ -262,16 +345,16 @@ Updated: ${formatDate(pitak.updatedAt)}
                                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <div className="text-xs text-gray-600 mb-1">Total Payments</div>
-                                            <div className="text-2xl font-bold text-gray-900">
-                                                {pitak.stats?.payments?.total || 0}
+                                            <div className="text-xs text-gray-600 mb-1">Plot Shape</div>
+                                            <div className="text-2xl font-bold text-gray-900 capitalize">
+                                                {geometryDetails.layoutType || 'N/A'}
                                             </div>
                                             <div className="text-xs text-gray-500 mt-1">
-                                                {formatCurrency(pitak.stats?.payments?.totalNetPay || 0)}
+                                                {getLayoutDescription()}
                                             </div>
                                         </div>
                                         <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                            <DollarSign className="w-5 h-5 text-amber-600" />
+                                            <LayoutIcon className="w-5 h-5 text-amber-600" />
                                         </div>
                                     </div>
                                 </div>
@@ -296,14 +379,6 @@ Updated: ${formatDate(pitak.updatedAt)}
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-gray-500 mb-1">Kabisilya</label>
-                                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                    <span className="text-sm text-gray-900">
-                                                        {pitak.bukid?.kabisilya?.name || 'Not assigned'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div>
                                                 <label className="block text-xs font-medium text-gray-500 mb-1">Farm Location</label>
                                                 <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                                     <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -312,45 +387,60 @@ Updated: ${formatDate(pitak.updatedAt)}
                                                     </span>
                                                 </div>
                                             </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500 mb-1">Pitak Location</label>
+                                                <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                    <span className="text-sm text-gray-900">
+                                                        {pitak.location || 'No specific location provided'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* LuWang Details */}
+                                    {/* Capacity Summary */}
                                     <div className="bg-white rounded-xl border border-gray-200 p-5">
                                         <div className="flex items-center gap-2 mb-4">
-                                            <Ruler className="w-5 h-5 text-blue-600" />
-                                            <h4 className="text-base font-semibold text-gray-900">LuWang Details</h4>
+                                            <ClipboardList className="w-5 h-5 text-blue-600" />
+                                            <h4 className="text-base font-semibold text-gray-900">Capacity Summary</h4>
                                         </div>
                                         <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                                    <div className="text-2xl font-bold text-blue-700">
-                                                        {pitak.totalLuwang.toFixed(2)}
-                                                    </div>
-                                                    <div className="text-xs text-blue-600 mt-1">Total Capacity</div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Total Capacity</span>
+                                                    <span className="font-medium text-gray-900">
+                                                        {pitak.totalLuwang.toFixed(2)} LuWang
+                                                    </span>
                                                 </div>
-                                                <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                                                    <div className={`text-2xl font-bold ${getUtilizationColor(pitak.stats?.utilizationRate || 0)}`}>
-                                                        {pitak.stats?.utilizationRate?.toFixed(1) || 0}%
-                                                    </div>
-                                                    <div className="text-xs text-emerald-600 mt-1">Utilization</div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Assigned</span>
+                                                    <span className="font-medium text-blue-600">
+                                                        {pitak.stats?.assignments?.totalLuWangAssigned?.toFixed(2) || '0.00'} LuWang
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Remaining</span>
+                                                    <span className="font-medium text-green-600">
+                                                        {remainingCapacity.toFixed(2)} LuWang
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-500 mb-2">Capacity Breakdown</label>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-600">Assigned LuWang</span>
-                                                        <span className="font-medium text-gray-900">
-                                                            {pitak.stats?.assignments?.totalLuWangAssigned?.toFixed(2) || '0.00'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-600">Remaining Capacity</span>
-                                                        <span className="font-medium text-emerald-600">
-                                                            {(pitak.totalLuwang - (pitak.stats?.assignments?.totalLuWangAssigned || 0)).toFixed(2)}
-                                                        </span>
-                                                    </div>
+                                            <div className="pt-2">
+                                                <div className="flex justify-between mb-1">
+                                                    <span className="text-xs text-gray-600">Utilization</span>
+                                                    <span className={`text-xs font-medium ${getUtilizationColor(pitak.stats?.utilizationRate || 0)}`}>
+                                                        {pitak.stats?.utilizationRate?.toFixed(1) || 0}%
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${pitak.stats?.utilizationRate || 0 >= 80 ? 'bg-red-500' :
+                                                            (pitak.stats?.utilizationRate || 0) >= 60 ? 'bg-yellow-500' :
+                                                                'bg-green-500'
+                                                            }`}
+                                                        style={{ width: `${Math.min(pitak.stats?.utilizationRate || 0, 100)}%` }}
+                                                    ></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -418,6 +508,198 @@ Updated: ${formatDate(pitak.updatedAt)}
                         </div>
                     )}
 
+                    {activeTab === 'geometry' && (
+                        <div className="space-y-6">
+                            {/* Geometry Overview */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-xs text-gray-600 mb-1">Plot Shape</div>
+                                            <div className="text-lg font-bold text-gray-900 capitalize">
+                                                {geometryDetails.layoutType || 'Not specified'}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {getLayoutDescription()}
+                                            </div>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                            <LayoutIcon className="w-5 h-5 text-green-600" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-xs text-gray-600 mb-1">Area</div>
+                                            <div className="text-lg font-bold text-gray-900">
+                                                {geometryDetails.areaSqm ? `${geometryDetails.areaSqm.toFixed(2)} m²` : 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">Square meters</div>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                            <AreaChart className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-xl border border-purple-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-xs text-gray-600 mb-1">Hectare Equivalent</div>
+                                            <div className="text-lg font-bold text-gray-900">
+                                                {geometryDetails.hectareEquivalent ? geometryDetails.hectareEquivalent.toFixed(4) : 'N/A'}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">1 hectare = 10,000 m²</div>
+                                        </div>
+                                        <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                                            <Crop className="w-5 h-5 text-purple-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Geometry Details */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Dimensions */}
+                                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Ruler className="w-5 h-5 text-blue-600" />
+                                        <h4 className="text-base font-semibold text-gray-900">Plot Dimensions</h4>
+                                    </div>
+                                    {sideLengths.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {sideLengths.map((dimension, index) => (
+                                                <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex items-center gap-2">
+                                                            {dimension.label === 'Side' && <Maximize className="w-4 h-4 text-gray-400" />}
+                                                            {dimension.label === 'Length' && <Maximize className="w-4 h-4 text-gray-400" />}
+                                                            {dimension.label === 'Width' && <Minimize className="w-4 h-4 text-gray-400" />}
+                                                            {dimension.label === 'Base' && <Maximize className="w-4 h-4 text-gray-400" />}
+                                                            {dimension.label === 'Height' && <Minimize className="w-4 h-4 text-gray-400" />}
+                                                            {dimension.label === 'Radius' && <Circle className="w-4 h-4 text-gray-400" />}
+                                                            <span className="text-sm font-medium text-gray-700">{dimension.label}</span>
+                                                        </div>
+                                                        <span className="text-lg font-bold text-gray-900">
+                                                            {dimension.value} {dimension.unit}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {geometryDetails.layoutType && (
+                                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                                    <div className="text-sm text-gray-600">
+                                                        <div className="font-medium mb-1">Area Calculation:</div>
+                                                        {geometryDetails.layoutType === 'square' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Calculator className="w-4 h-4" />
+                                                                Area = Side × Side = {sideLengths[0]?.value || 0} × {sideLengths[0]?.value || 0}
+                                                            </div>
+                                                        )}
+                                                        {geometryDetails.layoutType === 'rectangle' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Calculator className="w-4 h-4" />
+                                                                Area = Length × Width = {sideLengths[0]?.value || 0} × {sideLengths[1]?.value || 0}
+                                                            </div>
+                                                        )}
+                                                        {geometryDetails.layoutType === 'triangle' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Calculator className="w-4 h-4" />
+                                                                Area = (Base × Height) ÷ 2 = ({sideLengths[0]?.value || 0} × {sideLengths[1]?.value || 0}) ÷ 2
+                                                            </div>
+                                                        )}
+                                                        {geometryDetails.layoutType === 'circle' && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Calculator className="w-4 h-4" />
+                                                                Area = π × Radius² = π × {sideLengths[0]?.value || 0}²
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                            <Box className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                            <p className="text-gray-600">No geometry data available</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Area Conversions */}
+                                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Calculator className="w-5 h-5 text-green-600" />
+                                        <h4 className="text-base font-semibold text-gray-900">Area Conversions</h4>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {/* Square Meters */}
+                                        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-blue-700">
+                                                    {geometryDetails.areaSqm ? geometryDetails.areaSqm.toFixed(2) : '0.00'}
+                                                </div>
+                                                <div className="text-sm text-blue-600 mt-1">Square Meters (m²)</div>
+                                                <div className="text-xs text-gray-500 mt-2">Base measurement unit</div>
+                                            </div>
+                                        </div>
+
+                                        {/* LuWang Equivalent */}
+                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-green-700">
+                                                    {pitak.totalLuwang.toFixed(2)}
+                                                </div>
+                                                <div className="text-sm text-green-600 mt-1">LuWang</div>
+                                                <div className="text-xs text-gray-500 mt-2">
+                                                    1 LuWang = 500 m²
+                                                    <br />
+                                                    Conversion: {geometryDetails.areaSqm ? geometryDetails.areaSqm.toFixed(2) : '0'} ÷ 500
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Hectare Equivalent */}
+                                        <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-200">
+                                            <div className="text-center">
+                                                <div className="text-3xl font-bold text-purple-700">
+                                                    {geometryDetails.hectareEquivalent ? geometryDetails.hectareEquivalent.toFixed(4) : '0.0000'}
+                                                </div>
+                                                <div className="text-sm text-purple-600 mt-1">Hectares</div>
+                                                <div className="text-xs text-gray-500 mt-2">
+                                                    1 hectare = 10,000 m²
+                                                    <br />
+                                                    Conversion: {geometryDetails.areaSqm ? geometryDetails.areaSqm.toFixed(2) : '0'} ÷ 10,000
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Quick Conversions */}
+                                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <h5 className="text-sm font-medium text-gray-700 mb-2">Quick Conversions</h5>
+                                            <div className="text-xs text-gray-600 space-y-1">
+                                                <div className="flex justify-between">
+                                                    <span>LuWang per Hectare:</span>
+                                                    <span className="font-medium">20 LuWang</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Square meters per LuWang:</span>
+                                                    <span className="font-medium">500 m²</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>Hectares per LuWang:</span>
+                                                    <span className="font-medium">0.05 ha</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'assignments' && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between mb-4">
@@ -440,7 +722,7 @@ Updated: ${formatDate(pitak.updatedAt)}
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Worker
                                                 </th>
-                                                <th className="px 4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     LuWang
                                                 </th>
                                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -628,7 +910,7 @@ Updated: ${formatDate(pitak.updatedAt)}
                                 </div>
                             </div>
 
-                            {/* Utilization Chart (Simple) */}
+                            {/* Utilization Chart */}
                             <div className="bg-white rounded-xl border border-gray-200 p-5">
                                 <div className="flex items-center justify-between mb-4">
                                     <h4 className="text-base font-semibold text-gray-900">Capacity Utilization</h4>

@@ -7,88 +7,117 @@ const { AppDataSource } = require("../../../db/dataSource");
 module.exports = async function getPaymentsByWorker(params = {}) {
   try {
     // @ts-ignore
-    const { workerId, status, startDate, endDate, limit = 50, page = 1 } = params;
-    
+    let { workerId, status, startDate, endDate, limit = 50, page = 1, pitakId } = params;
+
     if (!workerId) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
+      };
+    }
+
+    workerId = parseInt(workerId, 10);
+    if (Number.isNaN(workerId) || workerId <= 0) {
+      return {
+        status: false,
+        message: "Worker ID must be a valid positive integer",
+        data: null,
       };
     }
 
     const paymentRepository = AppDataSource.getRepository(Payment);
-    const queryBuilder = paymentRepository.createQueryBuilder('payment')
-      .leftJoinAndSelect('payment.worker', 'worker')
-      .leftJoinAndSelect('payment.pitak', 'pitak')
-      .where('payment.workerId = :workerId', { workerId });
+
+    // Base query: join worker and pitak
+    const queryBuilder = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoinAndSelect("payment.worker", "worker")
+      .leftJoinAndSelect("payment.pitak", "pitak")
+      .where("worker.id = :workerId", { workerId });
 
     // Apply filters
     if (status) {
-      queryBuilder.andWhere('payment.status = :status', { status });
+      queryBuilder.andWhere("payment.status = :status", { status });
     }
 
     if (startDate) {
-      queryBuilder.andWhere('payment.createdAt >= :startDate', { 
-        startDate: new Date(startDate) 
+      queryBuilder.andWhere("payment.createdAt >= :startDate", {
+        startDate: new Date(startDate),
       });
     }
 
     if (endDate) {
-      queryBuilder.andWhere('payment.createdAt <= :endDate', { 
-        endDate: new Date(endDate) 
+      queryBuilder.andWhere("payment.createdAt <= :endDate", {
+        endDate: new Date(endDate),
       });
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+    if (pitakId) {
+      queryBuilder.andWhere("pitak.id = :pitakId", { pitakId });
+    }
+
+    // Pagination parsing
+    const parsedLimit = Math.max(1, parseInt(limit, 10) || 50);
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const skip = (parsedPage - 1) * parsedLimit;
     const total = await queryBuilder.getCount();
 
     // Get paginated results
     const payments = await queryBuilder
-      .orderBy('payment.createdAt', 'DESC')
+      .orderBy("payment.createdAt", "DESC")
       .skip(skip)
-      .take(limit)
+      .take(parsedLimit)
       .getMany();
 
-    // Calculate summary
-    const summary = await paymentRepository
-      .createQueryBuilder('payment')
+    // Summary with same filters applied
+    const summaryQB = paymentRepository
+      .createQueryBuilder("payment")
+      .leftJoin("payment.worker", "worker")
+      .leftJoin("payment.pitak", "pitak")
       .select([
-        'SUM(payment.grossPay) as totalGross',
-        'SUM(payment.netPay) as totalNet',
-        'SUM(payment.totalDebtDeduction) as totalDebtDeductions',
-        'COUNT(payment.id) as paymentCount'
+        "COALESCE(SUM(payment.grossPay), 0) as total_gross",
+        "COALESCE(SUM(payment.netPay), 0) as total_net",
+        "COALESCE(SUM(payment.totalDebtDeduction), 0) as total_debt_deductions",
+        "COUNT(payment.id) as payment_count",
       ])
-      .where('payment.workerId = :workerId', { workerId })
-      .getRawOne();
+      .where("worker.id = :workerId", { workerId });
+
+    if (status) summaryQB.andWhere("payment.status = :status", { status });
+    if (startDate) summaryQB.andWhere("payment.createdAt >= :startDate", { startDate: new Date(startDate) });
+    if (endDate) summaryQB.andWhere("payment.createdAt <= :endDate", { endDate: new Date(endDate) });
+    if (pitakId) summaryQB.andWhere("pitak.id = :pitakId", { pitakId });
+
+    const summary = await summaryQB.getRawOne();
+
+    // Normalize summary values
+    const normalizedSummary = {
+      totalGross: parseFloat(summary?.total_gross || 0),
+      totalNet: parseFloat(summary?.total_net || 0),
+      totalDebtDeductions: parseFloat(summary?.total_debt_deductions || 0),
+      paymentCount: parseInt(summary?.payment_count || 0, 10),
+    };
 
     return {
       status: true,
-      message: 'Payments retrieved successfully',
+      message: "Payments retrieved successfully",
       data: {
         payments,
         pagination: {
-          page,
-          limit,
+          page: parsedPage,
+          limit: parsedLimit,
           total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / parsedLimit),
         },
-        summary: {
-          totalGross: parseFloat(summary.totalGross || 0),
-          totalNet: parseFloat(summary.totalNet || 0),
-          totalDebtDeductions: parseFloat(summary.totalDebtDeductions || 0),
-          paymentCount: parseInt(summary.paymentCount || 0)
-        }
-      }
+        summary: normalizedSummary,
+      },
     };
   } catch (error) {
-    console.error('Error in getPaymentsByWorker:', error);
+    console.error("Error in getPaymentsByWorker:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve payments: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

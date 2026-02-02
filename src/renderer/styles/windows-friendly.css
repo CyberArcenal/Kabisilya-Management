@@ -295,3 +295,149 @@
     animation: windowsFadeIn 0.3s ease-out;
 }
 
+
+
+
+
+
+/* Add these to your existing index.css file */
+
+/* Note indicator animation */
+.note-indicator {
+  animation: pulse-note 2s infinite;
+}
+
+@keyframes pulse-note {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* Tooltip styles for better UX */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  background-color: var(--text-primary);
+  color: white;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 10px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip-wrapper:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Enhanced status badge with indicator dot */
+.status-badge {
+  position: relative;
+  padding-left: 20px !important;
+}
+
+.status-badge::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-badge.active::before {
+  background-color: var(--status-planted);
+}
+
+.status-badge.inactive::before {
+  background-color: var(--status-fallow);
+}
+
+.status-badge.pending::before {
+  background-color: var(--status-growing);
+}
+
+/* Data highlight for better visibility */
+.data-highlight {
+  background: linear-gradient(120deg, rgba(56, 161, 105, 0.1) 0%, rgba(56, 161, 105, 0.05) 100%);
+  border-left: 3px solid var(--accent-green);
+}
+
+/* Truncation with ellipsis but show on hover */
+.truncate-hover {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.truncate-hover:hover {
+  overflow: visible;
+  white-space: normal;
+  background: white;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+/* Enhanced table row hover effect */
+tr:hover {
+  background: linear-gradient(90deg, rgba(240, 253, 244, 0.5) 0%, rgba(255, 255, 255, 0.8) 100%) !important;
+}
+
+/* Custom scrollbar for notes section */
+.notes-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notes-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.notes-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.notes-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animation for expanded row */
+@keyframes expandRow {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+  }
+}
+
+tr.expanded-row {
+  animation: expandRow 0.3s ease-out;
+}

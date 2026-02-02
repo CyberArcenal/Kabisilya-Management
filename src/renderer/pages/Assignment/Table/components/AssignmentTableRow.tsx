@@ -34,7 +34,7 @@ interface AssignmentTableRowProps {
   onDelete: (id: number) => void;
   onUpdateStatus: (id: number, currentStatus: string) => void;
   onCancel: (id: number) => void;
-  onAddNote: (id: number, name:string) => void;
+  onAddNote: (id: number, name: string) => void;
   onReassignWorker: (id: number) => void;
   onUpdateLuWang: (id: number) => void;
 }
@@ -342,8 +342,12 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
   return (
     <>
       <tr
-        className="hover:bg-gray-50 transition-colors"
+        className="hover:bg-gray-50 transition-colors border-b border-gray-200 pointer-events-auto cursor-pointer"
         style={{ borderBottom: "1px solid var(--border-color)" }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleExpand();
+        }}
       >
         <td className="p-4">
           <input
@@ -444,14 +448,20 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
           <div className="flex items-center gap-2">
             {/* Quick action buttons */}
             <button
-              onClick={() => onView(assignment.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onView(assignment.id);
+              }}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="View Details"
             >
               <Eye className="w-4 h-4" style={{ color: "var(--accent-sky)" }} />
             </button>
             <button
-              onClick={() => onEdit(assignment.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(assignment.id);
+              }}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="Edit"
             >
@@ -475,9 +485,12 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
             />
 
             <button
-              onClick={onToggleExpand}
               className="p-1.5 rounded hover:bg-gray-100 transition-colors"
               title="More Details"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand();
+              }}
             >
               <ChevronRight
                 className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
@@ -489,7 +502,7 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
 
       {/* Expanded Row */}
       {isExpanded && (
-        <tr>
+        <tr className={isExpanded ? "expanded-row" : "collapsed-row"}>
           <td
             colSpan={7}
             className="p-4"

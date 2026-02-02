@@ -10,8 +10,6 @@ interface PaymentTableViewProps {
     toggleSelectAll: () => void;
     toggleSelectPayment: (id: number) => void;
     onView: (id: number) => void;
-    onEdit: (id: number) => void;
-    onDelete: (id: number) => void;
     onUpdateStatus: (id: number, currentStatus: string, newStatus: string) => void;
     onProcessPayment: (id: number) => void;
     onCancelPayment: (id: number) => void;
@@ -27,8 +25,6 @@ const PaymentTableView: React.FC<PaymentTableViewProps> = ({
     toggleSelectAll,
     toggleSelectPayment,
     onView,
-    onEdit,
-    onDelete,
     onUpdateStatus,
     onProcessPayment,
     onCancelPayment,
@@ -117,8 +113,6 @@ const PaymentTableView: React.FC<PaymentTableViewProps> = ({
                                 onSelect={() => toggleSelectPayment(payment.id)}
                                 onToggleExpand={() => toggleExpandPayment(payment.id)}
                                 onView={onView}
-                                onEdit={onEdit}
-                                onDelete={onDelete}
                                 onUpdateStatus={onUpdateStatus}
                                 onProcessPayment={onProcessPayment}
                                 onCancelPayment={onCancelPayment}

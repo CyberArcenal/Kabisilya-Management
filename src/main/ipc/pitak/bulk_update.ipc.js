@@ -5,10 +5,8 @@ const Pitak = require("../../../entities/Pitak");
 const { In } = require("typeorm");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async (
-  /** @type {{ pitakIds: any; updates: any; _userId: any; }} */ params,
-  /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner,
-) => {
+// @ts-ignore
+module.exports = async (params, queryRunner) => {
   try {
     const { pitakIds, updates, _userId } = params;
 
@@ -20,11 +18,7 @@ module.exports = async (
       };
     }
 
-    if (
-      !updates ||
-      typeof updates !== "object" ||
-      Object.keys(updates).length === 0
-    ) {
+    if (!updates || typeof updates !== "object" || Object.keys(updates).length === 0) {
       return {
         status: false,
         message: "updates object is required and must not be empty",
@@ -32,13 +26,12 @@ module.exports = async (
       };
     }
 
-    const allowedUpdates = ["location", "totalLuwang", "status"];
+    // 🆕 extend allowed updates
+    const allowedUpdates = ["location", "totalLuwang", "status", "layoutType", "sideLengths", "areaSqm"];
     const updateKeys = Object.keys(updates);
 
     // Validate update fields
-    const invalidKeys = updateKeys.filter(
-      (key) => !allowedUpdates.includes(key),
-    );
+    const invalidKeys = updateKeys.filter((key) => !allowedUpdates.includes(key));
     if (invalidKeys.length > 0) {
       return {
         status: false,
@@ -72,10 +65,34 @@ module.exports = async (
       updates.totalLuwang = totalLuwangNum.toFixed(2);
     }
 
+    // Validate areaSqm if provided
+    if (updates.areaSqm !== undefined) {
+      const areaNum = parseFloat(updates.areaSqm);
+      if (isNaN(areaNum) || areaNum < 0) {
+        return {
+          status: false,
+          message: "areaSqm must be a non-negative number",
+          data: null,
+        };
+      }
+      updates.areaSqm = areaNum.toFixed(2);
+    }
+
+    // Normalize sideLengths if provided
+    if (updates.sideLengths !== undefined) {
+      if (typeof updates.sideLengths !== "object") {
+        return {
+          status: false,
+          message: "sideLengths must be an object or array",
+          data: null,
+        };
+      }
+      updates.sideLengths = JSON.stringify(updates.sideLengths);
+    }
+
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
 
     // Get current pitaks
-    // @ts-ignore
     const pitaks = await pitakRepo.find({
       where: { id: In(pitakIds) },
     });
