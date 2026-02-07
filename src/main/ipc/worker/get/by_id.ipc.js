@@ -7,13 +7,13 @@ const { AppDataSource } = require("../../../db/dataSource");
 module.exports = async function getWorkerById(params = {}) {
   try {
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, userId } = params;
 
     if (!id) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
@@ -21,29 +21,29 @@ module.exports = async function getWorkerById(params = {}) {
 
     const worker = await workerRepository.findOne({
       where: { id: parseInt(id) },
-      relations: ['debts', 'payments', 'assignments'] // removed kabisilya
+      relations: ["debts", "payments", "assignments"], // removed kabisilya
     });
 
     if (!worker) {
       return {
         status: false,
-        message: 'Worker not found',
-        data: null
+        message: "Worker not found",
+        data: null,
       };
     }
 
     return {
       status: true,
-      message: 'Worker retrieved successfully',
-      data: { worker }
+      message: "Worker retrieved successfully",
+      data: { worker },
     };
   } catch (error) {
-    console.error('Error in getWorkerById:', error);
+    console.error("Error in getWorkerById:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve worker: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

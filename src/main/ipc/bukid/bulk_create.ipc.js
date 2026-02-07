@@ -6,7 +6,10 @@ const UserActivity = require("../../../entities/UserActivity");
 const { farmSessionDefaultSessionId } = require("../../../utils/system");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function bulkCreateBukid(params = {}, queryRunner = null) {
+module.exports = async function bulkCreateBukid(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -21,7 +24,7 @@ module.exports = async function bulkCreateBukid(params = {}, queryRunner = null)
 
   try {
     // @ts-ignore
-    const { bukids = [], _userId } = params;
+    const { bukids = [], userId } = params;
 
     if (!Array.isArray(bukids) || bukids.length === 0) {
       return {

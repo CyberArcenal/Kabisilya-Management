@@ -6,9 +6,12 @@ const Assignment = require("../../../entities/Assignment");
 const Payment = require("../../../entities/Payment");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async (/** @type {{ id: any; force?: false | undefined; _userId: any; }} */ params, /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; luwangCount: unknown; assignmentDate: unknown; status: unknown; notes: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; grossPay: unknown; manualDeduction: unknown; netPay: unknown; status: unknown; paymentDate: unknown; paymentMethod: unknown; referenceNumber: unknown; periodStart: unknown; periodEnd: unknown; totalDebtDeduction: unknown; otherDeductions: unknown; deductionBreakdown: unknown; notes: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner) => {
+module.exports = async (
+  /** @type {{ id: any; force?: false | undefined; userId: any; }} */ params,
+  /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; luwangCount: unknown; assignmentDate: unknown; status: unknown; notes: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; grossPay: unknown; manualDeduction: unknown; netPay: unknown; status: unknown; paymentDate: unknown; paymentMethod: unknown; referenceNumber: unknown; periodStart: unknown; periodEnd: unknown; totalDebtDeduction: unknown; otherDeductions: unknown; deductionBreakdown: unknown; notes: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner,
+) => {
   try {
-    const { id, force = false, _userId } = params;
+    const { id, force = false, userId } = params;
 
     if (!id) {
       return { status: false, message: "Pitak ID is required", data: null };
@@ -22,7 +25,7 @@ module.exports = async (/** @type {{ id: any; force?: false | undefined; _userId
     // @ts-ignore
     const pitak = await pitakRepo.findOne({
       where: { id },
-      relations: ['bukid', 'assignments', 'payments']
+      relations: ["bukid", "assignments", "payments"],
     });
 
     if (!pitak) {
@@ -39,8 +42,8 @@ module.exports = async (/** @type {{ id: any; force?: false | undefined; _userId
         message: `Cannot delete pitak with ${assignmentsCount} assignment(s) and ${paymentsCount} payment(s). Use force=true to override.`,
         data: {
           assignmentsCount,
-          paymentsCount
-        }
+          paymentsCount,
+        },
       };
     }
 
@@ -52,7 +55,7 @@ module.exports = async (/** @type {{ id: any; force?: false | undefined; _userId
       status: pitak.status,
       bukidId: pitak.bukidId,
       assignmentsCount,
-      paymentsCount
+      paymentsCount,
     };
 
     // If force delete, handle dependencies
@@ -73,35 +76,34 @@ module.exports = async (/** @type {{ id: any; force?: false | undefined; _userId
 
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
-      action: 'delete_pitak',
-      entity: 'Pitak',
+      user_id: userId,
+      action: "delete_pitak",
+      entity: "Pitak",
       entity_id: id,
       details: JSON.stringify({
         ...pitakData,
         forceDelete: force,
-        deletedAt: new Date()
-      })
+        deletedAt: new Date(),
+      }),
     });
 
     return {
       status: true,
-      message: `Pitak deleted successfully${force ? ' (force delete)' : ''}`,
+      message: `Pitak deleted successfully${force ? " (force delete)" : ""}`,
       data: {
         id,
         assignmentsDeleted: force ? assignmentsCount : 0,
         paymentsDeleted: force ? paymentsCount : 0,
-        deletedAt: new Date()
-      }
+        deletedAt: new Date(),
+      },
     };
-
   } catch (error) {
     console.error("Error deleting pitak:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to delete pitak: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

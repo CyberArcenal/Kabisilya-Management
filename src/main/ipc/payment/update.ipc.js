@@ -36,14 +36,18 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
       // @ts-ignore
       periodEnd,
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -59,10 +63,18 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
 
     // If payment is completed, only allow notes update (policy)
     const isCompleted = payment.status === "completed";
-    if (isCompleted && (grossPay !== undefined || manualDeduction !== undefined || otherDeductions !== undefined || periodStart !== undefined || periodEnd !== undefined)) {
+    if (
+      isCompleted &&
+      (grossPay !== undefined ||
+        manualDeduction !== undefined ||
+        otherDeductions !== undefined ||
+        periodStart !== undefined ||
+        periodEnd !== undefined)
+    ) {
       return {
         status: false,
-        message: "Only notes can be updated for completed payments. To change amounts, use a reversal/refund workflow.",
+        message:
+          "Only notes can be updated for completed payments. To change amounts, use a reversal/refund workflow.",
         data: null,
       };
     }
@@ -86,7 +98,11 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
     if (grossPay !== undefined) {
       const newGross = parseFloat(grossPay);
       if (isNaN(newGross) || newGross < 0) {
-        return { status: false, message: "grossPay must be a non-negative number", data: null };
+        return {
+          status: false,
+          message: "grossPay must be a non-negative number",
+          data: null,
+        };
       }
       if (newGross !== oldValues.grossPay) {
         historyEntries.push({
@@ -105,7 +121,11 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
     if (manualDeduction !== undefined) {
       const newManual = parseFloat(manualDeduction || 0);
       if (isNaN(newManual) || newManual < 0) {
-        return { status: false, message: "manualDeduction must be a non-negative number", data: null };
+        return {
+          status: false,
+          message: "manualDeduction must be a non-negative number",
+          data: null,
+        };
       }
       if (newManual !== oldValues.manualDeduction) {
         historyEntries.push({
@@ -124,7 +144,11 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
     if (otherDeductions !== undefined) {
       const newOther = parseFloat(otherDeductions || 0);
       if (isNaN(newOther) || newOther < 0) {
-        return { status: false, message: "otherDeductions must be a non-negative number", data: null };
+        return {
+          status: false,
+          message: "otherDeductions must be a non-negative number",
+          data: null,
+        };
       }
       if (newOther !== oldValues.otherDeductions) {
         historyEntries.push({
@@ -142,7 +166,9 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
 
     if (notes !== undefined) {
       const timestamp = new Date().toISOString();
-      const appended = payment.notes ? `${payment.notes}\n[${timestamp}] ${notes}` : `[${timestamp}] ${notes}`;
+      const appended = payment.notes
+        ? `${payment.notes}\n[${timestamp}] ${notes}`
+        : `[${timestamp}] ${notes}`;
       historyEntries.push({
         actionType: "update",
         changedField: "notes",
@@ -159,7 +185,9 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
       historyEntries.push({
         actionType: "update",
         changedField: "periodStart",
-        oldValue: payment.periodStart ? payment.periodStart.toISOString() : null,
+        oldValue: payment.periodStart
+          ? payment.periodStart.toISOString()
+          : null,
         newValue: newStart ? newStart.toISOString() : null,
         notes: "Period start updated",
         changeReason: "update_payment",
@@ -187,9 +215,15 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
       const manual = parseFloat(payment.manualDeduction || 0);
       const other = parseFloat(payment.otherDeductions || 0);
 
-      const recalculated = parseFloat((gross - totalDebt - manual - other).toFixed(2));
+      const recalculated = parseFloat(
+        (gross - totalDebt - manual - other).toFixed(2),
+      );
       if (recalculated < 0) {
-        return { status: false, message: "Recalculated netPay would be negative", data: null };
+        return {
+          status: false,
+          message: "Recalculated netPay would be negative",
+          data: null,
+        };
       }
 
       if (recalculated !== oldValues.netPay) {
@@ -218,11 +252,20 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
       if (netDelta !== 0 && updatedPayment.worker && updatedPayment.worker.id) {
         // @ts-ignore
         const workerRepo = queryRunner.manager.getRepository("Worker");
-        const worker = await workerRepo.findOne({ where: { id: updatedPayment.worker.id } });
+        const worker = await workerRepo.findOne({
+          where: { id: updatedPayment.worker.id },
+        });
         if (worker) {
           // Adjust totals: totalPaid increases by netDelta; currentBalance decreases by netDelta
-          worker.totalPaid = parseFloat((parseFloat(worker.totalPaid || 0) + netDelta).toFixed(2));
-          worker.currentBalance = parseFloat(Math.max(0, parseFloat(worker.currentBalance || 0) - netDelta).toFixed(2));
+          worker.totalPaid = parseFloat(
+            (parseFloat(worker.totalPaid || 0) + netDelta).toFixed(2),
+          );
+          worker.currentBalance = parseFloat(
+            Math.max(
+              0,
+              parseFloat(worker.currentBalance || 0) - netDelta,
+            ).toFixed(2),
+          );
           worker.updatedAt = new Date();
           await workerRepo.save(worker);
 
@@ -241,18 +284,21 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
 
     // Persist history entries
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     for (const entry of historyEntries) {
       const history = paymentHistoryRepository.create({
         payment: updatedPayment,
         actionType: entry.actionType,
         changedField: entry.changedField,
-        oldValue: entry.oldValue !== undefined ? String(entry.oldValue) : undefined,
-        newValue: entry.newValue !== undefined ? String(entry.newValue) : undefined,
+        oldValue:
+          entry.oldValue !== undefined ? String(entry.oldValue) : undefined,
+        newValue:
+          entry.newValue !== undefined ? String(entry.newValue) : undefined,
         oldAmount: entry.oldAmount !== undefined ? entry.oldAmount : undefined,
         newAmount: entry.newAmount !== undefined ? entry.newAmount : undefined,
         notes: entry.notes || null,
-        performedBy: String(_userId),
+        performedBy: String(userId),
         changeDate: new Date(),
         changeReason: entry.changeReason || "update_payment",
       });
@@ -263,7 +309,7 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "update_payment",
       description: `Updated payment #${paymentId}`,
       ip_address: "127.0.0.1",
@@ -277,7 +323,11 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
       await queryRunner.commitTransaction();
     }
 
-    return { status: true, message: "Payment updated successfully", data: { payment: updatedPayment } };
+    return {
+      status: true,
+      message: "Payment updated successfully",
+      data: { payment: updatedPayment },
+    };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
@@ -285,7 +335,11 @@ module.exports = async function updatePayment(params = {}, queryRunner = null) {
     }
     console.error("Error in updatePayment:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to update payment: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to update payment: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

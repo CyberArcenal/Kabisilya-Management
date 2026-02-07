@@ -6,7 +6,7 @@ const { AppDataSource } = require("../../../db/dataSource");
 module.exports = async function getAuditTrailStats(params = {}) {
   try {
     // @ts-ignore
-    const { _userId } = params;
+    const { userId } = params;
     const auditRepo = AppDataSource.getRepository("AuditTrail");
 
     // Total count
@@ -65,7 +65,7 @@ module.exports = async function getAuditTrailStats(params = {}) {
     const accessLogRepo = AppDataSource.getRepository("AuditTrail");
     const accessLog = accessLogRepo.create({
       action: "view_audit_trail_stats",
-      actor: `User ${_userId}`,
+      actor: `User ${userId}`,
       details: {},
       timestamp: new Date(),
     });

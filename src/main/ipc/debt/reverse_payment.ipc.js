@@ -8,9 +8,10 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { debt_history_id, reason, _userId } = params;
+    const { debt_history_id, reason, userId } = params;
 
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const debtRepository = queryRunner.manager.getRepository(Debt);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
@@ -21,19 +22,33 @@ module.exports = async (params, queryRunner) => {
     });
 
     if (!paymentHistory) {
-      return { status: false, message: "Payment history record not found", data: null };
+      return {
+        status: false,
+        message: "Payment history record not found",
+        data: null,
+      };
     }
 
     if (paymentHistory.transactionType !== "payment") {
-      return { status: false, message: "Only payment transactions can be reversed", data: null };
+      return {
+        status: false,
+        message: "Only payment transactions can be reversed",
+        data: null,
+      };
     }
 
     // 🚫 Prevent double reversal
     const alreadyReversed = await debtHistoryRepository.findOne({
-      where: { notes: `Payment reversal: ${paymentHistory.amountPaid}. Original payment: ${paymentHistory.id}. Reason: ${reason}` },
+      where: {
+        notes: `Payment reversal: ${paymentHistory.amountPaid}. Original payment: ${paymentHistory.id}. Reason: ${reason}`,
+      },
     });
     if (alreadyReversed) {
-      return { status: false, message: "This payment has already been reversed", data: null };
+      return {
+        status: false,
+        message: "This payment has already been reversed",
+        data: null,
+      };
     }
 
     const debt = paymentHistory.debt;
@@ -43,14 +58,21 @@ module.exports = async (params, queryRunner) => {
     // 🚫 Prevent reversal on closed debts
     const lockedStatuses = ["settled", "cancelled"];
     if (lockedStatuses.includes(debt.status)) {
-      return { status: false, message: `Cannot reverse payment on debt with status '${debt.status}'`, data: null };
+      return {
+        status: false,
+        message: `Cannot reverse payment on debt with status '${debt.status}'`,
+        data: null,
+      };
     }
 
     const oldBalance = parseFloat(debt.balance);
 
     // Reverse the payment: add back to debt balance
     debt.balance = oldBalance + reversedAmount;
-    debt.totalPaid = Math.max(0, parseFloat(debt.totalPaid || 0) - reversedAmount);
+    debt.totalPaid = Math.max(
+      0,
+      parseFloat(debt.totalPaid || 0) - reversedAmount,
+    );
 
     // Update status based on new balance
     if (debt.balance > 0) {
@@ -65,8 +87,12 @@ module.exports = async (params, queryRunner) => {
     await debtRepository.save(debt);
 
     // Update worker's summary
-    worker.totalPaid = Math.max(0, parseFloat(worker.totalPaid || 0) - reversedAmount);
-    worker.currentBalance = parseFloat(worker.currentBalance || 0) + reversedAmount;
+    worker.totalPaid = Math.max(
+      0,
+      parseFloat(worker.totalPaid || 0) - reversedAmount,
+    );
+    worker.currentBalance =
+      parseFloat(worker.currentBalance || 0) + reversedAmount;
     await workerRepository.save(worker);
 
     // Create reversal history record
@@ -78,7 +104,7 @@ module.exports = async (params, queryRunner) => {
       transactionType: "refund",
       notes: `Payment reversal: ${reversedAmount}. Original payment: ${paymentHistory.id}. Reason: ${reason}`,
       transactionDate: new Date(),
-      performedBy: _userId ? String(_userId) : null,
+      performedBy: userId ? String(userId) : null,
       changeReason: "payment_reversal",
     });
 

@@ -6,7 +6,10 @@ const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function addPaymentNote(params = {}, queryRunner = null) {
+module.exports = async function addPaymentNote(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -21,19 +24,29 @@ module.exports = async function addPaymentNote(params = {}, queryRunner = null) 
 
   try {
     // @ts-ignore
-    const { paymentId, note, _userId } = params;
+    const { paymentId, note, userId } = params;
 
     if (!paymentId || !note) {
-      return { status: false, message: "Payment ID and note are required", data: null };
+      return {
+        status: false,
+        message: "Payment ID and note are required",
+        data: null,
+      };
     }
 
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
     const paymentRepository = queryRunner.manager.getRepository(Payment);
-    const payment = await paymentRepository.findOne({ where: { id: paymentId } });
+    const payment = await paymentRepository.findOne({
+      where: { id: paymentId },
+    });
 
     if (!payment) {
       return { status: false, message: "Payment not found", data: null };
@@ -42,19 +55,26 @@ module.exports = async function addPaymentNote(params = {}, queryRunner = null) 
     // 🚫 Prevent adding notes to cancelled payments
     const lockedStatuses = ["cancelled"];
     if (lockedStatuses.includes(payment.status)) {
-      return { status: false, message: `Cannot add note to payment with status '${payment.status}'`, data: null };
+      return {
+        status: false,
+        message: `Cannot add note to payment with status '${payment.status}'`,
+        data: null,
+      };
     }
 
     const oldNotes = payment.notes || "";
     const timestamp = new Date().toISOString();
-    payment.notes = oldNotes ? `${oldNotes}\n[${timestamp}] ${note}` : `[${timestamp}] ${note}`;
+    payment.notes = oldNotes
+      ? `${oldNotes}\n[${timestamp}] ${note}`
+      : `[${timestamp}] ${note}`;
     payment.updatedAt = new Date();
 
     const updatedPayment = await paymentRepository.save(payment);
 
     // Create payment history entry
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const paymentHistory = paymentHistoryRepository.create({
       payment: updatedPayment,
       actionType: "update",
@@ -62,7 +82,7 @@ module.exports = async function addPaymentNote(params = {}, queryRunner = null) 
       oldValue: oldNotes,
       newValue: payment.notes,
       notes: `Note added to payment: ${note}`,
-      performedBy: String(_userId),
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "add_note", // 🔒 explicit reason
     });
@@ -73,7 +93,7 @@ module.exports = async function addPaymentNote(params = {}, queryRunner = null) 
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "add_payment_note",
       description: `Added note to payment #${paymentId}`,
       ip_address: "127.0.0.1",
@@ -99,7 +119,11 @@ module.exports = async function addPaymentNote(params = {}, queryRunner = null) 
     }
     console.error("Error in addPaymentNote:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to add note: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to add note: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

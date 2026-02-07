@@ -15,7 +15,7 @@ const { generateReferenceNumber } = require("../debt/utils/reference");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { assignmentId, status, notes, _userId } = params || {};
+    const { assignmentId, status, notes, userId } = params || {};
 
     if (!assignmentId || !status) {
       return {
@@ -164,7 +164,7 @@ module.exports = async (params, queryRunner) => {
           oldAmount: 0.0,
           newAmount: grossPay,
           notes: "Payment auto-generated from assignment completion",
-          performedBy: _userId ? String(_userId) : null,
+          performedBy: userId ? String(userId) : null,
           changeDate: new Date(),
         });
         await paymentHistoryRepo.save(history);
@@ -189,7 +189,7 @@ module.exports = async (params, queryRunner) => {
         // @ts-ignore
         (a) => a.status === "completed",
       );
-      
+
       // Exclude the current assignment (being cancelled) and completed ones
       const activeAssignments = allAssignments.filter(
         // @ts-ignore
@@ -292,11 +292,11 @@ module.exports = async (params, queryRunner) => {
     if (status === "completed") {
       // @ts-ignore
       response.message = `Assignment status updated to ${status}${
-        paymentCreated 
-          ? " and payment created." 
-          : paymentSkipped 
-          ? " (payment already existed, skipped creation)." 
-          : ""
+        paymentCreated
+          ? " and payment created."
+          : paymentSkipped
+            ? " (payment already existed, skipped creation)."
+            : ""
       }`;
       // @ts-ignore
       response.data.payment = {
@@ -306,10 +306,11 @@ module.exports = async (params, queryRunner) => {
       };
     } else if (status === "cancelled") {
       // @ts-ignore
-      response.message = previousStatus === "active"
-        ? "Assignment cancelled and LuWang redistributed"
-        : "Assignment status updated to cancelled";
-      
+      response.message =
+        previousStatus === "active"
+          ? "Assignment cancelled and LuWang redistributed"
+          : "Assignment status updated to cancelled";
+
       if (previousStatus === "active") {
         // @ts-ignore
         response.data.redistribution = redistributionData;
@@ -322,7 +323,6 @@ module.exports = async (params, queryRunner) => {
     }
 
     return response;
-
   } catch (error) {
     console.error("Error updating assignment status:", error);
     return {
@@ -351,7 +351,7 @@ module.exports = async (params, queryRunner) => {
 // // @ts-ignore
 // module.exports = async (params, queryRunner) => {
 //   try {
-//     const { assignmentId, status, notes, _userId } = params || {};
+//     const { assignmentId, status, notes, userId } = params || {};
 
 //     if (!assignmentId || !status) {
 //       return {
@@ -495,7 +495,7 @@ module.exports = async (params, queryRunner) => {
 //           oldAmount: 0.0,
 //           newAmount: grossPay,
 //           notes: "Payment auto-generated from assignment completion",
-//           performedBy: _userId ? String(_userId) : null,
+//           performedBy: userId ? String(userId) : null,
 //           changeDate: new Date(),
 //         });
 //         await paymentHistoryRepo.save(history);

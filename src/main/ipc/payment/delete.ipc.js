@@ -21,13 +21,17 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { paymentId, _userId } = params;
+    const { paymentId, userId } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -43,14 +47,19 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
 
     // Disallow deleting completed payments
     if (payment.status === "completed") {
-      return { status: false, message: "Cannot delete completed payment", data: null };
+      return {
+        status: false,
+        message: "Cannot delete completed payment",
+        data: null,
+      };
     }
 
     // Prevent deletion if payment has applied debt payments (would orphan debt history / balances)
     if (payment.debtPayments && payment.debtPayments.length > 0) {
       return {
         status: false,
-        message: "Cannot delete payment that has applied debt payments. Reverse deductions first.",
+        message:
+          "Cannot delete payment that has applied debt payments. Reverse deductions first.",
         data: null,
       };
     }
@@ -72,7 +81,8 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
 
     // Create a PaymentHistory entry recording the deletion (audit)
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const deletionHistory = paymentHistoryRepository.create({
       payment: { id: payment.id },
       actionType: "delete",
@@ -81,8 +91,8 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
       newValue: "deleted",
       oldAmount: parseFloat(payment.netPay || 0),
       newAmount: null,
-      notes: `Payment deleted by user ${_userId}`,
-      performedBy: String(_userId),
+      notes: `Payment deleted by user ${userId}`,
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "delete_payment",
     });
@@ -96,7 +106,7 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "delete_payment",
       description: `Deleted payment #${paymentId} (${paymentDetails.workerName || "unknown"} - ${paymentDetails.amount})`,
       ip_address: "127.0.0.1",
@@ -113,7 +123,10 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
     return {
       status: true,
       message: "Payment deleted successfully",
-      data: { deletedPayment: paymentDetails, deletionHistoryId: deletionHistory.id },
+      data: {
+        deletedPayment: paymentDetails,
+        deletionHistoryId: deletionHistory.id,
+      },
     };
   } catch (error) {
     if (shouldRelease) {
@@ -122,7 +135,11 @@ module.exports = async function deletePayment(params = {}, queryRunner = null) {
     }
     console.error("Error in deletePayment:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to delete payment: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to delete payment: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

@@ -16,7 +16,7 @@ module.exports = async function getWorkerPaymentSummary(params = {}) {
       // @ts-ignore
       groupBy = "month",
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!workerId) {
@@ -78,8 +78,8 @@ module.exports = async function getWorkerPaymentSummary(params = {}) {
       byPaymentMethod: {},
       averageNetPay:
         payments.length > 0
-          // @ts-ignore
-          ? payments.reduce((sum, p) => sum + parseFloat(p.netPay || 0), 0) /
+          ? // @ts-ignore
+            payments.reduce((sum, p) => sum + parseFloat(p.netPay || 0), 0) /
             payments.length
           : 0,
     };

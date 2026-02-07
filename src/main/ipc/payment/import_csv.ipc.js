@@ -1,19 +1,22 @@
 // ipc/payment/import_csv.ipc.js
 //@ts-check
 
-const fs = require('fs').promises;
-const path = require('path');
-const csv = require('csv-parser');
-const { Readable } = require('stream');
+const fs = require("fs").promises;
+const path = require("path");
+const csv = require("csv-parser");
+const { Readable } = require("stream");
 const Payment = require("../../../entities/Payment");
 const Worker = require("../../../entities/Worker");
 const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
-const { AppDataSource } = require('../../db/dataSource');
+const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function importPaymentsFromCSV(params = {}, queryRunner = null) {
+module.exports = async function importPaymentsFromCSV(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -26,35 +29,35 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
 
   try {
     // @ts-ignore
-    const { filePath, _userId } = params;
-    
+    const { filePath, userId } = params;
+
     if (!filePath) {
       return {
         status: false,
-        message: 'File path is required',
-        data: null
+        message: "File path is required",
+        data: null,
       };
     }
 
     // Validate file exists and is CSV
     const fileExt = path.extname(filePath).toLowerCase();
-    if (fileExt !== '.csv') {
+    if (fileExt !== ".csv") {
       return {
         status: false,
-        message: 'File must be a CSV file',
-        data: null
+        message: "File must be a CSV file",
+        data: null,
       };
     }
 
     // Read and parse CSV file
-    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const fileContent = await fs.readFile(filePath, "utf-8");
     const rows = await parseCSV(fileContent);
 
     if (rows.length === 0) {
       return {
         status: false,
-        message: 'CSV file is empty',
-        data: null
+        message: "CSV file is empty",
+        data: null,
       };
     }
 
@@ -64,7 +67,7 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
       return {
         status: false,
         message: `Cannot import more than ${MAX_IMPORT_SIZE} records at once`,
-        data: null
+        data: null,
       };
     }
 
@@ -75,7 +78,8 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     // @ts-ignore
-    const paymentHistoryRepo = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepo =
+      queryRunner.manager.getRepository(PaymentHistory);
 
     const results = {
       success: [],
@@ -83,25 +87,32 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
       total: rows.length,
       successCount: 0,
       failedCount: 0,
-      validationErrors: []
+      validationErrors: [],
     };
 
     // Validate CSV headers and structure
-    const requiredHeaders = ['worker_name', 'gross_pay'];
+    const requiredHeaders = ["worker_name", "gross_pay"];
     // @ts-ignore
     const optionalHeaders = [
-      'worker_id', 'pitak_id', 'manual_deduction', 'other_deductions',
-      'period_start', 'period_end', 'notes', 'payment_method', 'status'
+      "worker_id",
+      "pitak_id",
+      "manual_deduction",
+      "other_deductions",
+      "period_start",
+      "period_end",
+      "notes",
+      "payment_method",
+      "status",
     ];
 
     const headers = Object.keys(rows[0] || {});
-    const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-    
+    const missingHeaders = requiredHeaders.filter((h) => !headers.includes(h));
+
     if (missingHeaders.length > 0) {
       return {
         status: false,
-        message: `Missing required headers: ${missingHeaders.join(', ')}`,
-        data: null
+        message: `Missing required headers: ${missingHeaders.join(", ")}`,
+        data: null,
       };
     }
 
@@ -113,7 +124,7 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
       try {
         // Validate required fields
         if (!row.worker_name || !row.worker_name.trim()) {
-          throw new Error('Worker name is required');
+          throw new Error("Worker name is required");
         }
 
         const grossPay = parseFloat(row.gross_pay);
@@ -125,14 +136,14 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         let worker;
         if (row.worker_id) {
           worker = await workerRepository.findOne({
-            where: { id: parseInt(row.worker_id) }
+            where: { id: parseInt(row.worker_id) },
           });
         }
 
         if (!worker && row.worker_name) {
           // Try to find by name
           worker = await workerRepository.findOne({
-            where: { name: row.worker_name.trim() }
+            where: { name: row.worker_name.trim() },
           });
         }
 
@@ -141,20 +152,27 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         }
 
         // Parse other fields
-        const manualDeduction = row.manual_deduction ? parseFloat(row.manual_deduction) : 0;
-        const otherDeductions = row.other_deductions ? parseFloat(row.other_deductions) : 0;
-        
+        const manualDeduction = row.manual_deduction
+          ? parseFloat(row.manual_deduction)
+          : 0;
+        const otherDeductions = row.other_deductions
+          ? parseFloat(row.other_deductions)
+          : 0;
+
         if (manualDeduction < 0 || otherDeductions < 0) {
-          throw new Error('Deductions cannot be negative');
+          throw new Error("Deductions cannot be negative");
         }
 
         // Calculate net pay
-        const netPay = Math.max(0, grossPay - manualDeduction - otherDeductions);
+        const netPay = Math.max(
+          0,
+          grossPay - manualDeduction - otherDeductions,
+        );
 
         // Parse dates
         let periodStart = null;
         let periodEnd = null;
-        
+
         if (row.period_start) {
           periodStart = new Date(row.period_start);
           if (isNaN(periodStart.getTime())) {
@@ -170,11 +188,19 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         }
 
         // Validate status if provided
-        let status = 'pending';
+        let status = "pending";
         if (row.status) {
-          const validStatuses = ['pending', 'processing', 'completed', 'cancelled', 'partially_paid'];
+          const validStatuses = [
+            "pending",
+            "processing",
+            "completed",
+            "cancelled",
+            "partially_paid",
+          ];
           if (!validStatuses.includes(row.status.toLowerCase())) {
-            throw new Error(`Invalid status: ${row.status}. Must be one of: ${validStatuses.join(', ')}`);
+            throw new Error(
+              `Invalid status: ${row.status}. Must be one of: ${validStatuses.join(", ")}`,
+            );
           }
           status = row.status.toLowerCase();
         }
@@ -193,7 +219,7 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
           status: status,
           notes: row.notes || null,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
 
         // Save payment
@@ -202,13 +228,13 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         // Create payment history
         const paymentHistory = paymentHistoryRepo.create({
           payment: savedPayment,
-          actionType: 'create',
-          changedField: 'status',
+          actionType: "create",
+          changedField: "status",
           oldValue: null,
           newValue: status,
-          notes: 'Payment imported from CSV',
-          performedBy: _userId,
-          changeDate: new Date()
+          notes: "Payment imported from CSV",
+          performedBy: userId,
+          changeDate: new Date(),
         });
 
         await paymentHistoryRepo.save(paymentHistory);
@@ -219,17 +245,16 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
           paymentId: savedPayment.id,
           workerName: worker.name,
           grossPay: grossPay,
-          netPay: netPay
+          netPay: netPay,
         });
         results.successCount++;
-
       } catch (error) {
         // @ts-ignore
         results.failed.push({
           rowNumber,
           // @ts-ignore
           error: error.message,
-          data: row
+          data: row,
         });
         results.failedCount++;
       }
@@ -237,12 +262,12 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
 
     // Log activity
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'import_payments_csv',
+      user_id: userId,
+      action: "import_payments_csv",
       description: `Imported ${results.successCount} payments from CSV (${results.failedCount} failed)`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -262,22 +287,30 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         path: filePath,
         name: path.basename(filePath),
         size: fileContent.length,
-        rows: rows.length
+        rows: rows.length,
       },
       importResults: {
         total: results.total,
         success: results.successCount,
         failed: results.failedCount,
-        successRate: results.total > 0 ? (results.successCount / results.total) * 100 : 0
+        successRate:
+          results.total > 0 ? (results.successCount / results.total) * 100 : 0,
       },
       financialSummary: {
         // @ts-ignore
-        totalGross: results.success.reduce((sum, item) => sum + item.grossPay, 0),
+        totalGross: results.success.reduce(
+          (sum, item) => sum + item.grossPay,
+          0,
+        ),
         // @ts-ignore
         totalNet: results.success.reduce((sum, item) => sum + item.netPay, 0),
         // @ts-ignore
-        averageGross: results.successCount > 0 ? results.success.reduce((sum, item) => sum + item.grossPay, 0) / results.successCount : 0
-      }
+        averageGross:
+          results.successCount > 0
+            ? results.success.reduce((sum, item) => sum + item.grossPay, 0) /
+              results.successCount
+            : 0,
+      },
     };
 
     return {
@@ -288,7 +321,7 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
         success: results.successCount,
         failed: results.failedCount,
         errors: results.failed,
-        importedPayments: results.success.map(s => ({
+        importedPayments: results.success.map((s) => ({
           // @ts-ignore
           rowNumber: s.rowNumber,
           // @ts-ignore
@@ -296,21 +329,21 @@ module.exports = async function importPaymentsFromCSV(params = {}, queryRunner =
           // @ts-ignore
           workerName: s.workerName,
           // @ts-ignore
-          amount: s.netPay
-        }))
-      }
+          amount: s.netPay,
+        })),
+      },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in importPaymentsFromCSV:', error);
+    console.error("Error in importPaymentsFromCSV:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to import payments from CSV: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {
@@ -326,23 +359,25 @@ async function parseCSV(csvContent) {
     // @ts-ignore
     const rows = [];
     const stream = Readable.from(csvContent);
-    
+
     stream
       .pipe(csv())
-      .on('data', (row) => {
+      .on("data", (row) => {
         // Clean up the row data
         const cleanedRow = {};
-        Object.keys(row).forEach(key => {
+        Object.keys(row).forEach((key) => {
           // @ts-ignore
-          cleanedRow[key.trim().toLowerCase()] = row[key] ? row[key].trim() : '';
+          cleanedRow[key.trim().toLowerCase()] = row[key]
+            ? row[key].trim()
+            : "";
         });
         rows.push(cleanedRow);
       })
-      .on('end', () => {
+      .on("end", () => {
         // @ts-ignore
         resolve(rows);
       })
-      .on('error', (error) => {
+      .on("error", (error) => {
         reject(error);
       });
   });

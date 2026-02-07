@@ -11,38 +11,39 @@ const Worker = require("../../../entities/Worker");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
-      workerId, 
+      workerId,
       // @ts-ignore
       kabisilyaId,
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
     if (!workerId || !kabisilyaId) {
       return {
         status: false,
-        message: "Missing required fields: workerId and kabisilyaId are required",
-        data: null
+        message:
+          "Missing required fields: workerId and kabisilyaId are required",
+        data: null,
       };
     }
 
     const workerRepo = queryRunner.manager.getRepository(Worker);
-    
+
     // Find worker
     const worker = await workerRepo.findOne({
       where: { id: workerId },
-      relations: ["kabisilya"]
+      relations: ["kabisilya"],
     });
 
     if (!worker) {
       return {
         status: false,
         message: "Worker not found",
-        data: null
+        data: null,
       };
     }
 
@@ -52,7 +53,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Worker is already assigned to this Kabisilya",
-        data: null
+        data: null,
       };
     }
 
@@ -69,17 +70,16 @@ module.exports = async (params, queryRunner) => {
       data: {
         workerId: updatedWorker.id,
         workerName: updatedWorker.name,
-        kabisilyaId: kabisilyaId
-      }
+        kabisilyaId: kabisilyaId,
+      },
     };
-
   } catch (error) {
     console.error("Error assigning worker to kabisilya:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to assign worker: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

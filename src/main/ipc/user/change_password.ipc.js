@@ -1,15 +1,17 @@
 // ipc/user/change_password.ipc.js
 //@ts-check
 
-
 const bcrypt = require("bcryptjs");
 const { AppDataSource } = require("../../db/dataSource");
 const User = require("../../../entities/User");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async function changePassword(params = {}, queryRunner = null) {
+module.exports = async function changePassword(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     queryRunner = AppDataSource.createQueryRunner();
     // @ts-ignore
@@ -21,48 +23,52 @@ module.exports = async function changePassword(params = {}, queryRunner = null) 
 
   try {
     // @ts-ignore
-    const { id, currentPassword, newPassword, confirmPassword, _userId } = params;
-    
+    const { id, currentPassword, newPassword, confirmPassword, userId } =
+      params;
+
     if (!id || !newPassword) {
       return {
         status: false,
-        message: 'User ID and new password are required',
-        data: null
+        message: "User ID and new password are required",
+        data: null,
       };
     }
 
     if (newPassword !== confirmPassword) {
       return {
         status: false,
-        message: 'New password and confirmation do not match',
-        data: null
+        message: "New password and confirmation do not match",
+        data: null,
       };
     }
 
     // @ts-ignore
     const userRepository = queryRunner.manager.getRepository(User);
     const user = await userRepository.findOne({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
 
     if (!user) {
       return {
         status: false,
-        message: 'User not found',
-        data: null
+        message: "User not found",
+        data: null,
       };
     }
 
     // Verify current password if changing another user's password (admin) or self
-    const isSelf = parseInt(id) === parseInt(_userId);
-    
+    const isSelf = parseInt(id) === parseInt(userId);
+
     if (isSelf && currentPassword) {
-      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      const isPasswordValid = await bcrypt.compare(
+        currentPassword,
+        user.password,
+      );
       if (!isPasswordValid) {
         return {
           status: false,
-          message: 'Current password is incorrect',
-          data: null
+          message: "Current password is incorrect",
+          data: null,
         };
       }
     }
@@ -70,23 +76,23 @@ module.exports = async function changePassword(params = {}, queryRunner = null) 
     // Hash new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    
+
     user.password = hashedPassword;
     user.updatedAt = new Date();
 
     // @ts-ignore
     await queryRunner.manager.save(user);
-    
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'change_password',
+      user_id: userId,
+      action: "change_password",
       description: `Changed password for user: ${user.username} (ID: ${user.id})`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -97,20 +103,20 @@ module.exports = async function changePassword(params = {}, queryRunner = null) 
 
     return {
       status: true,
-      message: 'Password changed successfully',
-      data: null
+      message: "Password changed successfully",
+      data: null,
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in changePassword:', error);
+    console.error("Error in changePassword:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to change password: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

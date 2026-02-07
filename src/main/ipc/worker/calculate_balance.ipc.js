@@ -9,7 +9,7 @@ const { AppDataSource } = require("../../db/dataSource");
 module.exports = async function calculateWorkerBalance(params = {}) {
   try {
     // @ts-ignore
-    const { workerId, _userId } = params;
+    const { workerId, userId } = params;
 
     if (!workerId) {
       return {

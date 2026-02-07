@@ -21,7 +21,7 @@ module.exports = async function createBukid(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { name, location, _userId } = params;
+    const { name, location, userId } = params;
 
     if (!name) {
       return {
@@ -68,7 +68,7 @@ module.exports = async function createBukid(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "create_bukid",
       entity: "Bukid",
       entity_id: savedBukid.id,

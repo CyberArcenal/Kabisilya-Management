@@ -5,7 +5,10 @@ const Bukid = require("../../../entities/Bukid");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function bulkUpdateBukid(params = {}, queryRunner = null) {
+module.exports = async function bulkUpdateBukid(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -20,7 +23,7 @@ module.exports = async function bulkUpdateBukid(params = {}, queryRunner = null)
 
   try {
     // @ts-ignore
-    const { updates = [], _userId } = params;
+    const { updates = [], userId } = params;
 
     if (!Array.isArray(updates) || updates.length === 0) {
       return {
@@ -92,7 +95,7 @@ module.exports = async function bulkUpdateBukid(params = {}, queryRunner = null)
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_update_bukid",
       entity: "Bukid",
       description: `Bulk updated ${results.successful.length} bukids`,

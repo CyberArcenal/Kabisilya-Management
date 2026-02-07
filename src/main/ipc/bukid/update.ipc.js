@@ -20,7 +20,7 @@ module.exports = async function updateBukid(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { id, name, location, _userId } = params;
+    const { id, name, location, userId } = params;
 
     if (!id) {
       return {
@@ -55,7 +55,7 @@ module.exports = async function updateBukid(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "update_bukid",
       entity: "Bukid",
       entity_id: updatedBukid.id,

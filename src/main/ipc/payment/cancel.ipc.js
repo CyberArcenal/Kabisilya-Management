@@ -21,13 +21,17 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { paymentId, reason, _userId } = params;
+    const { paymentId, reason, userId } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -51,7 +55,11 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
     }
 
     if (payment.status === "cancelled") {
-      return { status: false, message: "Payment is already cancelled", data: null };
+      return {
+        status: false,
+        message: "Payment is already cancelled",
+        data: null,
+      };
     }
 
     const oldStatus = payment.status;
@@ -65,7 +73,8 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
     const updatedPayment = await paymentRepository.save(payment);
 
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const paymentHistory = paymentHistoryRepository.create({
       payment: updatedPayment,
       actionType: "status_change",
@@ -73,7 +82,7 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
       oldValue: oldStatus,
       newValue: "cancelled",
       notes: `Payment cancelled: ${reason || "No reason provided"}`,
-      performedBy: String(_userId),
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "cancel_payment",
     });
@@ -82,7 +91,7 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "cancel_payment",
       description: `Cancelled payment #${paymentId} (was ${oldStatus})`,
       ip_address: "127.0.0.1",
@@ -96,7 +105,11 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
       await queryRunner.commitTransaction();
     }
 
-    return { status: true, message: "Payment cancelled successfully", data: { payment: updatedPayment } };
+    return {
+      status: true,
+      message: "Payment cancelled successfully",
+      data: { payment: updatedPayment },
+    };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
@@ -104,7 +117,11 @@ module.exports = async function cancelPayment(params = {}, queryRunner = null) {
     }
     console.error("Error in cancelPayment:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to cancel payment: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to cancel payment: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

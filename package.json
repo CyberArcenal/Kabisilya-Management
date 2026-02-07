@@ -1,7 +1,7 @@
 {
   "name": "farm-laborer-management",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/main/index.js",
   "build": {
     "appId": "com.CyberArcenal.farm-laborer-management.app",

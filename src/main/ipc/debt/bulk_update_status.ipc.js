@@ -8,10 +8,14 @@ const UserActivity = require("../../../entities/UserActivity");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { debt_ids, status, notes, _userId, forceOverride = false } = params;
+    const { debt_ids, status, notes, userId, forceOverride = false } = params;
 
     if (!Array.isArray(debt_ids) || debt_ids.length === 0) {
-      return { status: false, message: "Debt IDs array is required", data: null };
+      return {
+        status: false,
+        message: "Debt IDs array is required",
+        data: null,
+      };
     }
 
     const debtRepo = queryRunner.manager.getRepository(Debt);
@@ -21,12 +25,26 @@ module.exports = async (params, queryRunner) => {
     const debts = await debtRepo.findByIds(debt_ids);
 
     if (!debts || debts.length === 0) {
-      return { status: false, message: "No debts found for given IDs", data: null };
+      return {
+        status: false,
+        message: "No debts found for given IDs",
+        data: null,
+      };
     }
 
-    const validStatuses = ["active", "settled", "cancelled", "paid", "partially_paid"];
+    const validStatuses = [
+      "active",
+      "settled",
+      "cancelled",
+      "paid",
+      "partially_paid",
+    ];
     if (!validStatuses.includes(status)) {
-      return { status: false, message: `Invalid status '${status}'`, data: null };
+      return {
+        status: false,
+        message: `Invalid status '${status}'`,
+        data: null,
+      };
     }
 
     let updatedCount = 0;
@@ -38,7 +56,11 @@ module.exports = async (params, queryRunner) => {
 
       // Prevent rollback unless forceOverride
       if (oldStatus === "settled" && status === "active" && !forceOverride) {
-        results.push({ id: debt.id, skipped: true, reason: "Cannot revert settled debt to active" });
+        results.push({
+          id: debt.id,
+          skipped: true,
+          reason: "Cannot revert settled debt to active",
+        });
         continue;
       }
 
@@ -56,7 +78,7 @@ module.exports = async (params, queryRunner) => {
           transactionType: "payment",
           notes: notes || `Auto-settled in bulk update`,
           transactionDate: new Date(),
-          performedBy: _userId ? String(_userId) : null,
+          performedBy: userId ? String(userId) : null,
           changeReason: "bulk_auto_settle",
         });
         await debtHistoryRepo.save(history);
@@ -74,7 +96,7 @@ module.exports = async (params, queryRunner) => {
 
       // Log activity
       await activityRepo.save({
-        user_id: _userId,
+        user_id: userId,
         action: "bulk_update_debt_status",
         entity: "Debt",
         entity_id: updatedDebt.id,

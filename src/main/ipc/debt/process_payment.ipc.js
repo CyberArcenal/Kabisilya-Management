@@ -8,11 +8,12 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { debt_ids, payment_data, _userId } = params; 
+    const { debt_ids, payment_data, userId } = params;
     // payment_data: { amount, paymentMethod, referenceNumber, notes }
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     const results = { success: [], failed: [] };
@@ -34,7 +35,10 @@ module.exports = async (params, queryRunner) => {
         const lockedStatuses = ["paid", "settled", "cancelled"];
         if (lockedStatuses.includes(debt.status)) {
           // @ts-ignore
-          results.failed.push({ debt_id, error: `Cannot make payment on debt with status '${debt.status}'` });
+          results.failed.push({
+            debt_id,
+            error: `Cannot make payment on debt with status '${debt.status}'`,
+          });
           continue;
         }
 
@@ -44,17 +48,26 @@ module.exports = async (params, queryRunner) => {
         // Integrity checks
         if (paymentAmount <= 0) {
           // @ts-ignore
-          results.failed.push({ debt_id, error: "Payment amount must be greater than 0" });
+          results.failed.push({
+            debt_id,
+            error: "Payment amount must be greater than 0",
+          });
           continue;
         }
         if (paymentAmount > previousBalance) {
           // @ts-ignore
-          results.failed.push({ debt_id, error: "Payment amount exceeds debt balance" });
+          results.failed.push({
+            debt_id,
+            error: "Payment amount exceeds debt balance",
+          });
           continue;
         }
         if (!payment_data.paymentMethod || !payment_data.referenceNumber) {
           // @ts-ignore
-          results.failed.push({ debt_id, error: "Payment method and reference number are required" });
+          results.failed.push({
+            debt_id,
+            error: "Payment method and reference number are required",
+          });
           continue;
         }
 
@@ -86,9 +99,10 @@ module.exports = async (params, queryRunner) => {
           transactionType: "payment",
           paymentMethod: payment_data.paymentMethod,
           referenceNumber: payment_data.referenceNumber,
-          notes: payment_data.notes || `[${new Date().toISOString()}] Bulk payment`,
+          notes:
+            payment_data.notes || `[${new Date().toISOString()}] Bulk payment`,
           transactionDate: new Date(),
-          performedBy: _userId ? String(_userId) : null,
+          performedBy: userId ? String(userId) : null,
           changeReason: "bulk_payment",
         });
 
@@ -97,7 +111,8 @@ module.exports = async (params, queryRunner) => {
         // Update worker summary
         const worker = debt.worker;
         worker.totalPaid = parseFloat(worker.totalPaid || 0) + paymentAmount;
-        worker.currentBalance = parseFloat(worker.currentBalance || 0) - paymentAmount;
+        worker.currentBalance =
+          parseFloat(worker.currentBalance || 0) - paymentAmount;
         await workerRepository.save(worker);
 
         // @ts-ignore

@@ -1,9 +1,9 @@
 // ipc/worker/export_csv.ipc.js
 //@ts-check
 
-const { stringify } = require('csv-stringify');
-const fs = require('fs');
-const path = require('path');
+const { stringify } = require("csv-stringify");
+const fs = require("fs");
+const path = require("path");
 const Worker = require("../../../entities/Worker");
 const Debt = require("../../../entities/Debt");
 const Payment = require("../../../entities/Payment");
@@ -12,19 +12,19 @@ const { AppDataSource } = require("../../db/dataSource");
 
 module.exports = async function exportWorkersToCSV(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      workerIds = [], 
+      workerIds = [],
       // @ts-ignore
-      status = null, 
+      status = null,
       // @ts-ignore
-      startDate = null, 
+      startDate = null,
       // @ts-ignore
       endDate = null,
       // @ts-ignore
-      includeFields = 'all',
+      includeFields = "all",
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     const workerRepository = AppDataSource.getRepository(Worker);
@@ -32,200 +32,221 @@ module.exports = async function exportWorkersToCSV(params = {}) {
     const paymentRepository = AppDataSource.getRepository(Payment);
 
     // Build query
-    const qb = workerRepository.createQueryBuilder('worker');
+    const qb = workerRepository.createQueryBuilder("worker");
 
     // Apply filters
     if (workerIds && workerIds.length > 0) {
       // @ts-ignore
-      qb.where('worker.id IN (:...workerIds)', { workerIds: workerIds.map(id => parseInt(id)) });
+      qb.where("worker.id IN (:...workerIds)", {
+        workerIds: workerIds.map((id) => parseInt(id)),
+      });
     }
 
     if (status) {
       if (workerIds.length > 0) {
-        qb.andWhere('worker.status = :status', { status });
+        qb.andWhere("worker.status = :status", { status });
       } else {
-        qb.where('worker.status = :status', { status });
+        qb.where("worker.status = :status", { status });
       }
     }
 
     if (startDate && endDate) {
-      qb.andWhere('worker.hireDate BETWEEN :start AND :end', {
+      qb.andWhere("worker.hireDate BETWEEN :start AND :end", {
         start: new Date(startDate),
-        end: new Date(endDate)
+        end: new Date(endDate),
       });
     }
 
-    const workers = await qb.orderBy('worker.name', 'ASC').getMany();
+    const workers = await qb.orderBy("worker.name", "ASC").getMany();
 
     if (workers.length === 0) {
       return {
         status: false,
-        message: 'No workers found matching the criteria',
-        data: null
+        message: "No workers found matching the criteria",
+        data: null,
       };
     }
 
     // Get worker IDs for batch financial queries
-    const workerIdsList = workers.map(w => w.id);
+    const workerIdsList = workers.map((w) => w.id);
 
     // Get financial data in batch
     const [debtResults, paymentResults] = await Promise.all([
       // Get total active debt per worker
       debtRepository
-        .createQueryBuilder('debt')
-        .select('debt.workerId', 'workerId')
-        .addSelect('SUM(debt.balance)', 'totalDebt')
-        .where('debt.workerId IN (:...workerIds)', { workerIds: workerIdsList })
-        .andWhere('debt.status IN (:...statuses)', { 
-          statuses: ['pending', 'partially_paid'] 
+        .createQueryBuilder("debt")
+        .select("debt.workerId", "workerId")
+        .addSelect("SUM(debt.balance)", "totalDebt")
+        .where("debt.workerId IN (:...workerIds)", { workerIds: workerIdsList })
+        .andWhere("debt.status IN (:...statuses)", {
+          statuses: ["pending", "partially_paid"],
         })
-        .groupBy('debt.workerId')
+        .groupBy("debt.workerId")
         .getRawMany(),
-      
+
       // Get total payments per worker
       paymentRepository
-        .createQueryBuilder('payment')
-        .select('payment.workerId', 'workerId')
-        .addSelect('SUM(payment.netPay)', 'totalPaid')
-        .where('payment.workerId IN (:...workerIds)', { workerIds: workerIdsList })
-        .groupBy('payment.workerId')
-        .getRawMany()
+        .createQueryBuilder("payment")
+        .select("payment.workerId", "workerId")
+        .addSelect("SUM(payment.netPay)", "totalPaid")
+        .where("payment.workerId IN (:...workerIds)", {
+          workerIds: workerIdsList,
+        })
+        .groupBy("payment.workerId")
+        .getRawMany(),
     ]);
 
     // Create lookup maps
     const debtMap = new Map();
-    debtResults.forEach(d => {
+    debtResults.forEach((d) => {
       debtMap.set(d.workerId, parseFloat(d.totalDebt) || 0);
     });
 
     const paymentMap = new Map();
-    paymentResults.forEach(p => {
+    paymentResults.forEach((p) => {
       paymentMap.set(p.workerId, parseFloat(p.totalPaid) || 0);
     });
 
     // Define field mappings (removed kabisilyaName)
     const allFields = [
-      { key: 'id', header: 'ID' },
-      { key: 'name', header: 'Name' },
-      { key: 'contact', header: 'Contact' },
-      { key: 'email', header: 'Email' },
-      { key: 'address', header: 'Address' },
-      { key: 'status', header: 'Status' },
-      { key: 'hireDate', header: 'Hire Date' },
-      { key: 'totalDebt', header: 'Total Debt' },
-      { key: 'totalPaid', header: 'Total Paid' },
-      { key: 'currentBalance', header: 'Current Balance' },
-      { key: 'createdAt', header: 'Created At' },
-      { key: 'updatedAt', header: 'Updated At' }
+      { key: "id", header: "ID" },
+      { key: "name", header: "Name" },
+      { key: "contact", header: "Contact" },
+      { key: "email", header: "Email" },
+      { key: "address", header: "Address" },
+      { key: "status", header: "Status" },
+      { key: "hireDate", header: "Hire Date" },
+      { key: "totalDebt", header: "Total Debt" },
+      { key: "totalPaid", header: "Total Paid" },
+      { key: "currentBalance", header: "Current Balance" },
+      { key: "createdAt", header: "Created At" },
+      { key: "updatedAt", header: "Updated At" },
     ];
 
     // Filter fields based on includeFields parameter
     let selectedFields = allFields;
-    if (includeFields !== 'all') {
+    if (includeFields !== "all") {
       if (Array.isArray(includeFields)) {
-        selectedFields = allFields.filter(field => includeFields.includes(field.key));
-      } else if (typeof includeFields === 'string') {
+        selectedFields = allFields.filter((field) =>
+          includeFields.includes(field.key),
+        );
+      } else if (typeof includeFields === "string") {
         const fieldGroups = {
-          'basic': ['id', 'name', 'contact', 'email', 'status'],
-          'contact': ['id', 'name', 'contact', 'email', 'address'],
-          'financial': ['id', 'name', 'totalDebt', 'totalPaid', 'currentBalance'],
-          'employment': ['id', 'name', 'hireDate', 'status']
+          basic: ["id", "name", "contact", "email", "status"],
+          contact: ["id", "name", "contact", "email", "address"],
+          financial: ["id", "name", "totalDebt", "totalPaid", "currentBalance"],
+          employment: ["id", "name", "hireDate", "status"],
         };
-        
+
         // @ts-ignore
         if (fieldGroups[includeFields]) {
           // @ts-ignore
-          selectedFields = allFields.filter(field => fieldGroups[includeFields].includes(field.key));
+          selectedFields = allFields.filter((field) =>
+            fieldGroups[includeFields].includes(field.key),
+          );
         }
       }
     }
 
     // Prepare data for CSV with calculated financial fields
-    const csvData = workers.map(worker => {
+    const csvData = workers.map((worker) => {
       const row = {};
-      
+
       // Get financial data for this worker
       const workerDebt = debtMap.get(worker.id) || 0;
       const workerPaid = paymentMap.get(worker.id) || 0;
       const workerBalance = workerPaid - workerDebt;
-      
-      selectedFields.forEach(field => {
+
+      selectedFields.forEach((field) => {
         switch (field.key) {
-          case 'id':
+          case "id":
             // @ts-ignore
             row[field.header] = worker.id;
             break;
-          case 'name':
+          case "name":
             // @ts-ignore
             row[field.header] = worker.name;
             break;
-          case 'contact':
+          case "contact":
             // @ts-ignore
-            row[field.header] = worker.contact || '';
+            row[field.header] = worker.contact || "";
             break;
-          case 'email':
+          case "email":
             // @ts-ignore
-            row[field.header] = worker.email || '';
+            row[field.header] = worker.email || "";
             break;
-          case 'address':
+          case "address":
             // @ts-ignore
-            row[field.header] = worker.address || '';
+            row[field.header] = worker.address || "";
             break;
-          case 'status':
+          case "status":
             // @ts-ignore
             row[field.header] = worker.status;
             break;
-          case 'hireDate':
+          case "hireDate":
             // @ts-ignore
-            row[field.header] = worker.hireDate ? worker.hireDate.toISOString().split('T')[0] : '';
+            row[field.header] = worker.hireDate
+              ? worker.hireDate.toISOString().split("T")[0]
+              : "";
             break;
-          case 'totalDebt':
+          case "totalDebt":
             // @ts-ignore
             row[field.header] = workerDebt;
             break;
-          case 'totalPaid':
+          case "totalPaid":
             // @ts-ignore
             row[field.header] = workerPaid;
             break;
-          case 'currentBalance':
+          case "currentBalance":
             // @ts-ignore
             row[field.header] = workerBalance;
             break;
-          case 'createdAt':
+          case "createdAt":
             // @ts-ignore
-            row[field.header] = worker.createdAt ? worker.createdAt.toISOString().split('T')[0] : '';
+            row[field.header] = worker.createdAt
+              ? worker.createdAt.toISOString().split("T")[0]
+              : "";
             break;
-          case 'updatedAt':
+          case "updatedAt":
             // @ts-ignore
-            row[field.header] = worker.updatedAt ? worker.updatedAt.toISOString().split('T')[0] : '';
+            row[field.header] = worker.updatedAt
+              ? worker.updatedAt.toISOString().split("T")[0]
+              : "";
             break;
         }
       });
-      
+
       return row;
     });
 
     // Generate CSV string
     const csvString = await new Promise((resolve, reject) => {
-      stringify(csvData, {
-        header: true,
-        columns: selectedFields.map(field => ({ key: field.header, header: field.header })),
-        delimiter: ','
-      }, (err, output) => {
-        if (err) reject(err);
-        else resolve(output);
-      });
+      stringify(
+        csvData,
+        {
+          header: true,
+          columns: selectedFields.map((field) => ({
+            key: field.header,
+            header: field.header,
+          })),
+          delimiter: ",",
+        },
+        (err, output) => {
+          if (err) reject(err);
+          else resolve(output);
+        },
+      );
     });
 
     // Create temporary file
     const timestamp = new Date().getTime();
     const fileName = `workers_export_${timestamp}.csv`;
-    const tempDir = path.join(__dirname, '../../../../temp');
-    
+    const tempDir = path.join(__dirname, "../../../../temp");
+
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
-    
+
     const filePath = path.join(tempDir, fileName);
     fs.writeFileSync(filePath, csvString);
 
@@ -233,31 +254,38 @@ module.exports = async function exportWorkersToCSV(params = {}) {
     const activityRepo = AppDataSource.getRepository(UserActivity);
     // @ts-ignore
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'export_workers_csv',
+      user_id: userId,
+      action: "export_workers_csv",
       description: `Exported ${workers.length} workers to CSV`,
       details: JSON.stringify({
         fileName,
         workerCount: workers.length,
         filters: {
-          workerIds: workerIds.length > 0 ? workerIds.length : 'all',
+          workerIds: workerIds.length > 0 ? workerIds.length : "all",
           status,
-          dateRange: startDate && endDate ? `${startDate} to ${endDate}` : 'all'
-        }
+          dateRange:
+            startDate && endDate ? `${startDate} to ${endDate}` : "all",
+        },
       }),
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
     // Read file as base64
     const fileBuffer = fs.readFileSync(filePath);
-    const base64Data = fileBuffer.toString('base64');
+    const base64Data = fileBuffer.toString("base64");
 
     // Calculate summary statistics
-    const totalDebt = Array.from(debtMap.values()).reduce((sum, val) => sum + val, 0);
-    const totalPaid = Array.from(paymentMap.values()).reduce((sum, val) => sum + val, 0);
+    const totalDebt = Array.from(debtMap.values()).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
+    const totalPaid = Array.from(paymentMap.values()).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
     const totalBalance = totalPaid - totalDebt;
 
     // Clean up temporary file
@@ -265,7 +293,7 @@ module.exports = async function exportWorkersToCSV(params = {}) {
       try {
         fs.unlinkSync(filePath);
       } catch (error) {
-        console.warn('Failed to delete temporary export file:', error);
+        console.warn("Failed to delete temporary export file:", error);
       }
     }, 30000);
 
@@ -279,11 +307,11 @@ module.exports = async function exportWorkersToCSV(params = {}) {
           filePath,
           fileSize: fileBuffer.length,
           workerCount: workers.length,
-          fieldsExported: selectedFields.length
+          fieldsExported: selectedFields.length,
         },
         download: {
           base64: base64Data,
-          mimeType: 'text/csv'
+          mimeType: "text/csv",
         },
         summary: {
           totalWorkers: workers.length,
@@ -294,18 +322,18 @@ module.exports = async function exportWorkersToCSV(params = {}) {
           }, {}),
           totalDebt: totalDebt,
           totalPaid: totalPaid,
-          totalBalance: totalBalance
+          totalBalance: totalBalance,
         },
-        sampleData: csvData.slice(0, 3)
-      }
+        sampleData: csvData.slice(0, 3),
+      },
     };
   } catch (error) {
-    console.error('Error in exportWorkersToCSV:', error);
+    console.error("Error in exportWorkersToCSV:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to export workers to CSV: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

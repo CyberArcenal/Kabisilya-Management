@@ -5,9 +5,12 @@ const Notification = require("../../../entities/Notification");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function bulkDeleteNotifications(params = {}, queryRunner = null) {
+module.exports = async function bulkDeleteNotifications(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -20,27 +23,31 @@ module.exports = async function bulkDeleteNotifications(params = {}, queryRunner
 
   try {
     // @ts-ignore
-    const { ids, olderThan, type, _userId } = params;
-    
+    const { ids, olderThan, type, userId } = params;
+
     // @ts-ignore
     const notificationRepo = queryRunner.manager.getRepository(Notification);
-    
+
     let deleteQuery = notificationRepo.createQueryBuilder("notification");
-    
+
     // Build conditions
     if (ids && ids.length > 0) {
       deleteQuery.where("notification.id IN (:...ids)", { ids });
     }
-    
+
     if (olderThan) {
       const cutoffDate = new Date(olderThan);
       if (ids && ids.length > 0) {
-        deleteQuery.andWhere("notification.timestamp < :cutoffDate", { cutoffDate });
+        deleteQuery.andWhere("notification.timestamp < :cutoffDate", {
+          cutoffDate,
+        });
       } else {
-        deleteQuery.where("notification.timestamp < :cutoffDate", { cutoffDate });
+        deleteQuery.where("notification.timestamp < :cutoffDate", {
+          cutoffDate,
+        });
       }
     }
-    
+
     if (type) {
       if ((ids && ids.length > 0) || olderThan) {
         deleteQuery.andWhere("notification.type = :type", { type });
@@ -60,12 +67,12 @@ module.exports = async function bulkDeleteNotifications(params = {}, queryRunner
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'bulk_delete_notifications',
+      user_id: userId,
+      action: "bulk_delete_notifications",
       description: `Bulk deleted ${result.affected} notifications`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -77,19 +84,19 @@ module.exports = async function bulkDeleteNotifications(params = {}, queryRunner
     return {
       status: true,
       message: `Successfully deleted ${result.affected} notifications`,
-      data: { deletedCount: result.affected }
+      data: { deletedCount: result.affected },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in bulkDeleteNotifications:', error);
+    console.error("Error in bulkDeleteNotifications:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to bulk delete notifications: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

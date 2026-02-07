@@ -24,7 +24,7 @@ module.exports = async function updateWorkerStatus(
 
   try {
     // @ts-ignore
-    const { id, status, notes, _userId } = params;
+    const { id, status, notes, userId } = params;
 
     if (!id || !status) {
       return {
@@ -78,7 +78,7 @@ module.exports = async function updateWorkerStatus(
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "update_worker_status",
       description: `Updated worker status: ${existingWorker.name} from ${oldStatus} to ${status}`,
       details: JSON.stringify({

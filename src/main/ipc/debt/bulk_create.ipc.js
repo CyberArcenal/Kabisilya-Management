@@ -6,7 +6,7 @@ const { farmSessionDefaultSessionId } = require("../../../utils/system");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { payments, _userId } = params;
+    const { payments, userId } = params;
 
     if (!payments || !Array.isArray(payments) || payments.length === 0) {
       return {
@@ -27,7 +27,8 @@ module.exports = async (params, queryRunner) => {
     }
 
     const paymentRepository = queryRunner.manager.getRepository("Payment");
-    const paymentHistoryRepository = queryRunner.manager.getRepository("PaymentHistory");
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository("PaymentHistory");
     const workerRepository = queryRunner.manager.getRepository("Worker");
     // @ts-ignore
     const debtRepository = queryRunner.manager.getRepository("Debt");
@@ -40,22 +41,31 @@ module.exports = async (params, queryRunner) => {
 
       try {
         if (!paymentData.worker_id || !paymentData.grossPay) {
-          errors.push(`Payment ${i + 1}: Missing required fields (worker_id or grossPay)`);
+          errors.push(
+            `Payment ${i + 1}: Missing required fields (worker_id or grossPay)`,
+          );
           continue;
         }
 
-        const worker = await workerRepository.findOne({ where: { id: paymentData.worker_id } });
+        const worker = await workerRepository.findOne({
+          where: { id: paymentData.worker_id },
+        });
         if (!worker) {
-          errors.push(`Payment ${i + 1}: Worker with ID ${paymentData.worker_id} not found`);
+          errors.push(
+            `Payment ${i + 1}: Worker with ID ${paymentData.worker_id} not found`,
+          );
           continue;
         }
 
         const grossPay = parseFloat(paymentData.grossPay);
         const manualDeduction = parseFloat(paymentData.manualDeduction || 0);
-        const totalDebtDeduction = parseFloat(paymentData.totalDebtDeduction || 0);
+        const totalDebtDeduction = parseFloat(
+          paymentData.totalDebtDeduction || 0,
+        );
         const otherDeductions = parseFloat(paymentData.otherDeductions || 0);
 
-        const netPay = grossPay - manualDeduction - totalDebtDeduction - otherDeductions;
+        const netPay =
+          grossPay - manualDeduction - totalDebtDeduction - otherDeductions;
 
         // ✅ Create payment tied to session
         const payment = paymentRepository.create({
@@ -88,7 +98,7 @@ module.exports = async (params, queryRunner) => {
           oldAmount: 0,
           newAmount: grossPay,
           notes: "Bulk payment creation",
-          performedBy: _userId ? String(_userId) : "system",
+          performedBy: userId ? String(userId) : "system",
           changeDate: new Date(),
         });
 
@@ -96,7 +106,10 @@ module.exports = async (params, queryRunner) => {
 
         if (totalDebtDeduction > 0) {
           worker.totalPaid = parseFloat(worker.totalPaid) + totalDebtDeduction;
-          worker.currentBalance = Math.max(0, parseFloat(worker.currentBalance) - totalDebtDeduction);
+          worker.currentBalance = Math.max(
+            0,
+            parseFloat(worker.currentBalance) - totalDebtDeduction,
+          );
           await workerRepository.save(worker);
         }
 

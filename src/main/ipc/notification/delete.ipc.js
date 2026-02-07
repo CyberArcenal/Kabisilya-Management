@@ -5,9 +5,12 @@ const Notification = require("../../../entities/Notification");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function deleteNotification(params = {}, queryRunner = null) {
+module.exports = async function deleteNotification(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -20,46 +23,46 @@ module.exports = async function deleteNotification(params = {}, queryRunner = nu
 
   try {
     // @ts-ignore
-    const { id, _userId } = params;
-    
+    const { id, userId } = params;
+
     if (!id) {
       return {
         status: false,
-        message: 'Notification ID is required',
-        data: null
+        message: "Notification ID is required",
+        data: null,
       };
     }
 
     // @ts-ignore
     const notificationRepo = queryRunner.manager.getRepository(Notification);
-    
+
     // Find existing notification
     const existingNotification = await notificationRepo.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!existingNotification) {
       return {
         status: false,
-        message: 'Notification not found',
-        data: null
+        message: "Notification not found",
+        data: null,
       };
     }
 
     // Delete notification
     // @ts-ignore
     await queryRunner.manager.remove(existingNotification);
-    
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'delete_notification',
+      user_id: userId,
+      action: "delete_notification",
       description: `Deleted notification ID: ${id}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -70,20 +73,20 @@ module.exports = async function deleteNotification(params = {}, queryRunner = nu
 
     return {
       status: true,
-      message: 'Notification deleted successfully',
-      data: { deletedId: id }
+      message: "Notification deleted successfully",
+      data: { deletedId: id },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in deleteNotification:', error);
+    console.error("Error in deleteNotification:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to delete notification: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

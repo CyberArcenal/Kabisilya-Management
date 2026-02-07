@@ -6,7 +6,10 @@ const DebtHistory = require("../../../entities/DebtHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function updateDebtStatus(params = {}, queryRunner = null) {
+module.exports = async function updateDebtStatus(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -21,10 +24,14 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
 
   try {
     // @ts-ignore
-    const { id, status, notes, _userId } = params;
+    const { id, status, notes, userId } = params;
 
     if (!id || !status) {
-      return { status: false, message: "Debt ID and status are required", data: null };
+      return {
+        status: false,
+        message: "Debt ID and status are required",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -41,16 +48,28 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
 
     const validStatuses = ["active", "cancelled", "partially_paid", "paid"];
     if (!validStatuses.includes(status)) {
-      return { status: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`, data: null };
+      return {
+        status: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        data: null,
+      };
     }
 
     if (debt.status === status) {
-      return { status: false, message: `Debt is already ${status}`, data: debt };
+      return {
+        status: false,
+        message: `Debt is already ${status}`,
+        data: debt,
+      };
     }
 
     // Prevent rollback: once settled, cannot go back to active
     if (debt.status === "settled" && status === "active") {
-      return { status: false, message: "Cannot revert a settled debt back to active", data: null };
+      return {
+        status: false,
+        message: "Cannot revert a settled debt back to active",
+        data: null,
+      };
     }
 
     const oldStatus = debt.status;
@@ -71,7 +90,7 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
         transactionType: "payment",
         notes: notes || "Auto-settled by status update",
         transactionDate: new Date(),
-        performedBy: _userId ? String(_userId) : null,
+        performedBy: userId ? String(userId) : null,
         changeReason: "auto_settle",
       });
       await debtHistoryRepo.save(history);
@@ -80,7 +99,8 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
       debt.status = status;
       debt.updatedAt = new Date();
       if (notes) {
-        debt.notes = (debt.notes ? debt.notes + "\n" : "") +
+        debt.notes =
+          (debt.notes ? debt.notes + "\n" : "") +
           `[${new Date().toISOString()}] Status changed to ${status}: ${notes}`;
       }
     }
@@ -89,7 +109,7 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
 
     // Log UserActivity
     await activityRepo.save({
-      user_id: _userId,
+      user_id: userId,
       action: "update_debt_status",
       entity: "Debt",
       entity_id: updatedDebt.id,
@@ -124,7 +144,11 @@ module.exports = async function updateDebtStatus(params = {}, queryRunner = null
     }
     console.error("Error updating debt status:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to update debt status: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to update debt status: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

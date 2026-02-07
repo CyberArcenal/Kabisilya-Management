@@ -19,7 +19,7 @@ module.exports = async (params, queryRunner) => {
       sideLengths = null, // 🆕 new field (JSON)
       areaSqm = 0.0, // 🆕 new field
 
-      _userId,
+      userId,
     } = params;
 
     if (!bukidId) {
@@ -76,7 +76,7 @@ module.exports = async (params, queryRunner) => {
 
     // ✅ Log activity with session context
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
+      user_id: userId,
       action: "create_pitak",
       entity: "Pitak",
       entity_id: savedPitak.id,

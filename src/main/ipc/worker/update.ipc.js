@@ -8,7 +8,7 @@ const { AppDataSource } = require("../../db/dataSource");
 
 module.exports = async function updateWorker(params = {}, queryRunner = null) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -21,27 +21,28 @@ module.exports = async function updateWorker(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { id, name, contact, email, address, status, hireDate, _userId } = params;
-    
+    const { id, name, contact, email, address, status, hireDate, userId } =
+      params;
+
     if (!id) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
     // @ts-ignore
     const workerRepository = queryRunner.manager.getRepository(Worker);
     const existingWorker = await workerRepository.findOne({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
 
     if (!existingWorker) {
       return {
         status: false,
-        message: 'Worker not found',
-        data: null
+        message: "Worker not found",
+        data: null,
       };
     }
 
@@ -51,34 +52,38 @@ module.exports = async function updateWorker(params = {}, queryRunner = null) {
       if (emailExists) {
         return {
           status: false,
-          message: 'Worker with this email already exists',
-          data: null
+          message: "Worker with this email already exists",
+          data: null,
         };
       }
     }
 
     // Update worker
     existingWorker.name = name || existingWorker.name;
-    existingWorker.contact = contact !== undefined ? contact : existingWorker.contact;
+    existingWorker.contact =
+      contact !== undefined ? contact : existingWorker.contact;
     existingWorker.email = email !== undefined ? email : existingWorker.email;
-    existingWorker.address = address !== undefined ? address : existingWorker.address;
+    existingWorker.address =
+      address !== undefined ? address : existingWorker.address;
     existingWorker.status = status || existingWorker.status;
-    existingWorker.hireDate = hireDate ? new Date(hireDate) : existingWorker.hireDate;
+    existingWorker.hireDate = hireDate
+      ? new Date(hireDate)
+      : existingWorker.hireDate;
     existingWorker.updatedAt = new Date();
 
     // @ts-ignore
     const updatedWorker = await queryRunner.manager.save(existingWorker);
-    
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'update_worker',
+      user_id: userId,
+      action: "update_worker",
       description: `Updated worker: ${existingWorker.name} (ID: ${id})`,
       ip_address: "127.0.0.1",
       user_agent: "Worker-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -89,20 +94,20 @@ module.exports = async function updateWorker(params = {}, queryRunner = null) {
 
     return {
       status: true,
-      message: 'Worker updated successfully',
-      data: { worker: updatedWorker }
+      message: "Worker updated successfully",
+      data: { worker: updatedWorker },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in updateWorker:', error);
+    console.error("Error in updateWorker:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update worker: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

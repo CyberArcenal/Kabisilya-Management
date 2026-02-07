@@ -14,7 +14,7 @@ module.exports = async (params) => {
       excludePitakId = null,
       radiusKm = null,
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!bukidId) {

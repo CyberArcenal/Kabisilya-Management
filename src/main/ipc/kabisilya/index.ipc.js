@@ -23,7 +23,7 @@
 //     this.createKabisilya = this.importHandler("./create.ipc.js");
 //     this.updateKabisilya = this.importHandler("./update.ipc.js");
 //     this.deleteKabisilya = this.importHandler("./delete.ipc.js");
-    
+
 //     // 🔄 ASSIGNMENT HANDLERS
 //     this.assignWorkerToKabisilya = this.importHandler("./assign_worker.ipc.js");
 //     this.assignBukidToKabisilya = this.importHandler("./assign_bukid.ipc.js");
@@ -57,7 +57,7 @@
 
 //       // @ts-ignore
 //       const userId = params.userId || event.sender.id || 0;
-//       const enrichedParams = { ...params, _userId: userId };
+//       const enrichedParams = { ...params, userId: userId };
 
 //       // Log the request
 //       if (logger) {
@@ -145,7 +145,7 @@
 //   /**
 //    * Wrap critical operations in a database transaction
 //    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-//    * @param {{ _userId: any; }} params
+//    * @param {{ userId: any; }} params
 //    */
 //   async handleWithTransaction(handler, params) {
 //     const queryRunner = AppDataSource.createQueryRunner();

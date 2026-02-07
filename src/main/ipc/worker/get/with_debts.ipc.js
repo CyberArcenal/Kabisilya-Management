@@ -12,13 +12,13 @@ module.exports = async function getWorkerWithDebts(params = {}) {
   try {
     // @ts-ignore
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, userId } = params;
 
     if (!id) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
@@ -28,14 +28,14 @@ module.exports = async function getWorkerWithDebts(params = {}) {
 
     const worker = await workerRepository.findOne({
       where: { id: parseInt(id) },
-      relations: ['debts', 'debts.history']
+      relations: ["debts", "debts.history"],
     });
 
     if (!worker) {
       return {
         status: false,
-        message: 'Worker not found',
-        data: null
+        message: "Worker not found",
+        data: null,
       };
     }
 
@@ -47,18 +47,18 @@ module.exports = async function getWorkerWithDebts(params = {}) {
         .select("SUM(payment.netPay)", "totalPaid")
         .where("payment.workerId = :workerId", { workerId: id })
         .getRawOne(),
-      
+
       // Debt statistics
       debtRepository
         .createQueryBuilder("debt")
         .select([
           "COUNT(*) as totalDebts",
           "SUM(CASE WHEN debt.status IN (:...activeStatuses) THEN debt.balance ELSE 0 END) as activeDebt",
-          "SUM(CASE WHEN debt.status = 'paid' THEN debt.amount ELSE 0 END) as paidDebt"
+          "SUM(CASE WHEN debt.status = 'paid' THEN debt.amount ELSE 0 END) as paidDebt",
         ])
         .where("debt.workerId = :workerId", { workerId: id })
-        .setParameter("activeStatuses", ['pending', 'partially_paid'])
-        .getRawOne()
+        .setParameter("activeStatuses", ["pending", "partially_paid"])
+        .getRawOne(),
     ]);
 
     const totalPaid = parseFloat(paymentSummary?.totalPaid || 0);
@@ -69,25 +69,25 @@ module.exports = async function getWorkerWithDebts(params = {}) {
 
     // Calculate active debts from loaded relations
     // @ts-ignore
-    const activeDebts = worker.debts.filter(debt =>
-      debt.status === 'pending' || debt.status === 'partially_paid'
+    const activeDebts = worker.debts.filter(
+      (debt) => debt.status === "pending" || debt.status === "partially_paid",
     );
-    
+
     const totalActiveDebt = activeDebts.reduce(
       // @ts-ignore
-      (sum, debt) => sum + parseFloat(debt.balance || debt.amount || 0), 
-      0
+      (sum, debt) => sum + parseFloat(debt.balance || debt.amount || 0),
+      0,
     );
 
     return {
       status: true,
-      message: 'Worker with debts retrieved successfully',
-      data: { 
+      message: "Worker with debts retrieved successfully",
+      data: {
         worker: {
           ...worker,
           totalDebt: totalDebt,
           totalPaid: totalPaid,
-          currentBalance: currentBalance
+          currentBalance: currentBalance,
         },
         debtSummary: {
           // @ts-ignore
@@ -95,23 +95,23 @@ module.exports = async function getWorkerWithDebts(params = {}) {
           activeDebts: activeDebts.length,
           totalActiveDebt: totalActiveDebt,
           // @ts-ignore
-          paidDebts: worker.debts.filter(d => d.status === 'paid').length,
+          paidDebts: worker.debts.filter((d) => d.status === "paid").length,
           financialSummary: {
             totalPaid: totalPaid,
             activeDebt: activeDebt,
             paidDebt: paidDebt,
-            currentBalance: currentBalance
-          }
-        }
-      }
+            currentBalance: currentBalance,
+          },
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getWorkerWithDebts:', error);
+    console.error("Error in getWorkerWithDebts:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve worker debts: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

@@ -25,7 +25,7 @@ module.exports = async (params, queryRunner) => {
       // @ts-ignore
       copyAssignments = false, // <-- existing flag
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!sessionId) {

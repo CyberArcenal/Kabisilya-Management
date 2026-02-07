@@ -5,9 +5,12 @@ const { Not } = require("typeorm");
 const Pitak = require("../../../entities/Pitak");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async (/** @type {{ id: any; location: any; _userId: any; }} */ params, /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner) => {
+module.exports = async (
+  /** @type {{ id: any; location: any; userId: any; }} */ params,
+  /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner,
+) => {
   try {
-    const { id, location, _userId } = params;
+    const { id, location, userId } = params;
 
     if (!id) {
       return { status: false, message: "Pitak ID is required", data: null };
@@ -32,21 +35,22 @@ module.exports = async (/** @type {{ id: any; location: any; _userId: any; }} */
         where: {
           bukidId: pitak.bukidId,
           location,
-          id: Not(id)
-        }
+          id: Not(id),
+        },
       });
-      
+
       if (existing) {
-        return { 
-          status: false, 
-          message: "Another pitak already exists at this location in the same bukid", 
-          data: null 
+        return {
+          status: false,
+          message:
+            "Another pitak already exists at this location in the same bukid",
+          data: null,
         };
       }
     }
 
     const oldLocation = pitak.location;
-    
+
     // Update location
     pitak.location = location;
     pitak.updatedAt = new Date();
@@ -55,35 +59,34 @@ module.exports = async (/** @type {{ id: any; location: any; _userId: any; }} */
 
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
-      action: 'update_pitak_location',
-      entity: 'Pitak',
+      user_id: userId,
+      action: "update_pitak_location",
+      entity: "Pitak",
       entity_id: updatedPitak.id,
       details: JSON.stringify({
         oldLocation,
         newLocation: location,
-        bukidId: pitak.bukidId
-      })
+        bukidId: pitak.bukidId,
+      }),
     });
 
     return {
       status: true,
-      message: `Pitak location updated${oldLocation ? ` from "${oldLocation}"` : ''} to "${location}"`,
+      message: `Pitak location updated${oldLocation ? ` from "${oldLocation}"` : ""} to "${location}"`,
       data: {
         id: updatedPitak.id,
         oldLocation,
         newLocation: updatedPitak.location,
-        updatedAt: updatedPitak.updatedAt
-      }
+        updatedAt: updatedPitak.updatedAt,
+      },
     };
-
   } catch (error) {
     console.error("Error updating pitak location:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update pitak location: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

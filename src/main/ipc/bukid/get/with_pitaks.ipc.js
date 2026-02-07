@@ -9,19 +9,19 @@ const { farmSessionDefaultSessionId } = require("../../../../utils/system");
  * Get bukid with pitaks scoped to current session
  * @param {Object} params - Parameters
  * @param {number} params.id - Bukid ID
- * @param {number} params._userId - User ID for logging
+ * @param {number} params.userId - User ID for logging
  * @returns {Promise<Object>} Response object
  */
 module.exports = async function getBukidWithPitaks(params = {}) {
   try {
     const bukidRepository = AppDataSource.getRepository(Bukid);
-    const { id, _userId } = params;
-    
+    const { id, userId } = params;
+
     if (!id) {
       return {
         status: false,
-        message: 'Bukid ID is required',
-        data: null
+        message: "Bukid ID is required",
+        data: null,
       };
     }
 
@@ -29,32 +29,32 @@ module.exports = async function getBukidWithPitaks(params = {}) {
     const currentSessionId = await farmSessionDefaultSessionId();
 
     const bukid = await bukidRepository.findOne({
-      where: { 
+      where: {
         id,
-        session: { id: currentSessionId }
+        session: { id: currentSessionId },
       },
-      relations: ['pitaks', 'pitaks.assignments', 'pitaks.assignments.worker']
+      relations: ["pitaks", "pitaks.assignments", "pitaks.assignments.worker"],
     });
 
     if (!bukid) {
       return {
         status: false,
-        message: 'Bukid not found in current session',
-        data: null
+        message: "Bukid not found in current session",
+        data: null,
       };
     }
 
     return {
       status: true,
-      message: 'Bukid with pitaks retrieved successfully',
-      data: { bukid }
+      message: "Bukid with pitaks retrieved successfully",
+      data: { bukid },
     };
   } catch (error) {
-    console.error('Error in getBukidWithPitaks:', error);
+    console.error("Error in getBukidWithPitaks:", error);
     return {
       status: false,
       message: `Failed to retrieve bukid: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

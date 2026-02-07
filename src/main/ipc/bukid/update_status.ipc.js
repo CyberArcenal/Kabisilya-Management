@@ -25,7 +25,7 @@ const { generateReferenceNumber } = require("../debt/utils/reference");
  *  - Duplicate prevention relies on a DB unique index on (pitak_id, worker_id, session_id)
  *    and a pre-check + SQLite unique-constraint catch.
  *
- * @param {{ id: any; status: string; notes?: string; _userId?: any }} params
+ * @param {{ id: any; status: string; notes?: string; userId?: any }} params
  * @param {import("typeorm").QueryRunner|null} queryRunner
  */
 // @ts-ignore
@@ -48,7 +48,7 @@ module.exports = async function updateBukidStatus(
   }
 
   try {
-    const { id, status, notes, _userId } = params || {};
+    const { id, status, notes, userId } = params || {};
 
     if (!id || !status) {
       return {
@@ -182,7 +182,7 @@ module.exports = async function updateBukidStatus(
                 oldAmount: 0.0,
                 newAmount: grossPay,
                 notes: "Payment auto-generated from bukid completion",
-                performedBy: _userId ? String(_userId) : null,
+                performedBy: userId ? String(userId) : null,
                 changeDate: new Date(),
               });
               await paymentHistoryRepo.save(history);

@@ -27,7 +27,7 @@ module.exports = async function importWorkersFromCSV(
 
   try {
     // @ts-ignore
-    const { filePath, hasHeader = true, delimiter = ",", _userId } = params;
+    const { filePath, hasHeader = true, delimiter = ",", userId } = params;
 
     if (!filePath) {
       return {
@@ -250,7 +250,7 @@ module.exports = async function importWorkersFromCSV(
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "import_workers_csv",
       description: `Imported ${createdWorkers.length} workers from CSV`,
       details: JSON.stringify({

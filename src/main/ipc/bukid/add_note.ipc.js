@@ -20,7 +20,7 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { id, note, _userId } = params;
+    const { id, note, userId } = params;
 
     if (!id || !note) {
       return {
@@ -45,7 +45,7 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
 
     // Add note (assuming Bukid entity has a `notes` field)
     const currentNotes = bukid.notes || "";
-    console.log(currentNotes)
+    console.log(currentNotes);
     const newNotes = currentNotes
       ? `${currentNotes}\n${new Date().toISOString()}: ${note}`
       : `${new Date().toISOString()}: ${note}`;
@@ -59,7 +59,7 @@ module.exports = async function addBukidNote(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "add_bukid_note",
       entity: "Bukid",
       entity_id: updatedBukid.id,

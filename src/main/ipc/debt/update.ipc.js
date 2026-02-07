@@ -8,10 +8,20 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, amount, reason, dueDate, interestRate, paymentTerm, notes, _userId } = params;
+    const {
+      id,
+      amount,
+      reason,
+      dueDate,
+      interestRate,
+      paymentTerm,
+      notes,
+      userId,
+    } = params;
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     // Get current debt with worker
@@ -60,7 +70,8 @@ module.exports = async (params, queryRunner) => {
     // Update other fields
     if (reason !== undefined) debt.reason = reason;
     if (dueDate !== undefined) debt.dueDate = dueDate;
-    if (interestRate !== undefined) debt.interestRate = parseFloat(interestRate);
+    if (interestRate !== undefined)
+      debt.interestRate = parseFloat(interestRate);
     if (paymentTerm !== undefined) debt.paymentTerm = paymentTerm;
     if (notes !== undefined) {
       debt.notes =
@@ -74,8 +85,14 @@ module.exports = async (params, queryRunner) => {
 
     // Update worker's totals if amount changed
     if (amountDifference !== 0) {
-      worker.totalDebt = Math.max(0, parseFloat(worker.totalDebt || 0) + amountDifference);
-      worker.currentBalance = Math.max(0, parseFloat(worker.currentBalance || 0) + amountDifference);
+      worker.totalDebt = Math.max(
+        0,
+        parseFloat(worker.totalDebt || 0) + amountDifference,
+      );
+      worker.currentBalance = Math.max(
+        0,
+        parseFloat(worker.currentBalance || 0) + amountDifference,
+      );
       await workerRepository.save(worker);
 
       // Log adjustment in history
@@ -87,7 +104,7 @@ module.exports = async (params, queryRunner) => {
         transactionType: "adjustment",
         notes: `Debt amount adjusted by ${amountDifference > 0 ? "+" : ""}${amountDifference}`,
         transactionDate: new Date(),
-        performedBy: _userId ? String(_userId) : null,
+        performedBy: userId ? String(userId) : null,
         changeReason: "debt_update",
       });
       await debtHistoryRepository.save(history);

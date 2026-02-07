@@ -23,7 +23,7 @@ module.exports = async function createPayment(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { workerId, pitakId, grossPay, periodStart, periodEnd, _userId } =
+    const { workerId, pitakId, grossPay, periodStart, periodEnd, userId } =
       params;
 
     if (!workerId || !grossPay) {
@@ -88,7 +88,7 @@ module.exports = async function createPayment(params = {}, queryRunner = null) {
       oldValue: null,
       newValue: "pending",
       notes: "Payment created",
-      performedBy: _userId,
+      performedBy: userId,
       changeDate: new Date(),
     });
     // @ts-ignore
@@ -98,7 +98,7 @@ module.exports = async function createPayment(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "create_payment",
       entity: "Payment",
       entity_id: savedPayment.id,

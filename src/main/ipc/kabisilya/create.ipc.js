@@ -11,11 +11,11 @@ const Kabisilya = require("../../../entities/Kabisilya");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       name,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
@@ -23,22 +23,22 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Kabisilya name is required",
-        data: null
+        data: null,
       };
     }
 
     const kabisilyaRepo = queryRunner.manager.getRepository(Kabisilya);
-    
+
     // Check if kabisilya with same name already exists
     const existingKabisilya = await kabisilyaRepo.findOne({
-      where: { name: name.trim() }
+      where: { name: name.trim() },
     });
 
     if (existingKabisilya) {
       return {
         status: false,
         message: "Kabisilya with this name already exists",
-        data: null
+        data: null,
       };
     }
 
@@ -46,30 +46,29 @@ module.exports = async (params, queryRunner) => {
     const newKabisilya = kabisilyaRepo.create({
       name: name.trim(),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     const savedKabisilya = await kabisilyaRepo.save(newKabisilya);
 
     // Log activity (called from main handler)
-    
+
     return {
       status: true,
       message: "Kabisilya created successfully",
       data: {
         id: savedKabisilya.id,
         name: savedKabisilya.name,
-        createdAt: savedKabisilya.createdAt
-      }
+        createdAt: savedKabisilya.createdAt,
+      },
     };
-
   } catch (error) {
     console.error("Error creating kabisilya:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to create kabisilya: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

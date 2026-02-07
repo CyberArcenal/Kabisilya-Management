@@ -8,10 +8,11 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, interestAmount, notes, _userId } = params;
+    const { id, interestAmount, notes, userId } = params;
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     // Get debt with worker
@@ -65,7 +66,7 @@ module.exports = async (params, queryRunner) => {
         notes ||
         `[${new Date().toISOString()}] Interest added: +${interest.toFixed(2)}`,
       transactionDate: new Date(),
-      performedBy: _userId ? String(_userId) : null,
+      performedBy: userId ? String(userId) : null,
       changeReason: "interest_accrual",
     });
 

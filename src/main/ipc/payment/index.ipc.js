@@ -90,19 +90,19 @@ class PaymentHandler {
   }
 
   /** @param {Electron.IpcMainInvokeEvent} event @param {{ method: any; params: {}; }} payload */
+  // @ts-ignore
   async handleRequest(event, payload) {
     try {
       const method = payload.method;
       const params = payload.params || {};
 
       // @ts-ignore
-      const userId = params.userId || event.sender.id || 0;
       const enrichedParams = { ...params };
 
       // Log the request
       if (logger) {
         // @ts-ignore
-        logger.info(`PaymentHandler: ${method}`, { params, userId });
+        logger.info(`PaymentHandler: ${method}`, { params });
       }
 
       // ROUTE REQUESTS
@@ -145,42 +145,49 @@ class PaymentHandler {
         case "createPayment":
           return await this.handleWithTransaction(
             this.createPayment,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "updatePayment":
           return await this.handleWithTransaction(
             this.updatePayment,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "deletePayment":
           return await this.handleWithTransaction(
             this.deletePayment,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "updatePaymentStatus":
           return await this.handleWithTransaction(
             this.updatePaymentStatus,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "addPaymentNote":
           return await this.handleWithTransaction(
             this.addPaymentNote,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "processPayment":
           return await this.handleWithTransaction(
             this.processPayment,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "cancelPayment":
           return await this.handleWithTransaction(
             this.cancelPayment,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -191,12 +198,14 @@ class PaymentHandler {
         case "applyDebtDeduction":
           return await this.handleWithTransaction(
             this.applyDebtDeduction,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "updateDeductions":
           return await this.handleWithTransaction(
             this.updateDeductions,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -207,18 +216,21 @@ class PaymentHandler {
         case "assignPaymentToWorker":
           return await this.handleWithTransaction(
             this.assignPaymentToWorker,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "assignPaymentToPitak":
           return await this.handleWithTransaction(
             this.assignPaymentToPitak,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "linkDebtPayment":
           return await this.handleWithTransaction(
             this.linkDebtPayment,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -239,24 +251,28 @@ class PaymentHandler {
         case "bulkCreatePayments":
           return await this.handleWithTransaction(
             this.bulkCreatePayments,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "bulkUpdatePayments":
           return await this.handleWithTransaction(
             this.bulkUpdatePayments,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "bulkProcessPayments":
           return await this.handleWithTransaction(
             this.bulkProcessPayments,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "importPaymentsFromCSV":
           return await this.handleWithTransaction(
             this.importPaymentsFromCSV,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -291,7 +307,7 @@ class PaymentHandler {
   /**
    * Wrap critical operations in a database transaction
    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-   * @param {{ _userId: any; }} params
+   * @param {{ userId: any; }} params
    */
   async handleWithTransaction(handler, params) {
     const queryRunner = AppDataSource.createQueryRunner();

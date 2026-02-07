@@ -5,57 +5,57 @@ const { AppDataSource } = require("../../db/dataSource");
 
 module.exports = async function searchAuditTrails(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      query, 
+      query,
       // @ts-ignore
-      page = 1, 
+      page = 1,
       // @ts-ignore
-      limit = 50, 
+      limit = 50,
       // @ts-ignore
-      sortBy = 'timestamp', 
+      sortBy = "timestamp",
       // @ts-ignore
-      sortOrder = 'DESC',
+      sortOrder = "DESC",
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
-    
+
     if (!query) {
       return {
         status: false,
-        message: 'Search query is required',
-        data: null
+        message: "Search query is required",
+        data: null,
       };
     }
-    
+
     const auditRepo = AppDataSource.getRepository("AuditTrail");
-    
+
     const skip = (page - 1) * limit;
-    
+
     // Search in action, actor, and details
     const [auditTrails, total] = await auditRepo.findAndCount({
       where: [
         { action: { $like: `%${query}%` } },
-        { actor: { $like: `%${query}%` } }
+        { actor: { $like: `%${query}%` } },
       ],
       order: { [sortBy]: sortOrder },
       skip,
       take: limit,
     });
-    
+
     // Log search activity
     const accessLogRepo = AppDataSource.getRepository("AuditTrail");
     const accessLog = accessLogRepo.create({
-      action: 'search_audit_trails',
-      actor: `User ${_userId}`,
+      action: "search_audit_trails",
+      actor: `User ${userId}`,
       details: { query, page, limit, resultsCount: auditTrails.length },
-      timestamp: new Date()
+      timestamp: new Date(),
     });
     await accessLogRepo.save(accessLog);
-    
+
     return {
       status: true,
-      message: 'Audit trails search completed successfully',
+      message: "Audit trails search completed successfully",
       data: {
         auditTrails,
         query,
@@ -63,17 +63,17 @@ module.exports = async function searchAuditTrails(params = {}) {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in searchAuditTrails:', error);
+    console.error("Error in searchAuditTrails:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to search audit trails: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

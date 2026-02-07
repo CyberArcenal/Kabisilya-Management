@@ -8,7 +8,10 @@ const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 const { farmSessionDefaultSessionId } = require("../../../utils/system");
 
-module.exports = async function bulkCreatePayments(params = {}, queryRunner = null) {
+module.exports = async function bulkCreatePayments(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -23,24 +26,40 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
 
   try {
     // @ts-ignore
-    const { payments, _userId } = params;
+    const { payments, userId } = params;
 
     if (!payments || !Array.isArray(payments) || payments.length === 0) {
-      return { status: false, message: "Payments array is required and cannot be empty", data: null };
+      return {
+        status: false,
+        message: "Payments array is required and cannot be empty",
+        data: null,
+      };
     }
 
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     const MAX_BATCH_SIZE = 100;
     if (payments.length > MAX_BATCH_SIZE) {
-      return { status: false, message: `Cannot process more than ${MAX_BATCH_SIZE} payments at once`, data: null };
+      return {
+        status: false,
+        message: `Cannot process more than ${MAX_BATCH_SIZE} payments at once`,
+        data: null,
+      };
     }
 
     const sessionId = await farmSessionDefaultSessionId();
     if (!sessionId || sessionId === 0) {
-      return { status: false, message: "No default session configured. Please set one in Settings.", data: null };
+      return {
+        status: false,
+        message: "No default session configured. Please set one in Settings.",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -50,7 +69,8 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     // @ts-ignore
-    const paymentHistoryRepo = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepo =
+      queryRunner.manager.getRepository(PaymentHistory);
 
     const results = {
       success: [],
@@ -64,7 +84,12 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
     for (let i = 0; i < payments.length; i++) {
       const paymentData = payments[i];
 
-      if (!paymentData.workerId || !paymentData.grossPay || isNaN(parseFloat(paymentData.grossPay)) || parseFloat(paymentData.grossPay) <= 0) {
+      if (
+        !paymentData.workerId ||
+        !paymentData.grossPay ||
+        isNaN(parseFloat(paymentData.grossPay)) ||
+        parseFloat(paymentData.grossPay) <= 0
+      ) {
         // @ts-ignore
         results.failed.push({
           index: i,
@@ -74,7 +99,9 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
         continue;
       }
 
-      const worker = await workerRepository.findOne({ where: { id: paymentData.workerId } });
+      const worker = await workerRepository.findOne({
+        where: { id: paymentData.workerId },
+      });
       if (!worker) {
         // @ts-ignore
         results.failed.push({
@@ -113,7 +140,9 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
 
       // Optional idempotency: if idempotencyKey provided and exists, skip creation
       if (paymentData.idempotencyKey) {
-        const existingByKey = await paymentRepository.findOne({ where: { idempotencyKey: paymentData.idempotencyKey } });
+        const existingByKey = await paymentRepository.findOne({
+          where: { idempotencyKey: paymentData.idempotencyKey },
+        });
         if (existingByKey) {
           // @ts-ignore
           results.failed.push({
@@ -134,16 +163,24 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
         manualDeduction,
         otherDeductions,
         netPay,
-        periodStart: paymentData.periodStart ? new Date(paymentData.periodStart) : null,
-        periodEnd: paymentData.periodEnd ? new Date(paymentData.periodEnd) : null,
+        periodStart: paymentData.periodStart
+          ? new Date(paymentData.periodStart)
+          : null,
+        periodEnd: paymentData.periodEnd
+          ? new Date(paymentData.periodEnd)
+          : null,
         notes: paymentData.notes || null,
         status: "pending",
         createdAt: new Date(),
         updatedAt: new Date(),
         idempotencyKey: paymentData.idempotencyKey || null,
-        deductionBreakdown: paymentData.deductionBreakdown && typeof paymentData.deductionBreakdown === "object"
-          ? paymentData.deductionBreakdown
-          : (paymentData.deductionBreakdown ? JSON.parse(paymentData.deductionBreakdown) : {}),
+        deductionBreakdown:
+          paymentData.deductionBreakdown &&
+          typeof paymentData.deductionBreakdown === "object"
+            ? paymentData.deductionBreakdown
+            : paymentData.deductionBreakdown
+              ? JSON.parse(paymentData.deductionBreakdown)
+              : {},
       });
 
       // @ts-ignore
@@ -154,7 +191,11 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
       return {
         status: false,
         message: "All payments failed validation",
-        data: { success: 0, failed: results.failed.length, errors: results.failed },
+        data: {
+          success: 0,
+          failed: results.failed.length,
+          errors: results.failed,
+        },
       };
     }
 
@@ -172,7 +213,7 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
           oldValue: null,
           newValue: "pending",
           notes: "Payment created via bulk operation",
-          performedBy: String(_userId),
+          performedBy: String(userId),
           changeDate: new Date(),
           changeReason: "bulk_create",
         });
@@ -197,7 +238,7 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
 
     // Log activity with session context
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_create_payments",
       entity: "Payment",
       session: { id: sessionId },
@@ -243,7 +284,11 @@ module.exports = async function bulkCreatePayments(params = {}, queryRunner = nu
     }
     console.error("Error in bulkCreatePayments:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to bulk create payments: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to bulk create payments: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

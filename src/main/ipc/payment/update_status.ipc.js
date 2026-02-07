@@ -6,7 +6,10 @@ const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function updatePaymentStatus(params = {}, queryRunner = null) {
+module.exports = async function updatePaymentStatus(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -21,7 +24,8 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
 
   try {
     // @ts-ignore
-    const { paymentId, status, notes, _userId, paymentMethod, referenceNumber } = params;
+    const { paymentId, status, notes, userId, paymentMethod, referenceNumber } =
+      params;
 
     if (!paymentId || !status) {
       return {
@@ -76,7 +80,8 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
       if (!paymentMethod || !referenceNumber) {
         return {
           status: false,
-          message: "Payment method and reference number are required to complete payment",
+          message:
+            "Payment method and reference number are required to complete payment",
           data: null,
         };
       }
@@ -102,7 +107,8 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
 
     // Create payment history entry
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const paymentHistory = paymentHistoryRepository.create({
       payment: updatedPayment,
       actionType: "update",
@@ -114,7 +120,7 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
       notes: notes
         ? `[${new Date().toISOString()}] ${notes}`
         : `Status changed from ${oldStatus} to ${status}`,
-      performedBy: String(_userId),
+      performedBy: String(userId),
       changeDate: new Date(),
       referenceNumber: referenceNumber,
     });
@@ -125,7 +131,7 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "update_payment_status",
       entity: "Payment",
       entity_id: updatedPayment.id,
@@ -154,7 +160,9 @@ module.exports = async function updatePaymentStatus(params = {}, queryRunner = n
         pitak: updatedPayment.pitak
           ? { id: updatedPayment.pitak.id, name: updatedPayment.pitak.name }
           : null,
-        session: updatedPayment.session ? { id: updatedPayment.session.id } : null,
+        session: updatedPayment.session
+          ? { id: updatedPayment.session.id }
+          : null,
         netPay: updatedPayment.netPay,
         paymentDate: updatedPayment.paymentDate,
         paymentMethod: updatedPayment.paymentMethod,

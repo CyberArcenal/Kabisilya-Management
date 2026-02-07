@@ -12,23 +12,24 @@ const { validatePitak } = require("./utils/assignmentUtils");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
-      assignmentId, 
+      assignmentId,
       // @ts-ignore
-      luwangCount, 
+      luwangCount,
       // @ts-ignore
       notes,
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     if (!assignmentId || luwangCount === undefined) {
       return {
         status: false,
-        message: "Missing required fields: assignmentId and luwangCount are required",
-        data: null
+        message:
+          "Missing required fields: assignmentId and luwangCount are required",
+        data: null,
       };
     }
 
@@ -37,7 +38,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "LuWang count must be a non-negative number",
-        data: null
+        data: null,
       };
     }
 
@@ -46,7 +47,7 @@ module.exports = async (params, queryRunner) => {
     // Find assignment
     const assignment = await assignmentRepo.findOne({
       where: { id: assignmentId },
-      relations: ["worker", "pitak"]
+      relations: ["worker", "pitak"],
     });
 
     if (!assignment) {
@@ -55,7 +56,10 @@ module.exports = async (params, queryRunner) => {
 
     // 🔑 NEW: Check pitak status
     // @ts-ignore
-    const pitakCheck = await validatePitak(queryRunner.manager.getRepository(require("../../../entities/Pitak")), assignment.pitak?.id);
+    const pitakCheck = await validatePitak(
+      queryRunner.manager.getRepository(require("../../../entities/Pitak")),
+      assignment.pitak?.id,
+    );
     if (!pitakCheck.valid) {
       return { status: false, message: pitakCheck.message, data: null };
     }
@@ -65,7 +69,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: `Cannot update LuWang count for ${assignment.status} assignment`,
-        data: null
+        data: null,
       };
     }
 
@@ -98,13 +102,19 @@ module.exports = async (params, queryRunner) => {
         assignmentDate: updatedAssignment.assignmentDate,
         // @ts-ignore
         worker: updatedAssignment.worker
-          // @ts-ignore
-          ? { id: updatedAssignment.worker.id, name: updatedAssignment.worker.name }
+          ? // @ts-ignore
+            {
+              id: updatedAssignment.worker.id,
+              name: updatedAssignment.worker.name,
+            }
           : null,
         // @ts-ignore
         pitak: updatedAssignment.pitak
-          // @ts-ignore
-          ? { id: updatedAssignment.pitak.id, name: updatedAssignment.pitak.name }
+          ? // @ts-ignore
+            {
+              id: updatedAssignment.pitak.id,
+              name: updatedAssignment.pitak.name,
+            }
           : null,
         summary: {
           assignmentId: updatedAssignment.id,
@@ -112,18 +122,17 @@ module.exports = async (params, queryRunner) => {
           pitakId: updatedAssignment.pitak?.id ?? null,
           // @ts-ignore
           workerId: updatedAssignment.worker?.id ?? null,
-          status: updatedAssignment.status
-        }
-      }
+          status: updatedAssignment.status,
+        },
+      },
     };
-
   } catch (error) {
     console.error("Error updating luwang count:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update LuWang count: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

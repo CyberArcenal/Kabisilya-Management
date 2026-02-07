@@ -19,13 +19,18 @@ module.exports = async function getWorkerPerformance(params = {}) {
   try {
     // @ts-ignore
     // @ts-ignore
-    const { workerId, period = 'month', compareToPrevious = true, _userId } = params;
+    const {
+      workerId,
+      period = "month",
+      compareToPrevious = true,
+      userId,
+    } = params;
 
     if (!workerId) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
@@ -37,14 +42,14 @@ module.exports = async function getWorkerPerformance(params = {}) {
       const now = new Date();
       let currentStart, currentEnd, previousStart, previousEnd;
 
-      if (period === 'week') {
+      if (period === "week") {
         // Current week (Monday to Sunday)
         const currentDay = now.getDay();
         const diff = currentDay === 0 ? -6 : 1 - currentDay; // Adjust for Sunday
         currentStart = new Date(now);
         currentStart.setDate(now.getDate() + diff);
         currentStart.setHours(0, 0, 0, 0);
-        
+
         currentEnd = new Date(currentStart);
         currentEnd.setDate(currentStart.getDate() + 6);
         currentEnd.setHours(23, 59, 59, 999);
@@ -54,8 +59,7 @@ module.exports = async function getWorkerPerformance(params = {}) {
         previousStart.setDate(currentStart.getDate() - 7);
         previousEnd = new Date(currentEnd);
         previousEnd.setDate(currentEnd.getDate() - 7);
-
-      } else if (period === 'month') {
+      } else if (period === "month") {
         // Current month
         currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
         currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -65,8 +69,7 @@ module.exports = async function getWorkerPerformance(params = {}) {
         previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
         previousEnd.setHours(23, 59, 59, 999);
-
-      } else if (period === 'quarter') {
+      } else if (period === "quarter") {
         // Current quarter
         const currentQuarter = Math.floor(now.getMonth() / 3);
         currentStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
@@ -74,11 +77,14 @@ module.exports = async function getWorkerPerformance(params = {}) {
         currentEnd.setHours(23, 59, 59, 999);
 
         // Previous quarter
-        previousStart = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+        previousStart = new Date(
+          now.getFullYear(),
+          (currentQuarter - 1) * 3,
+          1,
+        );
         previousEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
         previousEnd.setHours(23, 59, 59, 999);
-
-      } else if (period === 'year') {
+      } else if (period === "year") {
         // Current year
         currentStart = new Date(now.getFullYear(), 0, 1);
         currentEnd = new Date(now.getFullYear(), 11, 31);
@@ -91,24 +97,27 @@ module.exports = async function getWorkerPerformance(params = {}) {
       }
 
       // Get current period assignments
-      const assignmentRepository = queryRunner.manager.getRepository(Assignment);
+      const assignmentRepository =
+        queryRunner.manager.getRepository(Assignment);
       const currentAssignments = await assignmentRepository
-        .createQueryBuilder('assignment')
-        .where('assignment.workerId = :workerId', { workerId: parseInt(workerId) })
-        .andWhere('assignment.assignmentDate BETWEEN :start AND :end', {
+        .createQueryBuilder("assignment")
+        .where("assignment.workerId = :workerId", {
+          workerId: parseInt(workerId),
+        })
+        .andWhere("assignment.assignmentDate BETWEEN :start AND :end", {
           start: currentStart,
-          end: currentEnd
+          end: currentEnd,
         })
         .getMany();
 
       // Get current period payments
       const paymentRepository = queryRunner.manager.getRepository(Payment);
       const currentPayments = await paymentRepository
-        .createQueryBuilder('payment')
-        .where('payment.workerId = :workerId', { workerId: parseInt(workerId) })
-        .andWhere('payment.paymentDate BETWEEN :start AND :end', {
+        .createQueryBuilder("payment")
+        .where("payment.workerId = :workerId", { workerId: parseInt(workerId) })
+        .andWhere("payment.paymentDate BETWEEN :start AND :end", {
           start: currentStart,
-          end: currentEnd
+          end: currentEnd,
         })
         .getMany();
 
@@ -117,35 +126,84 @@ module.exports = async function getWorkerPerformance(params = {}) {
         assignments: {
           total: currentAssignments.length,
           // @ts-ignore
-          completed: currentAssignments.filter((/** @type {{ status: string; }} */ a) => a.status === 'completed').length,
+          completed: currentAssignments.filter(
+            (/** @type {{ status: string; }} */ a) => a.status === "completed",
+          ).length,
           // @ts-ignore
-          active: currentAssignments.filter((/** @type {{ status: string; }} */ a) => a.status === 'active').length,
-          totalLuwang: currentAssignments.reduce((/** @type {number} */ sum, /** @type {{ luwangCount: any; }} */ a) => 
-            sum + parseFloat(a.luwangCount || 0), 0
+          active: currentAssignments.filter(
+            (/** @type {{ status: string; }} */ a) => a.status === "active",
+          ).length,
+          totalLuwang: currentAssignments.reduce(
+            (
+              /** @type {number} */ sum,
+              /** @type {{ luwangCount: any; }} */ a,
+            ) => sum + parseFloat(a.luwangCount || 0),
+            0,
           ),
-          completionRate: currentAssignments.length > 0 ? 
-            // @ts-ignore
-            (currentAssignments.filter((/** @type {{ status: string; }} */ a) => a.status === 'completed').length / 
-             currentAssignments.length) * 100 : 0
+          completionRate:
+            currentAssignments.length > 0
+              ? // @ts-ignore
+                (currentAssignments.filter(
+                  (/** @type {{ status: string; }} */ a) =>
+                    a.status === "completed",
+                ).length /
+                  currentAssignments.length) *
+                100
+              : 0,
         },
         payments: {
           total: currentPayments.length,
-          totalNetPay: currentPayments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) => 
-            sum + parseFloat(p.netPay || 0), 0
+          totalNetPay: currentPayments.reduce(
+            (/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) =>
+              sum + parseFloat(p.netPay || 0),
+            0,
           ),
-          averageNetPay: currentPayments.length > 0 ? 
-            currentPayments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) => sum + parseFloat(p.netPay || 0), 0) / 
-            currentPayments.length : 0
+          averageNetPay:
+            currentPayments.length > 0
+              ? currentPayments.reduce(
+                  (
+                    /** @type {number} */ sum,
+                    /** @type {{ netPay: any; }} */ p,
+                  ) => sum + parseFloat(p.netPay || 0),
+                  0,
+                ) / currentPayments.length
+              : 0,
         },
         productivity: {
-          luwangPerDay: currentAssignments.length > 0 ? 
-            currentAssignments.reduce((/** @type {number} */ sum, /** @type {{ luwangCount: any; }} */ a) => sum + parseFloat(a.luwangCount || 0), 0) / 
-            (currentAssignments.length || 1) : 0,
-          earningsPerLuwang: currentAssignments.reduce((/** @type {number} */ sum, /** @type {{ luwangCount: any; }} */ a) => 
-            sum + parseFloat(a.luwangCount || 0), 0) > 0 ? 
-            currentPayments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) => sum + parseFloat(p.netPay || 0), 0) / 
-            currentAssignments.reduce((/** @type {number} */ sum, /** @type {{ luwangCount: any; }} */ a) => sum + parseFloat(a.luwangCount || 0), 0) : 0
-        }
+          luwangPerDay:
+            currentAssignments.length > 0
+              ? currentAssignments.reduce(
+                  (
+                    /** @type {number} */ sum,
+                    /** @type {{ luwangCount: any; }} */ a,
+                  ) => sum + parseFloat(a.luwangCount || 0),
+                  0,
+                ) / (currentAssignments.length || 1)
+              : 0,
+          earningsPerLuwang:
+            currentAssignments.reduce(
+              (
+                /** @type {number} */ sum,
+                /** @type {{ luwangCount: any; }} */ a,
+              ) => sum + parseFloat(a.luwangCount || 0),
+              0,
+            ) > 0
+              ? currentPayments.reduce(
+                  (
+                    /** @type {number} */ sum,
+                    /** @type {{ netPay: any; }} */ p,
+                  ) => sum + parseFloat(p.netPay || 0),
+                  0,
+                ) /
+                currentAssignments.reduce(
+                  (
+                    /** @type {number} */ sum,
+                    /** @type {{ luwangCount: any; }} */ a,
+                  ) => sum + parseFloat(a.luwangCount || 0),
+                  0,
+                )
+              : 0,
+        },
       };
 
       let previousPeriod = null;
@@ -154,20 +212,24 @@ module.exports = async function getWorkerPerformance(params = {}) {
       // Get previous period data if requested
       if (compareToPrevious) {
         const previousAssignments = await assignmentRepository
-          .createQueryBuilder('assignment')
-          .where('assignment.workerId = :workerId', { workerId: parseInt(workerId) })
-          .andWhere('assignment.assignmentDate BETWEEN :start AND :end', {
+          .createQueryBuilder("assignment")
+          .where("assignment.workerId = :workerId", {
+            workerId: parseInt(workerId),
+          })
+          .andWhere("assignment.assignmentDate BETWEEN :start AND :end", {
             start: previousStart,
-            end: previousEnd
+            end: previousEnd,
           })
           .getMany();
 
         const previousPayments = await paymentRepository
-          .createQueryBuilder('payment')
-          .where('payment.workerId = :workerId', { workerId: parseInt(workerId) })
-          .andWhere('payment.paymentDate BETWEEN :start AND :end', {
+          .createQueryBuilder("payment")
+          .where("payment.workerId = :workerId", {
+            workerId: parseInt(workerId),
+          })
+          .andWhere("payment.paymentDate BETWEEN :start AND :end", {
             start: previousStart,
-            end: previousEnd
+            end: previousEnd,
           })
           .getMany();
 
@@ -175,21 +237,36 @@ module.exports = async function getWorkerPerformance(params = {}) {
           assignments: {
             total: previousAssignments.length,
             // @ts-ignore
-            completed: previousAssignments.filter((/** @type {{ status: string; }} */ a) => a.status === 'completed').length,
-            totalLuwang: previousAssignments.reduce((/** @type {number} */ sum, /** @type {{ luwangCount: any; }} */ a) => 
-              sum + parseFloat(a.luwangCount || 0), 0
+            completed: previousAssignments.filter(
+              (/** @type {{ status: string; }} */ a) =>
+                a.status === "completed",
+            ).length,
+            totalLuwang: previousAssignments.reduce(
+              (
+                /** @type {number} */ sum,
+                /** @type {{ luwangCount: any; }} */ a,
+              ) => sum + parseFloat(a.luwangCount || 0),
+              0,
             ),
-            completionRate: previousAssignments.length > 0 ? 
-              // @ts-ignore
-              (previousAssignments.filter((/** @type {{ status: string; }} */ a) => a.status === 'completed').length / 
-               previousAssignments.length) * 100 : 0
+            completionRate:
+              previousAssignments.length > 0
+                ? // @ts-ignore
+                  (previousAssignments.filter(
+                    (/** @type {{ status: string; }} */ a) =>
+                      a.status === "completed",
+                  ).length /
+                    previousAssignments.length) *
+                  100
+                : 0,
           },
           payments: {
             total: previousPayments.length,
-            totalNetPay: previousPayments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) => 
-              sum + parseFloat(p.netPay || 0), 0
-            )
-          }
+            totalNetPay: previousPayments.reduce(
+              (/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) =>
+                sum + parseFloat(p.netPay || 0),
+              0,
+            ),
+          },
         };
 
         // Calculate comparison metrics
@@ -197,35 +274,40 @@ module.exports = async function getWorkerPerformance(params = {}) {
           assignments: {
             totalChange: calculatePercentageChange(
               previousPeriod.assignments.total,
-              currentPeriod.assignments.total
+              currentPeriod.assignments.total,
             ),
             luwangChange: calculatePercentageChange(
               previousPeriod.assignments.totalLuwang,
-              currentPeriod.assignments.totalLuwang
+              currentPeriod.assignments.totalLuwang,
             ),
             completionRateChange: calculatePercentageChange(
               previousPeriod.assignments.completionRate,
-              currentPeriod.assignments.completionRate
-            )
+              currentPeriod.assignments.completionRate,
+            ),
           },
           payments: {
             totalChange: calculatePercentageChange(
               previousPeriod.payments.total,
-              currentPeriod.payments.total
+              currentPeriod.payments.total,
             ),
             netPayChange: calculatePercentageChange(
               previousPeriod.payments.totalNetPay,
-              currentPeriod.payments.totalNetPay
-            )
+              currentPeriod.payments.totalNetPay,
+            ),
           },
           trends: {
-            improving: currentPeriod.assignments.completionRate > 
-                      previousPeriod.assignments.completionRate,
-            declining: currentPeriod.assignments.completionRate < 
-                      previousPeriod.assignments.completionRate,
-            stable: Math.abs(currentPeriod.assignments.completionRate - 
-                    previousPeriod.assignments.completionRate) < 5
-          }
+            improving:
+              currentPeriod.assignments.completionRate >
+              previousPeriod.assignments.completionRate,
+            declining:
+              currentPeriod.assignments.completionRate <
+              previousPeriod.assignments.completionRate,
+            stable:
+              Math.abs(
+                currentPeriod.assignments.completionRate -
+                  previousPeriod.assignments.completionRate,
+              ) < 5,
+          },
         };
       }
 
@@ -234,29 +316,31 @@ module.exports = async function getWorkerPerformance(params = {}) {
 
       // Generate recommendations
       const recommendations = generatePerformanceRecommendations(
-        currentPeriod, 
-        previousPeriod, 
-        comparison
+        currentPeriod,
+        previousPeriod,
+        comparison,
       );
 
       await queryRunner.release();
 
       return {
         status: true,
-        message: 'Worker performance retrieved successfully',
+        message: "Worker performance retrieved successfully",
         data: {
           period: {
             type: period,
             current: {
               start: currentStart,
               end: currentEnd,
-              label: formatPeriodLabel(period, currentStart)
+              label: formatPeriodLabel(period, currentStart),
             },
-            previous: previousPeriod ? {
-              start: previousStart,
-              end: previousEnd,
-              label: formatPeriodLabel(period, previousStart)
-            } : null
+            previous: previousPeriod
+              ? {
+                  start: previousStart,
+                  end: previousEnd,
+                  label: formatPeriodLabel(period, previousStart),
+                }
+              : null,
           },
           currentPeriod,
           previousPeriod,
@@ -265,31 +349,45 @@ module.exports = async function getWorkerPerformance(params = {}) {
             score: performanceScore,
             grade: getPerformanceGrade(performanceScore),
             metrics: {
-              attendance: currentPeriod.assignments.total > 0 ? 'Good' : 'Needs Improvement',
-              quality: currentPeriod.assignments.completionRate >= 90 ? 'Excellent' : 
-                      currentPeriod.assignments.completionRate >= 75 ? 'Good' : 'Needs Improvement',
-              productivity: currentPeriod.productivity.luwangPerDay > 10 ? 'High' : 
-                           currentPeriod.productivity.luwangPerDay > 5 ? 'Average' : 'Low'
-            }
+              attendance:
+                currentPeriod.assignments.total > 0
+                  ? "Good"
+                  : "Needs Improvement",
+              quality:
+                currentPeriod.assignments.completionRate >= 90
+                  ? "Excellent"
+                  : currentPeriod.assignments.completionRate >= 75
+                    ? "Good"
+                    : "Needs Improvement",
+              productivity:
+                currentPeriod.productivity.luwangPerDay > 10
+                  ? "High"
+                  : currentPeriod.productivity.luwangPerDay > 5
+                    ? "Average"
+                    : "Low",
+            },
           },
           recommendations,
           highlights: {
             bestMetric: getBestMetric(currentPeriod),
-            areaForImprovement: getAreaForImprovement(currentPeriod, previousPeriod)
-          }
-        }
+            areaForImprovement: getAreaForImprovement(
+              currentPeriod,
+              previousPeriod,
+            ),
+          },
+        },
       };
     } catch (error) {
       await queryRunner.release();
       throw error;
     }
   } catch (error) {
-    console.error('Error in getWorkerPerformance:', error);
+    console.error("Error in getWorkerPerformance:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve worker performance: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };
@@ -309,23 +407,26 @@ function calculatePercentageChange(previous, current) {
  */
 function calculatePerformanceScore(period) {
   let score = 0;
-  
+
   // Assignment completion (40 points)
   score += period.assignments.completionRate * 0.4;
-  
+
   // Productivity (30 points)
   const productivityScore = Math.min(period.productivity.luwangPerDay * 2, 30);
   score += productivityScore;
-  
+
   // Earnings efficiency (20 points)
-  const efficiencyScore = Math.min(period.productivity.earningsPerLuwang * 5, 20);
+  const efficiencyScore = Math.min(
+    period.productivity.earningsPerLuwang * 5,
+    20,
+  );
   score += efficiencyScore;
-  
+
   // Attendance consistency (10 points)
-  const attendanceScore = period.assignments.total > 10 ? 10 : 
-                         period.assignments.total * 1;
+  const attendanceScore =
+    period.assignments.total > 10 ? 10 : period.assignments.total * 1;
   score += attendanceScore;
-  
+
   return Math.min(score, 100);
 }
 
@@ -333,14 +434,14 @@ function calculatePerformanceScore(period) {
  * @param {number} score
  */
 function getPerformanceGrade(score) {
-  if (score >= 90) return 'A+';
-  if (score >= 85) return 'A';
-  if (score >= 80) return 'B+';
-  if (score >= 75) return 'B';
-  if (score >= 70) return 'C+';
-  if (score >= 65) return 'C';
-  if (score >= 60) return 'D';
-  return 'F';
+  if (score >= 90) return "A+";
+  if (score >= 85) return "A";
+  if (score >= 80) return "B+";
+  if (score >= 75) return "B";
+  if (score >= 70) return "C+";
+  if (score >= 65) return "C";
+  if (score >= 60) return "D";
+  return "F";
 }
 
 /**
@@ -348,26 +449,26 @@ function getPerformanceGrade(score) {
  * @param {string | number | Date | undefined} date
  */
 function formatPeriodLabel(period, date) {
-  if (period === 'week') {
+  if (period === "week") {
     // @ts-ignore
     const end = new Date(date);
     // @ts-ignore
     end.setDate(date.getDate() + 6);
     // @ts-ignore
     return `Week of ${date.toLocaleDateString()} - ${end.toLocaleDateString()}`;
-  } else if (period === 'month') {
+  } else if (period === "month") {
     // @ts-ignore
-    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
-  } else if (period === 'quarter') {
+    return date.toLocaleString("default", { month: "long", year: "numeric" });
+  } else if (period === "quarter") {
     // @ts-ignore
     const quarter = Math.floor(date.getMonth() / 3) + 1;
     // @ts-ignore
     return `Q${quarter} ${date.getFullYear()}`;
-  } else if (period === 'year') {
+  } else if (period === "year") {
     // @ts-ignore
     return date.getFullYear().toString();
   }
-  return 'Unknown Period';
+  return "Unknown Period";
 }
 
 /**
@@ -379,45 +480,49 @@ function formatPeriodLabel(period, date) {
 // @ts-ignore
 function generatePerformanceRecommendations(current, previous, comparison) {
   const recommendations = [];
-  
+
   if (current.assignments.completionRate < 75) {
     recommendations.push({
-      type: 'improvement',
-      area: 'Completion Rate',
+      type: "improvement",
+      area: "Completion Rate",
       current: `${current.assignments.completionRate.toFixed(1)}%`,
-      target: '85%',
-      suggestion: 'Focus on completing assigned tasks before taking new ones'
+      target: "85%",
+      suggestion: "Focus on completing assigned tasks before taking new ones",
     });
   }
-  
+
   if (current.productivity.luwangPerDay < 5) {
     recommendations.push({
-      type: 'improvement',
-      area: 'Productivity',
+      type: "improvement",
+      area: "Productivity",
       current: `${current.productivity.luwangPerDay.toFixed(1)} luwang/day`,
-      target: '8 luwang/day',
-      suggestion: 'Consider training or equipment upgrade to improve efficiency'
+      target: "8 luwang/day",
+      suggestion:
+        "Consider training or equipment upgrade to improve efficiency",
     });
   }
-  
+
   if (comparison && comparison.trends.declining) {
     recommendations.push({
-      type: 'warning',
-      area: 'Performance Trend',
-      message: 'Performance is declining compared to previous period',
-      suggestion: 'Schedule performance review meeting'
+      type: "warning",
+      area: "Performance Trend",
+      message: "Performance is declining compared to previous period",
+      suggestion: "Schedule performance review meeting",
     });
   }
-  
-  if (current.assignments.completionRate >= 90 && current.productivity.luwangPerDay >= 8) {
+
+  if (
+    current.assignments.completionRate >= 90 &&
+    current.productivity.luwangPerDay >= 8
+  ) {
     recommendations.push({
-      type: 'recognition',
-      area: 'Outstanding Performance',
-      message: 'Worker is exceeding performance expectations',
-      suggestion: 'Consider for bonus or recognition'
+      type: "recognition",
+      area: "Outstanding Performance",
+      message: "Worker is exceeding performance expectations",
+      suggestion: "Consider for bonus or recognition",
     });
   }
-  
+
   return recommendations;
 }
 
@@ -426,11 +531,14 @@ function generatePerformanceRecommendations(current, previous, comparison) {
  */
 function getBestMetric(current) {
   const metrics = [
-    { name: 'Completion Rate', value: current.assignments.completionRate },
-    { name: 'Productivity', value: current.productivity.luwangPerDay },
-    { name: 'Earnings Efficiency', value: current.productivity.earningsPerLuwang }
+    { name: "Completion Rate", value: current.assignments.completionRate },
+    { name: "Productivity", value: current.productivity.luwangPerDay },
+    {
+      name: "Earnings Efficiency",
+      value: current.productivity.earningsPerLuwang,
+    },
   ];
-  
+
   metrics.sort((a, b) => b.value - a.value);
   return metrics[0];
 }
@@ -440,21 +548,25 @@ function getBestMetric(current) {
  * @param {{ assignments: { total: any; completed: any; totalLuwang: any; completionRate: number; }; payments: { total: any; totalNetPay: any; }; } | null} previous
  */
 function getAreaForImprovement(current, previous) {
-  if (!previous) return 'Insufficient data for comparison';
-  
+  if (!previous) return "Insufficient data for comparison";
+
   const areas = [];
-  
-  if (current.assignments.completionRate < previous.assignments.completionRate) {
-    areas.push('Assignment Completion');
+
+  if (
+    current.assignments.completionRate < previous.assignments.completionRate
+  ) {
+    areas.push("Assignment Completion");
   }
-  
+
   if (current.assignments.totalLuwang < previous.assignments.totalLuwang) {
-    areas.push('Productivity (Luwang)');
+    areas.push("Productivity (Luwang)");
   }
-  
+
   if (current.payments.totalNetPay < previous.payments.totalNetPay) {
-    areas.push('Earnings');
+    areas.push("Earnings");
   }
-  
-  return areas.length > 0 ? areas.join(', ') : 'No significant areas for improvement';
+
+  return areas.length > 0
+    ? areas.join(", ")
+    : "No significant areas for improvement";
 }

@@ -6,6 +6,7 @@ const { withErrorHandling } = require("../../../utils/errorHandler");
 const { logger } = require("../../../utils/logger");
 const { AppDataSource } = require("../../db/dataSource");
 const UserActivity = require("../../../entities/UserActivity");
+// @ts-ignore
 const { assignmentHandler } = require("../assignment/index.ipc");
 const { farmSessionDefaultSessionId } = require("../../../utils/system");
 
@@ -97,7 +98,7 @@ class DebtHandler {
       // Log the request
       if (logger) {
         // @ts-ignore
-        logger.info(`DebtHandler: ${method}`, { params, userId });
+        logger.info(`DebtHandler: ${method}`, { params});
       }
 
       // ROUTE REQUESTS
@@ -183,42 +184,49 @@ class DebtHandler {
         case "createDebt":
           return await this.handleWithTransaction(
             this.createDebt,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "updateDebt":
           return await this.handleWithTransaction(
             this.updateDebt,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "deleteDebt":
           return await this.handleWithTransaction(
             this.deleteDebt,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "updateDebtStatus":
           return await this.handleWithTransaction(
             this.updateDebtStatus,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "makePayment":
           return await this.handleWithTransaction(
             this.makePayment,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "addInterest":
           return await this.handleWithTransaction(
             this.addInterest,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "adjustDebt":
           return await this.handleWithTransaction(
             this.adjustDebt,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -226,12 +234,14 @@ class DebtHandler {
         case "bulkCreateDebts":
           return await this.handleWithTransaction(
             this.bulkCreateDebts,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "importDebtsFromCSV":
           return await this.handleWithTransaction(
             this.importDebtsFromCSV,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -241,17 +251,20 @@ class DebtHandler {
         case "bulkUpdateStatus":
           return await this.handleWithTransaction(
             this.bulkUpdateStatus,
+            // @ts-ignore
             enrichedParams,
           );
 
         case "processPayment":
           return await this.handleWithTransaction(
             this.processPayment,
+            // @ts-ignore
             enrichedParams,
           );
         case "processDebtPayment":
           return await this.handleWithTransaction(
             this.processDebtPayment,
+            // @ts-ignore
             enrichedParams,
           );
 
@@ -259,6 +272,7 @@ class DebtHandler {
         case "reversePayment":
           return await this.handleWithTransaction(
             this.reversePayment,
+            // @ts-ignore
             enrichedParams,
           );
         case "validateDebtPayment":
@@ -299,7 +313,7 @@ class DebtHandler {
   /**
    * Wrap critical operations in a database transaction
    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-   * @param {{ _userId: any; }} params
+   * @param {{ userId: any; }} params
    */
   async handleWithTransaction(handler, params) {
     const queryRunner = AppDataSource.createQueryRunner();
@@ -313,7 +327,7 @@ class DebtHandler {
         await queryRunner.commitTransaction();
         // Log activity on success
         await this.logActivity(
-          params._userId,
+          params.userId,
           handler.name,
           `Successfully executed ${handler.name}`,
           // @ts-ignore

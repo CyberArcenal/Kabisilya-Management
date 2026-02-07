@@ -20,7 +20,7 @@ module.exports = async function createWorker(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { name, contact, email, address, status, hireDate, _userId } = params;
+    const { name, contact, email, address, status, hireDate, userId } = params;
 
     if (!name) {
       return {
@@ -66,7 +66,7 @@ module.exports = async function createWorker(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "create_worker",
       description: `Created worker: ${name}`,
       ip_address: "127.0.0.1",

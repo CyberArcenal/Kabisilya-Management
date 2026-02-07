@@ -7,7 +7,16 @@ const UserActivity = require("../../../entities/UserActivity");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, totalLuwang, adjustmentType = "set", notes, _userId, areaSqm, layoutType, sideLengths } = params;
+    const {
+      id,
+      totalLuwang,
+      adjustmentType = "set",
+      notes,
+      userId,
+      areaSqm,
+      layoutType,
+      sideLengths,
+    } = params;
 
     if (!id || totalLuwang === undefined) {
       return {
@@ -86,8 +95,8 @@ module.exports = async (params, queryRunner) => {
           adjustmentType === "add"
             ? "increased"
             : adjustmentType === "subtract"
-            ? "decreased"
-            : "set"
+              ? "decreased"
+              : "set"
         } from ${oldLuWang.toFixed(2)} to ${newLuWang.toFixed(2)}: ${notes}`;
     }
     pitak.updatedAt = new Date();
@@ -96,7 +105,7 @@ module.exports = async (params, queryRunner) => {
 
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
+      user_id: userId,
       action: "update_pitak_luwang",
       entity: "Pitak",
       entity_id: updatedPitak.id,
@@ -118,8 +127,8 @@ module.exports = async (params, queryRunner) => {
         adjustmentType === "add"
           ? "increased"
           : adjustmentType === "subtract"
-          ? "decreased"
-          : "updated"
+            ? "decreased"
+            : "updated"
       } from ${oldLuWang.toFixed(2)} to ${newLuWang.toFixed(2)}`,
       data: {
         id: updatedPitak.id,

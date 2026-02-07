@@ -7,13 +7,13 @@ const { AppDataSource } = require("../../../db/dataSource");
 module.exports = async function getWorkerByStatus(params = {}) {
   try {
     // @ts-ignore
-    const { status, page = 1, limit = 50, _userId } = params;
+    const { status, page = 1, limit = 50, userId } = params;
 
     if (!status) {
       return {
         status: false,
-        message: 'Status is required',
-        data: null
+        message: "Status is required",
+        data: null,
       };
     }
 
@@ -23,29 +23,29 @@ module.exports = async function getWorkerByStatus(params = {}) {
       where: { status },
       skip: (page - 1) * limit,
       take: limit,
-      order: { name: 'ASC' }
+      order: { name: "ASC" },
     });
 
     return {
       status: true,
-      message: 'Workers retrieved successfully',
+      message: "Workers retrieved successfully",
       data: {
         workers,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getWorkerByStatus:', error);
+    console.error("Error in getWorkerByStatus:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve workers: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

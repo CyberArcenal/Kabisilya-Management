@@ -10,7 +10,7 @@ const Session = require("../../../entities/Session");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       id,
       // @ts-ignore
@@ -26,29 +26,29 @@ module.exports = async (params, queryRunner) => {
       // @ts-ignore
       status,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     if (!id) {
       return {
         status: false,
         message: "Session ID is required",
-        data: null
+        data: null,
       };
     }
 
     const sessionRepo = queryRunner.manager.getRepository(Session);
-    
+
     // Get existing session
     const session = await sessionRepo.findOne({
-      where: { id: id }
+      where: { id: id },
     });
 
     if (!session) {
       return {
         status: false,
         message: "Session not found",
-        data: null
+        data: null,
       };
     }
 
@@ -57,7 +57,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Cannot modify an archived session",
-        data: null
+        data: null,
       };
     }
 
@@ -65,17 +65,17 @@ module.exports = async (params, queryRunner) => {
     if (name && name !== session.name) {
       const yearToCheck = year || session.year;
       const existingSession = await sessionRepo.findOne({
-        where: { 
+        where: {
           name: name.trim(),
-          year: yearToCheck
-        }
+          year: yearToCheck,
+        },
       });
 
       if (existingSession && existingSession.id !== id) {
         return {
           status: false,
           message: "Another session with this name and year already exists",
-          data: null
+          data: null,
         };
       }
     }
@@ -85,9 +85,10 @@ module.exports = async (params, queryRunner) => {
     if (seasonType !== undefined) session.seasonType = seasonType;
     if (year !== undefined) session.year = year;
     if (startDate !== undefined) session.startDate = new Date(startDate);
-    if (endDate !== undefined) session.endDate = endDate ? new Date(endDate) : null;
+    if (endDate !== undefined)
+      session.endDate = endDate ? new Date(endDate) : null;
     if (status !== undefined) session.status = status;
-    
+
     session.updatedAt = new Date();
 
     const updatedSession = await sessionRepo.save(session);
@@ -97,16 +98,15 @@ module.exports = async (params, queryRunner) => {
     return {
       status: true,
       message: "Session updated successfully",
-      data: updatedSession
+      data: updatedSession,
     };
-
   } catch (error) {
     console.error("Error updating session:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update session: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

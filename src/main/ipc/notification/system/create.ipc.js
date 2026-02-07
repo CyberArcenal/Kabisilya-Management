@@ -5,9 +5,12 @@ const Notification = require("../../../../entities/Notification");
 const UserActivity = require("../../../../entities/UserActivity");
 const { AppDataSource } = require("../../../db/dataSource");
 
-module.exports = async function createSystemNotification(params = {}, queryRunner = null) {
+module.exports = async function createSystemNotification(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -20,43 +23,49 @@ module.exports = async function createSystemNotification(params = {}, queryRunne
 
   try {
     // @ts-ignore
-    const { title, message, priority = "medium", context = {}, _userId } = params;
-    
+    const {
+      title,
+      message,
+      priority = "medium",
+      context = {},
+      userId,
+    } = params;
+
     if (!title || !message) {
       return {
         status: false,
-        message: 'Title and message are required for system notifications',
-        data: null
+        message: "Title and message are required for system notifications",
+        data: null,
       };
     }
 
     // Create system notification
     // @ts-ignore
     const notification = queryRunner.manager.create(Notification, {
-      type: 'system',
+      type: "system",
       context: {
         title,
         message,
         priority,
         timestamp: new Date().toISOString(),
-        ...context
+        ...context,
       },
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // @ts-ignore
     const savedNotification = await queryRunner.manager.save(notification);
-    
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'create_system_notification',
+      user_id: userId,
+      action: "create_system_notification",
       description: `Created system notification: ${title}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -67,20 +76,20 @@ module.exports = async function createSystemNotification(params = {}, queryRunne
 
     return {
       status: true,
-      message: 'System notification created successfully',
-      data: { notification: savedNotification }
+      message: "System notification created successfully",
+      data: { notification: savedNotification },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in createSystemNotification:', error);
+    console.error("Error in createSystemNotification:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to create system notification: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

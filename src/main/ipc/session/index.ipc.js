@@ -23,7 +23,7 @@ class SessionHandler {
     this.updateSession = require("./update.ipc");
     this.deleteSession = require("./delete.ipc");
     this.duplicateSession = require("./duplicate.ipc");
-    
+
     // 🔄 STATUS HANDLERS
     this.closeSession = require("./close.ipc");
     this.archiveSession = require("./archive.ipc");
@@ -37,12 +37,12 @@ class SessionHandler {
 
       // @ts-ignore
       const userId = params.userId || event.sender.id || 0;
-      const enrichedParams = { ...params};
+      const enrichedParams = { ...params };
 
       // Log the request
       if (logger) {
         // @ts-ignore
-        logger.info(`SessionHandler: ${method}`, { params, userId });
+        logger.info(`SessionHandler: ${method}`, { params});
       }
 
       // ROUTE REQUESTS
@@ -129,7 +129,7 @@ class SessionHandler {
   /**
    * Wrap critical operations in a database transaction
    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-   * @param {{ _userId: any; }} params
+   * @param {{ userId: any; }} params
    */
   async handleWithTransaction(handler, params) {
     const queryRunner = AppDataSource.createQueryRunner();
@@ -169,16 +169,18 @@ class SessionHandler {
       } else {
         activityRepo = AppDataSource.getRepository(UserActivity);
       }
-    // ✅ Always require default session
-    const sessionId = await farmSessionDefaultSessionId();
-    if (!sessionId || sessionId === 0) {
-      throw new Error("No default session configured. Please set one in Settings.");
-    }
+      // ✅ Always require default session
+      const sessionId = await farmSessionDefaultSessionId();
+      if (!sessionId || sessionId === 0) {
+        throw new Error(
+          "No default session configured. Please set one in Settings.",
+        );
+      }
       const activity = activityRepo.create({
         user_id: user_id,
         action,
         description,
-        session: {id:sessionId},
+        session: { id: sessionId },
         ip_address: "127.0.0.1",
         user_agent: "Session-Management-System",
       });

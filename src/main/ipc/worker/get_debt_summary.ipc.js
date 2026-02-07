@@ -9,7 +9,7 @@ const { AppDataSource } = require("../../db/dataSource");
 module.exports = async function getWorkerDebtSummary(params = {}) {
   try {
     // @ts-ignore
-    const { workerId, includeHistory = false, _userId } = params;
+    const { workerId, includeHistory = false, userId } = params;
 
     if (!workerId) {
       return {

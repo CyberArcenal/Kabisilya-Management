@@ -24,7 +24,7 @@ module.exports = async function generateWorkerReport(params = {}) {
       format = "json", // 'json', 'csv', 'pdf'
       // @ts-ignore
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!workerId) {

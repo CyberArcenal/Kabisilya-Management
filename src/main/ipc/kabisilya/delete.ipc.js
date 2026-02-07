@@ -13,14 +13,14 @@ const Bukid = require("../../../entities/Bukid");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       id,
       // @ts-ignore
       force = false, // Option to force delete even if there are dependencies
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
@@ -28,25 +28,25 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Kabisilya ID is required",
-        data: null
+        data: null,
       };
     }
 
     const kabisilyaRepo = queryRunner.manager.getRepository(Kabisilya);
     const workerRepo = queryRunner.manager.getRepository(Worker);
     const bukidRepo = queryRunner.manager.getRepository(Bukid);
-    
+
     // Find kabisilya with relations
     const kabisilya = await kabisilyaRepo.findOne({
       where: { id },
-      relations: ["workers", "bukids"]
+      relations: ["workers", "bukids"],
     });
 
     if (!kabisilya) {
       return {
         status: false,
         message: "Kabisilya not found",
-        data: null
+        data: null,
       };
     }
 
@@ -63,8 +63,8 @@ module.exports = async (params, queryRunner) => {
           message: `Cannot delete Kabisilya. It has ${workerCount} worker(s) and ${bukidCount} bukid(s) assigned. Use force=true to delete anyway.`,
           data: {
             workerCount,
-            bukidCount
-          }
+            bukidCount,
+          },
         };
       }
     }
@@ -75,22 +75,30 @@ module.exports = async (params, queryRunner) => {
       // @ts-ignore
       if (kabisilya.workers && kabisilya.workers.length > 0) {
         // @ts-ignore
-        await Promise.all(kabisilya.workers.map(async (/** @type {{ kabisilya: null; }} */ worker) => {
-          worker.kabisilya = null;
-          // @ts-ignore
-          await workerRepo.save(worker);
-        }));
+        await Promise.all(
+          kabisilya.workers.map(
+            async (/** @type {{ kabisilya: null; }} */ worker) => {
+              worker.kabisilya = null;
+              // @ts-ignore
+              await workerRepo.save(worker);
+            },
+          ),
+        );
       }
 
       // Unassign bukids
       // @ts-ignore
       if (kabisilya.bukids && kabisilya.bukids.length > 0) {
         // @ts-ignore
-        await Promise.all(kabisilya.bukids.map(async (/** @type {{ kabisilya: null; }} */ bukid) => {
-          bukid.kabisilya = null;
-          // @ts-ignore
-          await bukidRepo.save(bukid);
-        }));
+        await Promise.all(
+          kabisilya.bukids.map(
+            async (/** @type {{ kabisilya: null; }} */ bukid) => {
+              bukid.kabisilya = null;
+              // @ts-ignore
+              await bukidRepo.save(bukid);
+            },
+          ),
+        );
       }
     }
 
@@ -99,27 +107,34 @@ module.exports = async (params, queryRunner) => {
 
     return {
       status: true,
-      message: force 
-        ? "Kabisilya force deleted successfully (workers and bukids unassigned)" 
+      message: force
+        ? "Kabisilya force deleted successfully (workers and bukids unassigned)"
         : "Kabisilya deleted successfully",
       data: {
         id,
         name: kabisilya.name,
         // @ts-ignore
-        deletedWorkers: force ? (kabisilya.workers ? kabisilya.workers.length : 0) : 0,
+        deletedWorkers: force
+          ? kabisilya.workers
+            ? kabisilya.workers.length
+            : 0
+          : 0,
         // @ts-ignore
-        deletedBukids: force ? (kabisilya.bukids ? kabisilya.bukids.length : 0) : 0,
-        deletedAt: new Date()
-      }
+        deletedBukids: force
+          ? kabisilya.bukids
+            ? kabisilya.bukids.length
+            : 0
+          : 0,
+        deletedAt: new Date(),
+      },
     };
-
   } catch (error) {
     console.error("Error deleting kabisilya:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to delete kabisilya: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

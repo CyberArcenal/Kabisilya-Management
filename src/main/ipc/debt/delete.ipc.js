@@ -8,10 +8,11 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, reason, _userId } = params;
+    const { id, reason, userId } = params;
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     // Get debt with worker
@@ -26,7 +27,11 @@ module.exports = async (params, queryRunner) => {
 
     // 🚫 Prevent double cancel
     if (debt.status === "cancelled") {
-      return { status: false, message: "Debt is already cancelled", data: null };
+      return {
+        status: false,
+        message: "Debt is already cancelled",
+        data: null,
+      };
     }
 
     const worker = debt.worker;
@@ -44,8 +49,14 @@ module.exports = async (params, queryRunner) => {
     await debtRepository.save(debt);
 
     // Update worker's totals safely
-    worker.totalDebt = Math.max(0, parseFloat(worker.totalDebt || 0) - debtAmount);
-    worker.currentBalance = Math.max(0, parseFloat(worker.currentBalance || 0) - debtBalance);
+    worker.totalDebt = Math.max(
+      0,
+      parseFloat(worker.totalDebt || 0) - debtAmount,
+    );
+    worker.currentBalance = Math.max(
+      0,
+      parseFloat(worker.currentBalance || 0) - debtBalance,
+    );
     await workerRepository.save(worker);
 
     // Log cancellation in DebtHistory
@@ -57,7 +68,7 @@ module.exports = async (params, queryRunner) => {
       transactionType: "cancellation",
       notes: `Debt cancelled. Reason: ${reason || "N/A"}`,
       transactionDate: new Date(),
-      performedBy: _userId ? String(_userId) : null,
+      performedBy: userId ? String(userId) : null,
       changeReason: "debt_cancel",
     });
     await debtHistoryRepository.save(history);

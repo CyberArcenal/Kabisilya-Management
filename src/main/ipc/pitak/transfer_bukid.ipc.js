@@ -5,15 +5,18 @@ const Pitak = require("../../../entities/Pitak");
 const Bukid = require("../../../entities/Bukid");
 const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} */ params, /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; name: unknown; location: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner) => {
+module.exports = async (
+  /** @type {{ id: any; newBukidId: any; userId: any; }} */ params,
+  /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; name: unknown; location: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner,
+) => {
   try {
-    const { id, newBukidId, _userId } = params;
+    const { id, newBukidId, userId } = params;
 
     if (!id || !newBukidId) {
-      return { 
-        status: false, 
-        message: "Pitak ID and new Bukid ID are required", 
-        data: null 
+      return {
+        status: false,
+        message: "Pitak ID and new Bukid ID are required",
+        data: null,
       };
     }
 
@@ -22,9 +25,9 @@ module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} 
 
     // Get pitak
     // @ts-ignore
-    const pitak = await pitakRepo.findOne({ 
+    const pitak = await pitakRepo.findOne({
       where: { id },
-      relations: ['bukid']
+      relations: ["bukid"],
     });
 
     if (!pitak) {
@@ -36,7 +39,7 @@ module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} 
       return {
         status: false,
         message: "Pitak is already in the specified bukid",
-        data: null
+        data: null,
       };
     }
 
@@ -48,7 +51,7 @@ module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} 
     }
 
     const oldBukidId = pitak.bukidId;
-    const oldBukidName = pitak.bukid ? pitak.bukid.name : 'Unknown';
+    const oldBukidName = pitak.bukid ? pitak.bukid.name : "Unknown";
 
     // Update pitak
     pitak.bukidId = newBukidId;
@@ -58,17 +61,17 @@ module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} 
 
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
-      action: 'transfer_pitak_bukid',
-      entity: 'Pitak',
+      user_id: userId,
+      action: "transfer_pitak_bukid",
+      entity: "Pitak",
       entity_id: updatedPitak.id,
       details: JSON.stringify({
         oldBukidId,
         oldBukidName,
         newBukidId,
         newBukidName: newBukid.name,
-        pitakLocation: pitak.location
-      })
+        pitakLocation: pitak.location,
+      }),
     });
 
     return {
@@ -78,23 +81,22 @@ module.exports = async (/** @type {{ id: any; newBukidId: any; _userId: any; }} 
         id: updatedPitak.id,
         oldBukid: {
           id: oldBukidId,
-          name: oldBukidName
+          name: oldBukidName,
         },
         newBukid: {
           id: newBukidId,
-          name: newBukid.name
+          name: newBukid.name,
         },
-        updatedAt: updatedPitak.updatedAt
-      }
+        updatedAt: updatedPitak.updatedAt,
+      },
     };
-
   } catch (error) {
     console.error("Error transferring pitak:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to transfer pitak: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

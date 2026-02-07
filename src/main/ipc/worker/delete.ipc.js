@@ -5,7 +5,10 @@ const Worker = require("../../../entities/Worker");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function terminateWorker(params = {}, queryRunner = null) {
+module.exports = async function terminateWorker(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -20,7 +23,7 @@ module.exports = async function terminateWorker(params = {}, queryRunner = null)
 
   try {
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, userId } = params;
 
     if (!id) {
       return { status: false, message: "Worker ID is required", data: null };
@@ -28,7 +31,9 @@ module.exports = async function terminateWorker(params = {}, queryRunner = null)
 
     // @ts-ignore
     const workerRepository = queryRunner.manager.getRepository(Worker);
-    const existingWorker = await workerRepository.findOne({ where: { id: parseInt(id) } });
+    const existingWorker = await workerRepository.findOne({
+      where: { id: parseInt(id) },
+    });
 
     if (!existingWorker) {
       return { status: false, message: "Worker not found", data: null };
@@ -42,7 +47,7 @@ module.exports = async function terminateWorker(params = {}, queryRunner = null)
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "terminate_worker",
       description: `Terminated worker: ${existingWorker.name} (ID: ${id})`,
       ip_address: "127.0.0.1",
@@ -56,7 +61,11 @@ module.exports = async function terminateWorker(params = {}, queryRunner = null)
       await queryRunner.commitTransaction();
     }
 
-    return { status: true, message: "Worker terminated successfully", data: { id: parseInt(id) } };
+    return {
+      status: true,
+      message: "Worker terminated successfully",
+      data: { id: parseInt(id) },
+    };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
@@ -64,7 +73,11 @@ module.exports = async function terminateWorker(params = {}, queryRunner = null)
     }
     console.error("Error in terminateWorker:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to terminate worker: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to terminate worker: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

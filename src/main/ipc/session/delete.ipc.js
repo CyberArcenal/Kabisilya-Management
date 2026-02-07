@@ -11,37 +11,37 @@ const Bukid = require("../../../entities/Bukid");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       id,
       // @ts-ignore
       force = false, // Force delete even if it has bukids
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     if (!id) {
       return {
         status: false,
         message: "Session ID is required",
-        data: null
+        data: null,
       };
     }
 
     const sessionRepo = queryRunner.manager.getRepository(Session);
     const bukidRepo = queryRunner.manager.getRepository(Bukid);
-    
+
     // Get session with bukids
     const session = await sessionRepo.findOne({
       where: { id: id },
-      relations: ["bukids"]
+      relations: ["bukids"],
     });
 
     if (!session) {
       return {
         status: false,
         message: "Session not found",
-        data: null
+        data: null,
       };
     }
 
@@ -57,11 +57,11 @@ module.exports = async (params, queryRunner) => {
             // @ts-ignore
             bukidCount: session.bukids.length,
             // @ts-ignore
-            bukids: session.bukids.map(b => ({ id: b.id, name: b.name }))
-          }
+            bukids: session.bukids.map((b) => ({ id: b.id, name: b.name })),
+          },
         };
       }
-      
+
       // If force delete, first delete bukids (cascade will handle pitaks)
       // @ts-ignore
       for (const bukid of session.bukids) {
@@ -81,17 +81,16 @@ module.exports = async (params, queryRunner) => {
         id: id,
         name: session.name,
         // @ts-ignore
-        bukidsDeleted: session.bukids?.length || 0
-      }
+        bukidsDeleted: session.bukids?.length || 0,
+      },
     };
-
   } catch (error) {
     console.error("Error deleting session:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to delete session: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

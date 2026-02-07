@@ -10,7 +10,7 @@ const { In } = require("typeorm");
 module.exports = async (params) => {
   try {
     // @ts-ignore
-    const { pitakId, requestedLuWang, date, _userId } = params;
+    const { pitakId, requestedLuWang, date, userId } = params;
 
     if (!pitakId || requestedLuWang === undefined) {
       return {
@@ -81,10 +81,10 @@ module.exports = async (params) => {
     const validation = {
       pitakId,
       location: pitak.location,
-      layoutType: pitak.layoutType,        // 🆕 include layout type
-      sideLengths: pitak.sideLengths,      // 🆕 include side lengths
+      layoutType: pitak.layoutType, // 🆕 include layout type
+      sideLengths: pitak.sideLengths, // 🆕 include side lengths
       // @ts-ignore
-      areaSqm: parseFloat(pitak.areaSqm),  // 🆕 include area sqm
+      areaSqm: parseFloat(pitak.areaSqm), // 🆕 include area sqm
       totalCapacity: totalLuWang,
       currentlyAssigned: totalAssignedLuWang,
       remainingCapacity: remainingLuWang,
@@ -115,19 +115,18 @@ module.exports = async (params) => {
       validation.recommendations.push({
         type: "insufficient_capacity",
         message: `Insufficient capacity. Need ${requestedLuWangNum.toFixed(
-          2
+          2,
         )} LuWang, but only ${remainingLuWang.toFixed(2)} available`,
         options: [
-          `Increase pitak capacity from ${totalLuWang.toFixed(
-            2
-          )} to ${(totalLuWang + (requestedLuWangNum - remainingLuWang)).toFixed(
-            2
-          )}`,
+          `Increase pitak capacity from ${totalLuWang.toFixed(2)} to ${(
+            totalLuWang +
+            (requestedLuWangNum - remainingLuWang)
+          ).toFixed(2)}`,
           "Reduce requested LuWang amount",
           date
-            ? `Assign on a different date (current date: ${new Date(date)
-                .toISOString()
-                .split("T")[0]})`
+            ? `Assign on a different date (current date: ${
+                new Date(date).toISOString().split("T")[0]
+              })`
             : "Assign to a different pitak",
         ],
       });
@@ -140,7 +139,7 @@ module.exports = async (params) => {
         validation.recommendations.push({
           type: "high_utilization_warning",
           message: `Assignment will bring pitak utilization to ${newUtilization.toFixed(
-            1
+            1,
           )}%`,
           severity: "warning",
         });
@@ -150,9 +149,9 @@ module.exports = async (params) => {
         // @ts-ignore
         validation.recommendations.push({
           type: "overcapacity_warning",
-          message: `Assignment will exceed pitak capacity by ${(newUtilization - 100).toFixed(
-            1
-          )}%`,
+          message: `Assignment will exceed pitak capacity by ${(
+            newUtilization - 100
+          ).toFixed(1)}%`,
           severity: "error",
         });
       }
@@ -162,7 +161,7 @@ module.exports = async (params) => {
         validation.recommendations.push({
           type: "large_allocation_warning",
           message: `Requested amount (${requestedLuWangNum.toFixed(
-            2
+            2,
           )}) is more than 50% of total capacity`,
           severity: "warning",
         });
@@ -174,7 +173,7 @@ module.exports = async (params) => {
         (a) =>
           // @ts-ignore
           a.assignmentDate.toISOString().split("T")[0] ===
-          new Date(date).toISOString().split("T")[0]
+          new Date(date).toISOString().split("T")[0],
       );
 
       if (dateAssignments.length > 0) {
@@ -185,11 +184,11 @@ module.exports = async (params) => {
           totalLuWangOnDate: dateAssignments.reduce(
             // @ts-ignore
             (sum, a) => sum + parseFloat(a.luwangCount),
-            0
+            0,
           ),
           workersAssigned: dateAssignments.map((a) =>
             // @ts-ignore
-            a.worker ? a.worker.name : "Unknown"
+            a.worker ? a.worker.name : "Unknown",
           ),
         };
       }

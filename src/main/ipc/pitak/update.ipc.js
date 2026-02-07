@@ -7,7 +7,16 @@ const UserActivity = require("../../../entities/UserActivity");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, location, totalLuwang, status, layoutType, sideLengths, areaSqm, _userId } = params;
+    const {
+      id,
+      location,
+      totalLuwang,
+      status,
+      layoutType,
+      sideLengths,
+      areaSqm,
+      userId,
+    } = params;
 
     if (!id) {
       return { status: false, message: "Pitak ID is required", data: null };
@@ -35,7 +44,8 @@ module.exports = async (params, queryRunner) => {
     if (totalLuwang !== undefined) pitak.totalLuwang = parseFloat(totalLuwang);
     if (status !== undefined) pitak.status = status;
     if (layoutType !== undefined) pitak.layoutType = layoutType;
-    if (sideLengths !== undefined) pitak.sideLengths = JSON.stringify(sideLengths);
+    if (sideLengths !== undefined)
+      pitak.sideLengths = JSON.stringify(sideLengths);
     if (areaSqm !== undefined) pitak.areaSqm = parseFloat(areaSqm);
 
     pitak.updatedAt = new Date();
@@ -44,18 +54,36 @@ module.exports = async (params, queryRunner) => {
 
     // Log activity
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
+      user_id: userId,
       action: "update_pitak",
       entity: "Pitak",
       entity_id: updatedPitak.id,
       details: JSON.stringify({
         changes: {
-          location: location !== undefined ? { old: oldValues.location, new: location } : undefined,
-          totalLuwang: totalLuwang !== undefined ? { old: oldValues.totalLuwang, new: totalLuwang } : undefined,
-          status: status !== undefined ? { old: oldValues.status, new: status } : undefined,
-          layoutType: layoutType !== undefined ? { old: oldValues.layoutType, new: layoutType } : undefined,
-          sideLengths: sideLengths !== undefined ? { old: oldValues.sideLengths, new: sideLengths } : undefined,
-          areaSqm: areaSqm !== undefined ? { old: oldValues.areaSqm, new: areaSqm } : undefined,
+          location:
+            location !== undefined
+              ? { old: oldValues.location, new: location }
+              : undefined,
+          totalLuwang:
+            totalLuwang !== undefined
+              ? { old: oldValues.totalLuwang, new: totalLuwang }
+              : undefined,
+          status:
+            status !== undefined
+              ? { old: oldValues.status, new: status }
+              : undefined,
+          layoutType:
+            layoutType !== undefined
+              ? { old: oldValues.layoutType, new: layoutType }
+              : undefined,
+          sideLengths:
+            sideLengths !== undefined
+              ? { old: oldValues.sideLengths, new: sideLengths }
+              : undefined,
+          areaSqm:
+            areaSqm !== undefined
+              ? { old: oldValues.areaSqm, new: areaSqm }
+              : undefined,
         },
       }),
     });

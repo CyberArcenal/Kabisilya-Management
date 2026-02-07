@@ -1,15 +1,18 @@
 // ipc/bukid/import_csv.ipc.js
 //@ts-check
 
-const fs = require('fs');
-const csv = require('csv-parser');
-const { AppDataSource } = require('../../db/dataSource');
-const Bukid = require('../../../entities/Bukid');
-const UserActivity = require('../../../entities/UserActivity');
+const fs = require("fs");
+const csv = require("csv-parser");
+const { AppDataSource } = require("../../db/dataSource");
+const Bukid = require("../../../entities/Bukid");
+const UserActivity = require("../../../entities/UserActivity");
 
-module.exports = async function importBukidFromCSV(params = {}, queryRunner = null) {
+module.exports = async function importBukidFromCSV(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
@@ -22,13 +25,13 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
 
   try {
     // @ts-ignore
-    const { filePath, _userId } = params;
-    
+    const { filePath, userId } = params;
+
     if (!filePath || !fs.existsSync(filePath)) {
       return {
         status: false,
-        message: 'CSV file not found',
-        data: null
+        message: "CSV file not found",
+        data: null,
       };
     }
 
@@ -36,22 +39,22 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
       imported: 0,
       skipped: 0,
       errors: [],
-      total: 0
+      total: 0,
     };
 
     // @ts-ignore
     const bukids = [];
-    
+
     // Read CSV file
     await new Promise((resolve, reject) => {
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', (row) => {
+        .on("data", (row) => {
           bukids.push(row);
           results.total++;
         })
-        .on('end', resolve)
-        .on('error', reject);
+        .on("end", resolve)
+        .on("error", reject);
     });
 
     // Process each bukid
@@ -59,12 +62,12 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
     for (const [index, bukidData] of bukids.entries()) {
       try {
         const { name, location, status } = bukidData;
-        
+
         if (!name) {
           // @ts-ignore
           results.errors.push({
             row: index + 1,
-            error: 'Name is required'
+            error: "Name is required",
           });
           results.skipped++;
           continue;
@@ -73,7 +76,7 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
         // Check if bukid already exists
         // @ts-ignore
         const existingBukid = await queryRunner.manager.findOne(Bukid, {
-          where: { name }
+          where: { name },
         });
 
         if (existingBukid) {
@@ -81,7 +84,7 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
           results.errors.push({
             row: index + 1,
             name,
-            error: 'Bukid already exists'
+            error: "Bukid already exists",
           });
           results.skipped++;
           continue;
@@ -92,22 +95,21 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
         const bukid = queryRunner.manager.create(Bukid, {
           name,
           location: location || null,
-          status: status || 'active',
+          status: status || "active",
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
 
         // @ts-ignore
         await queryRunner.manager.save(bukid);
         results.imported++;
-        
       } catch (error) {
         // @ts-ignore
         results.errors.push({
           row: index + 1,
-          name: bukidData.name || 'Unknown',
+          name: bukidData.name || "Unknown",
           // @ts-ignore
-          error: error.message
+          error: error.message,
         });
         results.skipped++;
       }
@@ -117,12 +119,12 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'import_bukid_csv',
+      user_id: userId,
+      action: "import_bukid_csv",
       description: `Imported ${results.imported} bukids from CSV`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -138,25 +140,25 @@ module.exports = async function importBukidFromCSV(params = {}, queryRunner = nu
     try {
       fs.unlinkSync(filePath);
     } catch (error) {
-      console.warn('Failed to delete CSV file:', error);
+      console.warn("Failed to delete CSV file:", error);
     }
 
     return {
       status: results.imported > 0,
       message: `Imported ${results.imported} of ${results.total} bukids successfully`,
-      data: { results }
+      data: { results },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in importBukidFromCSV:', error);
+    console.error("Error in importBukidFromCSV:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to import bukid from CSV: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

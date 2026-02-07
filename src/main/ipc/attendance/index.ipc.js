@@ -69,7 +69,7 @@ class AttendanceHandler {
       // Log the request
       if (logger) {
         // @ts-ignore
-        logger.info(`AttendanceHandler: ${method}`, { params, userId });
+        logger.info(`AttendanceHandler: ${method}`, { params });
       }
 
       // ROUTE REQUESTS

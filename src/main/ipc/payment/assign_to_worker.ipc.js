@@ -7,7 +7,10 @@ const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function assignPaymentToWorker(params = {}, queryRunner = null) {
+module.exports = async function assignPaymentToWorker(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -22,13 +25,21 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
 
   try {
     // @ts-ignore
-    const { paymentId, workerId, _userId } = params;
+    const { paymentId, workerId, userId } = params;
 
     if (!paymentId || !workerId) {
-      return { status: false, message: "Payment ID and Worker ID are required", data: null };
+      return {
+        status: false,
+        message: "Payment ID and Worker ID are required",
+        data: null,
+      };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -36,7 +47,8 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
     // @ts-ignore
     const workerRepository = queryRunner.manager.getRepository(Worker);
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
 
@@ -52,10 +64,16 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
 
     // Prevent operations on cancelled payments
     if (payment.status === "cancelled") {
-      return { status: false, message: `Cannot reassign worker for payment with status '${payment.status}'`, data: null };
+      return {
+        status: false,
+        message: `Cannot reassign worker for payment with status '${payment.status}'`,
+        data: null,
+      };
     }
 
-    const newWorker = await workerRepository.findOne({ where: { id: workerId } });
+    const newWorker = await workerRepository.findOne({
+      where: { id: workerId },
+    });
     if (!newWorker) {
       return { status: false, message: "Worker not found", data: null };
     }
@@ -69,7 +87,9 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
         message: "Payment already assigned to the specified worker",
         data: {
           payment,
-          oldWorker: oldWorker ? { id: oldWorker.id, name: oldWorker.name } : null,
+          oldWorker: oldWorker
+            ? { id: oldWorker.id, name: oldWorker.name }
+            : null,
           newWorker: { id: newWorker.id, name: newWorker.name },
         },
       };
@@ -87,7 +107,8 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
       if (duplicate && duplicate.id !== payment.id) {
         return {
           status: false,
-          message: "Another payment already exists for this pitak, worker and session. Reassignment would violate uniqueness.",
+          message:
+            "Another payment already exists for this pitak, worker and session. Reassignment would violate uniqueness.",
           data: { conflictingPaymentId: duplicate.id },
         };
       }
@@ -97,13 +118,22 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
     // Use netPay as the primary transferred amount; guard numeric parsing
     const netPay = parseFloat(payment.netPay || 0);
     if (oldWorker) {
-      oldWorker.totalPaid = Math.max(0, parseFloat(oldWorker.totalPaid || 0) - netPay);
-      oldWorker.currentBalance = Math.max(0, parseFloat(oldWorker.currentBalance || 0) + netPay);
+      oldWorker.totalPaid = Math.max(
+        0,
+        parseFloat(oldWorker.totalPaid || 0) - netPay,
+      );
+      oldWorker.currentBalance = Math.max(
+        0,
+        parseFloat(oldWorker.currentBalance || 0) + netPay,
+      );
       await workerRepository.save(oldWorker);
     }
 
     newWorker.totalPaid = parseFloat(newWorker.totalPaid || 0) + netPay;
-    newWorker.currentBalance = Math.max(0, parseFloat(newWorker.currentBalance || 0) - netPay);
+    newWorker.currentBalance = Math.max(
+      0,
+      parseFloat(newWorker.currentBalance || 0) - netPay,
+    );
     await workerRepository.save(newWorker);
 
     // Apply assignment
@@ -119,7 +149,7 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
       oldValue: oldWorker ? `${oldWorker.id}:${oldWorker.name}` : "None",
       newValue: `${newWorker.id}:${newWorker.name}`,
       notes: `Payment reassigned from ${oldWorker ? `${oldWorker.id}:${oldWorker.name}` : "No worker"} to ${newWorker.id}:${newWorker.name}`,
-      performedBy: String(_userId),
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "assign_worker",
     });
@@ -127,9 +157,9 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
 
     // Log activity
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "assign_payment_to_worker",
-      description: `User ${_userId} reassigned payment #${paymentId} from ${oldWorker ? `${oldWorker.id}:${oldWorker.name}` : "none"} to ${newWorker.id}:${newWorker.name}`,
+      description: `User ${userId} reassigned payment #${paymentId} from ${oldWorker ? `${oldWorker.id}:${oldWorker.name}` : "none"} to ${newWorker.id}:${newWorker.name}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
       created_at: new Date(),
@@ -146,7 +176,9 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
       message: "Payment assigned to worker successfully",
       data: {
         payment: updatedPayment,
-        oldWorker: oldWorker ? { id: oldWorker.id, name: oldWorker.name } : null,
+        oldWorker: oldWorker
+          ? { id: oldWorker.id, name: oldWorker.name }
+          : null,
         newWorker: { id: newWorker.id, name: newWorker.name },
         history: paymentHistory,
       },
@@ -158,7 +190,11 @@ module.exports = async function assignPaymentToWorker(params = {}, queryRunner =
     }
     console.error("Error in assignPaymentToWorker:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to assign payment to worker: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to assign payment to worker: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

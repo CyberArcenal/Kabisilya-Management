@@ -11,38 +11,39 @@ const Bukid = require("../../../entities/Bukid");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
-      bukidId, 
+      bukidId,
       // @ts-ignore
       kabisilyaId,
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
     if (!bukidId || !kabisilyaId) {
       return {
         status: false,
-        message: "Missing required fields: bukidId and kabisilyaId are required",
-        data: null
+        message:
+          "Missing required fields: bukidId and kabisilyaId are required",
+        data: null,
       };
     }
 
     const bukidRepo = queryRunner.manager.getRepository(Bukid);
-    
+
     // Find bukid
     const bukid = await bukidRepo.findOne({
       where: { id: bukidId },
-      relations: ["kabisilya", "pitaks"]
+      relations: ["kabisilya", "pitaks"],
     });
 
     if (!bukid) {
       return {
         status: false,
         message: "Bukid not found",
-        data: null
+        data: null,
       };
     }
 
@@ -52,7 +53,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Bukid is already assigned to this Kabisilya",
-        data: null
+        data: null,
       };
     }
 
@@ -71,17 +72,16 @@ module.exports = async (params, queryRunner) => {
         bukidName: updatedBukid.name,
         kabisilyaId: kabisilyaId,
         // @ts-ignore
-        pitakCount: updatedBukid.pitaks ? updatedBukid.pitaks.length : 0
-      }
+        pitakCount: updatedBukid.pitaks ? updatedBukid.pitaks.length : 0,
+      },
     };
-
   } catch (error) {
     console.error("Error assigning bukid to kabisilya:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to assign bukid: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

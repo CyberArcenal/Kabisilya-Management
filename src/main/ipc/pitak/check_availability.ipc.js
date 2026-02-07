@@ -10,7 +10,7 @@ const { In } = require("typeorm");
 module.exports = async (params) => {
   try {
     // @ts-ignore
-    const { pitakId, date, workerId, _userId } = params;
+    const { pitakId, date, workerId, userId } = params;
 
     if (!pitakId) {
       return { status: false, message: "Pitak ID is required", data: null };
@@ -132,8 +132,8 @@ module.exports = async (params) => {
     if (availability.totalLuwang > 0) {
       // @ts-ignore
       availability.utilizationRate = availability.totalAssignedLuWang
-        // @ts-ignore
-        ? (availability.totalAssignedLuWang / availability.totalLuwang) * 100
+        ? // @ts-ignore
+          (availability.totalAssignedLuWang / availability.totalLuwang) * 100
         : 0;
     }
 
@@ -162,8 +162,8 @@ module.exports = async (params) => {
           'Pitak status is "inactive"',
         )
           ? "Activate the pitak first"
-          // @ts-ignore
-          : availability.reasons.includes("Pitak is fully utilized")
+          : // @ts-ignore
+            availability.reasons.includes("Pitak is fully utilized")
             ? "Consider assigning to a different pitak or increasing capacity"
             : "Resolve the issues mentioned above",
       };

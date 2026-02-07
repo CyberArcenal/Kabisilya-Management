@@ -8,10 +8,11 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, amount, reason, notes, _userId, forceAdjust = false } = params;
+    const { id, amount, reason, notes, userId, forceAdjust = false } = params;
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     // Get current debt with worker
@@ -98,14 +99,17 @@ module.exports = async (params, queryRunner) => {
         reason ||
         `Debt adjusted by ${adjustmentAmount > 0 ? "+" : ""}${adjustmentAmount}`,
       transactionDate: new Date(),
-      performedBy: _userId ? String(_userId) : null,
-      changeReason: forceAdjust ? "admin_override_adjustment" : "manual_adjustment",
+      performedBy: userId ? String(userId) : null,
+      changeReason: forceAdjust
+        ? "admin_override_adjustment"
+        : "manual_adjustment",
     });
 
     await debtHistoryRepository.save(debtHistory);
 
     // Update worker's current balance
-    worker.currentBalance = parseFloat(worker.currentBalance) + adjustmentAmount;
+    worker.currentBalance =
+      parseFloat(worker.currentBalance) + adjustmentAmount;
     await workerRepository.save(worker);
 
     return {

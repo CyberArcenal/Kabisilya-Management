@@ -5,9 +5,12 @@ const Notification = require("../../../entities/Notification");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function updateNotification(params = {}, queryRunner = null) {
+module.exports = async function updateNotification(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     queryRunner = AppDataSource.createQueryRunner();
     // @ts-ignore
@@ -19,29 +22,29 @@ module.exports = async function updateNotification(params = {}, queryRunner = nu
 
   try {
     // @ts-ignore
-    const { id, type, context, _userId } = params;
-    
+    const { id, type, context, userId } = params;
+
     if (!id) {
       return {
         status: false,
-        message: 'Notification ID is required',
-        data: null
+        message: "Notification ID is required",
+        data: null,
       };
     }
 
     // @ts-ignore
     const notificationRepo = queryRunner.manager.getRepository(Notification);
-    
+
     // Find existing notification
     const existingNotification = await notificationRepo.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!existingNotification) {
       return {
         status: false,
-        message: 'Notification not found',
-        data: null
+        message: "Notification not found",
+        data: null,
       };
     }
 
@@ -50,18 +53,19 @@ module.exports = async function updateNotification(params = {}, queryRunner = nu
     if (context !== undefined) existingNotification.context = context;
 
     // @ts-ignore
-    const updatedNotification = await queryRunner.manager.save(existingNotification);
-    
+    const updatedNotification =
+      await queryRunner.manager.save(existingNotification);
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'update_notification',
+      user_id: userId,
+      action: "update_notification",
       description: `Updated notification ID: ${id}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -72,20 +76,20 @@ module.exports = async function updateNotification(params = {}, queryRunner = nu
 
     return {
       status: true,
-      message: 'Notification updated successfully',
-      data: { notification: updatedNotification }
+      message: "Notification updated successfully",
+      data: { notification: updatedNotification },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in updateNotification:', error);
+    console.error("Error in updateNotification:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update notification: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

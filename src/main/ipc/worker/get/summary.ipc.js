@@ -11,13 +11,13 @@ module.exports = async function getWorkerSummary(params = {}) {
   try {
     // @ts-ignore
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, userId } = params;
 
     if (!id) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
@@ -28,14 +28,14 @@ module.exports = async function getWorkerSummary(params = {}) {
 
     // Get basic worker info
     const worker = await workerRepository.findOne({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
 
     if (!worker) {
       return {
         status: false,
-        message: 'Worker not found',
-        data: null
+        message: "Worker not found",
+        data: null,
       };
     }
 
@@ -46,56 +46,56 @@ module.exports = async function getWorkerSummary(params = {}) {
       paymentCount,
       paymentSummary,
       assignmentCount,
-      activeAssignmentCount
+      activeAssignmentCount,
     ] = await Promise.all([
       // Debt count (active debts)
       debtRepository.count({
         where: {
           // @ts-ignore
           worker: { id: parseInt(id) },
-          status: { $in: ['pending', 'partially_paid'] }
-        }
+          status: { $in: ["pending", "partially_paid"] },
+        },
       }),
-      
+
       // Debt summary
       debtRepository
         .createQueryBuilder("debt")
         .select([
           "COUNT(*) as totalDebts",
           "SUM(debt.amount) as totalDebt",
-          "SUM(CASE WHEN debt.status IN (:...activeStatuses) THEN debt.balance ELSE 0 END) as activeDebt"
+          "SUM(CASE WHEN debt.status IN (:...activeStatuses) THEN debt.balance ELSE 0 END) as activeDebt",
         ])
         .where("debt.workerId = :workerId", { workerId: id })
-        .setParameter("activeStatuses", ['pending', 'partially_paid'])
+        .setParameter("activeStatuses", ["pending", "partially_paid"])
         .getRawOne(),
-      
+
       // Payment count
       paymentRepository.count({
         // @ts-ignore
-        where: { worker: { id: parseInt(id) } }
+        where: { worker: { id: parseInt(id) } },
       }),
-      
+
       // Payment summary
       paymentRepository
         .createQueryBuilder("payment")
         .select("SUM(payment.netPay)", "totalPaid")
         .where("payment.workerId = :workerId", { workerId: id })
         .getRawOne(),
-      
+
       // Assignment count
       assignmentRepository.count({
         // @ts-ignore
-        where: { worker: { id: parseInt(id) } }
+        where: { worker: { id: parseInt(id) } },
       }),
-      
+
       // Active assignment count
       assignmentRepository.count({
-        where: { 
+        where: {
           // @ts-ignore
           worker: { id: parseInt(id) },
-          status: 'active'
-        }
-      })
+          status: "active",
+        },
+      }),
     ]);
 
     const totalDebt = parseFloat(debtSummary?.totalDebt || 0);
@@ -115,7 +115,7 @@ module.exports = async function getWorkerSummary(params = {}) {
 
     return {
       status: true,
-      message: 'Worker summary retrieved successfully',
+      message: "Worker summary retrieved successfully",
       data: {
         worker,
         summary: {
@@ -123,30 +123,30 @@ module.exports = async function getWorkerSummary(params = {}) {
             name: worker.name,
             status: worker.status,
             hireDate: worker.hireDate,
-            daysEmployed: daysEmployed
+            daysEmployed: daysEmployed,
           },
           counts: {
             totalDebts: debtCount,
             totalPayments: paymentCount,
             totalAssignments: assignmentCount,
-            activeAssignments: activeAssignmentCount
+            activeAssignments: activeAssignmentCount,
           },
           financial: {
             totalDebt: totalDebt,
             totalPaid: totalPaid,
             currentBalance: currentBalance,
-            activeDebt: activeDebt
-          }
-        }
-      }
+            activeDebt: activeDebt,
+          },
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getWorkerSummary:', error);
+    console.error("Error in getWorkerSummary:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve worker summary: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

@@ -51,7 +51,9 @@ class UserHandler {
 
     // 👥 PROFILE HANDLERS
     this.updateProfile = this.importHandler("./profile/update.ipc");
-    this.uploadProfilePicture = this.importHandler("./profile/upload_picture.ipc");
+    this.uploadProfilePicture = this.importHandler(
+      "./profile/upload_picture.ipc",
+    );
   }
 
   /**
@@ -79,6 +81,7 @@ class UserHandler {
 
   /** @param {Electron.IpcMainInvokeEvent} event @param {{ method: any; params: {}; }} payload */
   // @ts-ignore
+  // @ts-ignore
   async handleRequest(event, payload) {
     try {
       const method = payload.method;
@@ -98,101 +101,149 @@ class UserHandler {
         // 📋 READ-ONLY OPERATIONS
         case "getAllUsers":
           return await this.getAllUsers(enrichedParams);
-        
+
         case "getUserById":
           return await this.getUserById(enrichedParams);
-        
+
         case "getUserByUsername":
           return await this.getUserByUsername(enrichedParams);
-        
+
         case "getUserByEmail":
           return await this.getUserByEmail(enrichedParams);
-        
+
         case "getUsersByRole":
           return await this.getUsersByRole(enrichedParams);
-        
+
         case "getActiveUsers":
           return await this.getActiveUsers(enrichedParams);
-        
+
         case "getUserStats":
           return await this.getUserStats(enrichedParams);
-        
+
         case "searchUsers":
           return await this.searchUsers(enrichedParams);
 
         // ✏️ WRITE OPERATIONS
         case "createUser":
           // @ts-ignore
-          return await this.handleWithTransaction(this.createUser, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.createUser,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateUser":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateUser, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateUser,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "deleteUser":
           // @ts-ignore
-          return await this.handleWithTransaction(this.deleteUser, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.deleteUser,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateUserStatus":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateUserStatus, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateUserStatus,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "changePassword":
           // @ts-ignore
-          return await this.handleWithTransaction(this.changePassword, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.changePassword,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateUserRole":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateUserRole, enrichedParams);
+          return await this.handleWithTransaction(
+            this.updateUserRole,
+            // @ts-ignore
+            enrichedParams,
+          );
 
         // 🔐 AUTHENTICATION OPERATIONS
         case "loginUser":
           return await this.loginUser(enrichedParams);
-        
+
         case "logoutUser":
           return await this.logoutUser(enrichedParams);
-        
+
         case "refreshToken":
           return await this.refreshToken(enrichedParams);
-        
+
         case "resetPassword":
           return await this.resetPassword(enrichedParams);
-        
+
         case "forgotPassword":
           return await this.forgotPassword(enrichedParams);
 
         // 📊 ACTIVITY OPERATIONS
         case "getUserActivity":
           return await this.getUserActivity(enrichedParams);
-        
+
         case "clearUserActivity":
           // @ts-ignore
-          return await this.handleWithTransaction(this.clearUserActivity, enrichedParams);
+          return await this.handleWithTransaction(
+            this.clearUserActivity,
+            // @ts-ignore
+            enrichedParams,
+          );
 
         // 🔄 BATCH OPERATIONS
         case "bulkCreateUsers":
           // @ts-ignore
-          return await this.handleWithTransaction(this.bulkCreateUsers, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.bulkCreateUsers,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "bulkUpdateUsers":
           // @ts-ignore
-          return await this.handleWithTransaction(this.bulkUpdateUsers, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.bulkUpdateUsers,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "importUsersFromCSV":
           // @ts-ignore
-          return await this.handleWithTransaction(this.importUsersFromCSV, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.importUsersFromCSV,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "exportUsersToCSV":
           return await this.exportUsersToCSV(enrichedParams);
 
         // 👥 PROFILE OPERATIONS
         case "updateProfile":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateProfile, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateProfile,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "uploadProfilePicture":
           // @ts-ignore
-          return await this.handleWithTransaction(this.uploadProfilePicture, enrichedParams);
+          return await this.handleWithTransaction(
+            this.uploadProfilePicture,
+            // @ts-ignore
+            enrichedParams,
+          );
 
         default:
           return {
@@ -219,7 +270,7 @@ class UserHandler {
   /**
    * Wrap critical operations in a database transaction
    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-   * @param {{ _userId: any; }} params
+   * @param {{ userId: any; }} params
    */
   async handleWithTransaction(handler, params) {
     const queryRunner = AppDataSource.createQueryRunner();
@@ -259,19 +310,21 @@ class UserHandler {
       } else {
         activityRepo = AppDataSource.getRepository(UserActivity);
       }
-    // ✅ Always require default session
-    const sessionId = await farmSessionDefaultSessionId();
-    if (!sessionId || sessionId === 0) {
-      throw new Error("No default session configured. Please set one in Settings.");
-    }
+      // ✅ Always require default session
+      const sessionId = await farmSessionDefaultSessionId();
+      if (!sessionId || sessionId === 0) {
+        throw new Error(
+          "No default session configured. Please set one in Settings.",
+        );
+      }
       const activity = activityRepo.create({
         user_id: user_id,
         action,
         description,
-        session: {id:sessionId},
+        session: { id: sessionId },
         ip_address: "127.0.0.1",
         user_agent: "Kabisilya-Management-System",
-        created_at: new Date()
+        created_at: new Date(),
       });
 
       await activityRepo.save(activity);

@@ -3,8 +3,11 @@
 const Assignment = require("../../../entities/Assignment");
 const Pitak = require("../../../entities/Pitak");
 const Worker = require("../../../entities/Worker");
-const { validatePitak, validateWorkers, findAlreadyAssigned } = require("./utils/assignmentUtils");
-
+const {
+  validatePitak,
+  validateWorkers,
+  findAlreadyAssigned,
+} = require("./utils/assignmentUtils");
 
 /**
  * Reassign worker to another assignment
@@ -14,23 +17,23 @@ const { validatePitak, validateWorkers, findAlreadyAssigned } = require("./utils
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
-      assignmentId, 
+      assignmentId,
       // @ts-ignore
-      newWorkerId, 
+      newWorkerId,
       // @ts-ignore
       reason,
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     if (!assignmentId || !newWorkerId) {
       return {
         status: false,
         message: "Assignment ID and new worker ID are required",
-        data: null
+        data: null,
       };
     }
 
@@ -41,7 +44,7 @@ module.exports = async (params, queryRunner) => {
     // Find assignment
     const assignment = await assignmentRepo.findOne({
       where: { id: assignmentId },
-      relations: ["worker", "pitak"]
+      relations: ["worker", "pitak"],
     });
 
     if (!assignment) {
@@ -60,7 +63,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: `Cannot reassign ${assignment.status} assignment`,
-        data: null
+        data: null,
       };
     }
 
@@ -73,12 +76,16 @@ module.exports = async (params, queryRunner) => {
 
     // Check if new worker already assigned to same pitak
     // @ts-ignore
-    const skippedWorkers = await findAlreadyAssigned(assignmentRepo, [newWorkerId], assignment.pitak?.id);
+    const skippedWorkers = await findAlreadyAssigned(
+      assignmentRepo,
+      [newWorkerId],
+      assignment.pitak?.id,
+    );
     if (skippedWorkers.length > 0) {
       return {
         status: false,
         message: "New worker is already assigned to this pitak",
-        data: null
+        data: null,
       };
     }
 
@@ -103,13 +110,22 @@ module.exports = async (params, queryRunner) => {
       message: "Worker reassigned successfully",
       data: {
         id: updatedAssignment.id,
-        oldWorker: oldWorker ? { id: oldWorker.id, name: oldWorker.name } : null,
-        newWorker: { id: newWorker.id, name: newWorker.name, code: newWorker.code },
+        oldWorker: oldWorker
+          ? { id: oldWorker.id, name: oldWorker.name }
+          : null,
+        newWorker: {
+          id: newWorker.id,
+          name: newWorker.name,
+          code: newWorker.code,
+        },
         assignmentDate: updatedAssignment.assignmentDate,
         // @ts-ignore
         pitak: updatedAssignment.pitak
-          // @ts-ignore
-          ? { id: updatedAssignment.pitak.id, name: updatedAssignment.pitak.name }
+          ? // @ts-ignore
+            {
+              id: updatedAssignment.pitak.id,
+              name: updatedAssignment.pitak.name,
+            }
           : null,
         reassignmentNote,
         summary: {
@@ -118,18 +134,17 @@ module.exports = async (params, queryRunner) => {
           pitakId: updatedAssignment.pitak?.id ?? null,
           oldWorkerId: oldWorker?.id ?? null,
           newWorkerId: newWorker.id,
-          status: updatedAssignment.status
-        }
-      }
+          status: updatedAssignment.status,
+        },
+      },
     };
-
   } catch (error) {
     console.error("Error reassigning worker:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to reassign worker: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

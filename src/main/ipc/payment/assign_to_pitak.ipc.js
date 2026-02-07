@@ -7,7 +7,10 @@ const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function assignPaymentToPitak(params = {}, queryRunner = null) {
+module.exports = async function assignPaymentToPitak(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -22,13 +25,17 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
 
   try {
     // @ts-ignore
-    const { paymentId, pitakId, _userId } = params;
+    const { paymentId, pitakId, userId } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -36,7 +43,8 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
     // @ts-ignore
     const pitakRepository = queryRunner.manager.getRepository(Pitak);
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
 
@@ -51,7 +59,11 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
 
     // Prevent operations on cancelled payments
     if (payment.status === "cancelled") {
-      return { status: false, message: `Cannot assign pitak to payment with status '${payment.status}'`, data: null };
+      return {
+        status: false,
+        message: `Cannot assign pitak to payment with status '${payment.status}'`,
+        data: null,
+      };
     }
 
     let newPitak = null;
@@ -69,7 +81,11 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
       return {
         status: true,
         message: "Payment already assigned to the specified pitak",
-        data: { payment, oldPitak: { id: oldPitak.id }, newPitak: { id: newPitak.id } },
+        data: {
+          payment,
+          oldPitak: { id: oldPitak.id },
+          newPitak: { id: newPitak.id },
+        },
       };
     }
 
@@ -85,7 +101,8 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
       if (duplicate && duplicate.id !== payment.id) {
         return {
           status: false,
-          message: "Another payment already exists for this pitak, worker and session. Assignment would violate uniqueness.",
+          message:
+            "Another payment already exists for this pitak, worker and session. Assignment would violate uniqueness.",
           data: { conflictingPaymentId: duplicate.id },
         };
       }
@@ -104,8 +121,10 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
       changedField: "pitak",
       oldValue: oldPitak ? `Pitak #${oldPitak.id}` : "None",
       newValue: newPitak ? `Pitak #${newPitak.id}` : "None",
-      notes: newPitak ? `Payment assigned to pitak #${newPitak.id}` : "Payment unassigned from pitak",
-      performedBy: String(_userId),
+      notes: newPitak
+        ? `Payment assigned to pitak #${newPitak.id}`
+        : "Payment unassigned from pitak",
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "assign_pitak",
     });
@@ -114,9 +133,9 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
 
     // Log activity
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "assign_payment_to_pitak",
-      description: `User ${_userId} assigned payment #${paymentId} to ${newPitak ? `pitak #${pitakId}` : "no pitak"}`,
+      description: `User ${userId} assigned payment #${paymentId} to ${newPitak ? `pitak #${pitakId}` : "no pitak"}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
       created_at: new Date(),
@@ -145,7 +164,11 @@ module.exports = async function assignPaymentToPitak(params = {}, queryRunner = 
     }
     console.error("Error in assignPaymentToPitak:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to assign payment to pitak: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to assign payment to pitak: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

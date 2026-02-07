@@ -15,7 +15,7 @@ const { generateReferenceNumber } = require("../debt/utils/reference");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { id, status, notes, _userId } = params;
+    const { id, status, notes, userId } = params;
 
     if (!id || !status) {
       throw new Error("Pitak ID and status are required");
@@ -65,7 +65,8 @@ module.exports = async (params, queryRunner) => {
 
       // Generate payments based on luwang allocation
       const paymentRepo = queryRunner.manager.getRepository(Payment);
-      const paymentHistoryRepo = queryRunner.manager.getRepository(PaymentHistory);
+      const paymentHistoryRepo =
+        queryRunner.manager.getRepository(PaymentHistory);
       const sessionId = await farmSessionDefaultSessionId();
       const ratePerLuwang = await farmRatePerLuwang();
 
@@ -102,7 +103,7 @@ module.exports = async (params, queryRunner) => {
           otherDeductions: 0.0,
           deductionBreakdown: null,
           status: "pending",
-          paymentMethod: 'cash',
+          paymentMethod: "cash",
           referenceNumber: referenceNumber,
           // @ts-ignore
           periodStart: pitak.startDate || null,
@@ -128,7 +129,7 @@ module.exports = async (params, queryRunner) => {
             oldAmount: 0.0,
             newAmount: grossPay,
             notes: "Payment auto-generated from pitak completion",
-            performedBy: _userId ? String(_userId) : null,
+            performedBy: userId ? String(userId) : null,
             changeDate: new Date(),
           });
           await paymentHistoryRepo.save(history);
@@ -142,7 +143,8 @@ module.exports = async (params, queryRunner) => {
             // @ts-ignore
             (err.code === "SQLITE_CONSTRAINT" ||
               // @ts-ignore
-              (err.message && err.message.includes("UNIQUE constraint failed")));
+              (err.message &&
+                err.message.includes("UNIQUE constraint failed")));
 
           if (isSqliteUnique) {
             // concurrent process created the payment — fetch it and skip
@@ -177,7 +179,7 @@ module.exports = async (params, queryRunner) => {
 
     // Log activity (index/global logging may already exist; keep this if you want handler-level activity)
     await queryRunner.manager.getRepository(UserActivity).save({
-      user_id: _userId,
+      user_id: userId,
       action: "update_pitak_status",
       entity: "Pitak",
       entity_id: updatedPitak.id,
@@ -196,9 +198,13 @@ module.exports = async (params, queryRunner) => {
     return {
       status: true,
       message: `Pitak status updated from ${oldStatus} to ${status}. ${
-        updatedAssignmentsCount > 0 ? `${updatedAssignmentsCount} assignments marked completed. ` : ""
+        updatedAssignmentsCount > 0
+          ? `${updatedAssignmentsCount} assignments marked completed. `
+          : ""
       }${
-        generatedPaymentsCount > 0 ? `${generatedPaymentsCount} payments auto-generated. ` : ""
+        generatedPaymentsCount > 0
+          ? `${generatedPaymentsCount} payments auto-generated. `
+          : ""
       }${skippedPaymentsCount > 0 ? `${skippedPaymentsCount} payments skipped (already existed).` : ""}`,
       data: {
         id: updatedPitak.id,

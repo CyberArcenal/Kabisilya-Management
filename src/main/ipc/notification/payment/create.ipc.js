@@ -39,7 +39,7 @@ module.exports = async function createPaymentNotification(
       // @ts-ignore
       context = {},
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!paymentId || !status || !message) {
@@ -74,7 +74,7 @@ module.exports = async function createPaymentNotification(
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "create_payment_notification",
       description: `Created payment notification for payment ID: ${paymentId}`,
       ip_address: "127.0.0.1",

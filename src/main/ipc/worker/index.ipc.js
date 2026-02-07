@@ -21,7 +21,9 @@ class WorkerHandler {
     this.getWorkerByStatus = this.importHandler("./get/by_status.ipc");
     this.getWorkerWithDebts = this.importHandler("./get/with_debts.ipc");
     this.getWorkerWithPayments = this.importHandler("./get/with_payments.ipc");
-    this.getWorkerWithAssignments = this.importHandler("./get/with_assignments.ipc");
+    this.getWorkerWithAssignments = this.importHandler(
+      "./get/with_assignments.ipc",
+    );
     this.getWorkerSummary = this.importHandler("./get/summary.ipc");
     this.getActiveWorkers = this.importHandler("./get/active.ipc");
     this.getWorkerStats = this.importHandler("./get/stats.ipc");
@@ -37,8 +39,12 @@ class WorkerHandler {
 
     // 💰 FINANCIAL HANDLERS
     this.getWorkerDebtSummary = this.importHandler("./get_debt_summary.ipc");
-    this.getWorkerPaymentSummary = this.importHandler("./get_payment_summary.ipc");
-    this.getWorkerAssignmentSummary = this.importHandler("./get_assignment_summary.ipc");
+    this.getWorkerPaymentSummary = this.importHandler(
+      "./get_payment_summary.ipc",
+    );
+    this.getWorkerAssignmentSummary = this.importHandler(
+      "./get_assignment_summary.ipc",
+    );
     this.calculateWorkerBalance = this.importHandler("./calculate_balance.ipc");
 
     // 🔄 BATCH OPERATIONS
@@ -76,11 +82,11 @@ class WorkerHandler {
     }
   }
 
-
   /**
    * @param {any} event
    * @param {{ method: any; params: {}; }} payload
    */
+  // @ts-ignore
   // @ts-ignore
   async handleRequest(event, payload) {
     try {
@@ -88,12 +94,12 @@ class WorkerHandler {
       const params = payload.params || {};
 
       // @ts-ignore
-      const enrichedParams = { ...params};
+      const enrichedParams = { ...params };
 
       // Log the request
       if (logger) {
         // @ts-ignore
-        logger.info(`WorkerHandler: ${method}`, { params});
+        logger.info(`WorkerHandler: ${method}`, { params });
       }
 
       // ROUTE REQUESTS
@@ -101,98 +107,134 @@ class WorkerHandler {
         // 📋 READ-ONLY OPERATIONS
         case "getAllWorkers":
           return await this.getAllWorkers(enrichedParams);
-        
+
         case "getWorkerById":
           return await this.getWorkerById(enrichedParams);
-        
+
         case "getWorkerByName":
           return await this.getWorkerByName(enrichedParams);
-        
+
         case "getWorkerByStatus":
           return await this.getWorkerByStatus(enrichedParams);
-        
+
         case "getWorkerWithDebts":
           return await this.getWorkerWithDebts(enrichedParams);
-        
+
         case "getWorkerWithPayments":
           return await this.getWorkerWithPayments(enrichedParams);
-        
+
         case "getWorkerWithAssignments":
           return await this.getWorkerWithAssignments(enrichedParams);
-        
+
         case "getWorkerSummary":
           return await this.getWorkerSummary(enrichedParams);
-        
+
         case "getActiveWorkers":
           return await this.getActiveWorkers(enrichedParams);
-        
+
         case "getWorkerStats":
           return await this.getWorkerStats(enrichedParams);
-        
+
         case "searchWorkers":
           return await this.searchWorkers(enrichedParams);
 
         // ✏️ WRITE OPERATIONS
         case "createWorker":
           // @ts-ignore
-          return await this.handleWithTransaction(this.createWorker, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.createWorker,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateWorker":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateWorker, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateWorker,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "deleteWorker":
           // @ts-ignore
-          return await this.handleWithTransaction(this.deleteWorker, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.deleteWorker,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateWorkerStatus":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateWorkerStatus, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateWorkerStatus,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateWorkerContact":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateWorkerContact, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.updateWorkerContact,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "updateWorkerFinancials":
           // @ts-ignore
-          return await this.handleWithTransaction(this.updateWorkerFinancials, enrichedParams);
+          return await this.handleWithTransaction(
+            this.updateWorkerFinancials,
+            // @ts-ignore
+            enrichedParams,
+          );
 
         // 💰 FINANCIAL OPERATIONS
         case "getWorkerDebtSummary":
           return await this.getWorkerDebtSummary(enrichedParams);
-        
+
         case "getWorkerPaymentSummary":
           return await this.getWorkerPaymentSummary(enrichedParams);
-        
+
         case "getWorkerAssignmentSummary":
           return await this.getWorkerAssignmentSummary(enrichedParams);
-        
+
         case "calculateWorkerBalance":
           return await this.calculateWorkerBalance(enrichedParams);
 
         // 🔄 BATCH OPERATIONS
         case "bulkCreateWorkers":
           // @ts-ignore
-          return await this.handleWithTransaction(this.bulkCreateWorkers, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.bulkCreateWorkers,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "bulkUpdateWorkers":
           // @ts-ignore
-          return await this.handleWithTransaction(this.bulkUpdateWorkers, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.bulkUpdateWorkers,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "importWorkersFromCSV":
           // @ts-ignore
-          return await this.handleWithTransaction(this.importWorkersFromCSV, enrichedParams);
-        
+          return await this.handleWithTransaction(
+            this.importWorkersFromCSV,
+            // @ts-ignore
+            enrichedParams,
+          );
+
         case "exportWorkersToCSV":
           return await this.exportWorkersToCSV(enrichedParams);
 
         // 📊 REPORT OPERATIONS
         case "generateWorkerReport":
           return await this.generateWorkerReport(enrichedParams);
-        
+
         case "getWorkerAttendance":
           return await this.getWorkerAttendance(enrichedParams);
-        
+
         case "getWorkerPerformance":
           return await this.getWorkerPerformance(enrichedParams);
 
@@ -221,7 +263,7 @@ class WorkerHandler {
   /**
    * Wrap critical operations in a database transaction
    * @param {(arg0: any, arg1: import("typeorm").QueryRunner) => any} handler
-   * @param {{ _userId: any; }} params
+   * @param {{ userId: any; }} params
    */
   async handleWithTransaction(handler, params) {
     const queryRunner = AppDataSource.createQueryRunner();
@@ -261,19 +303,21 @@ class WorkerHandler {
       } else {
         activityRepo = AppDataSource.getRepository(UserActivity);
       }
-    // ✅ Always require default session
-    const sessionId = await farmSessionDefaultSessionId();
-    if (!sessionId || sessionId === 0) {
-      throw new Error("No default session configured. Please set one in Settings.");
-    }
+      // ✅ Always require default session
+      const sessionId = await farmSessionDefaultSessionId();
+      if (!sessionId || sessionId === 0) {
+        throw new Error(
+          "No default session configured. Please set one in Settings.",
+        );
+      }
       const activity = activityRepo.create({
         user_id: user_id,
         action,
         description,
-        session:{id:sessionId},
+        session: { id: sessionId },
         ip_address: "127.0.0.1",
         user_agent: "Kabisilya-Management-System",
-        created_at: new Date()
+        created_at: new Date(),
       });
 
       await activityRepo.save(activity);

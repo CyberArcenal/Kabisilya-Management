@@ -1,10 +1,10 @@
 // src/ipc/assignment/import_csv.ipc.js
 //@ts-check
 // @ts-ignore
-const csv = require('csv-parser');
-const fs = require('fs');
-const Assignment = require('../../../entities/Assignment');
-const Pitak = require('../../../entities/Pitak');
+const csv = require("csv-parser");
+const fs = require("fs");
+const Assignment = require("../../../entities/Assignment");
+const Pitak = require("../../../entities/Pitak");
 
 /**
  * Import assignments from CSV file
@@ -15,36 +15,36 @@ const Pitak = require('../../../entities/Pitak');
 module.exports = async (params, queryRunner) => {
   try {
     // @ts-ignore
-    const { filePath, mapping, options = {}, _userId } = params;
+    const { filePath, mapping, options = {}, userId } = params;
 
     if (!filePath || !fs.existsSync(filePath)) {
       return {
         status: false,
         message: "CSV file not found",
-        data: null
+        data: null,
       };
     }
 
     // Default column mapping
     const defaultMapping = {
-      workerId: 'worker_id',
-      workerCode: 'worker_code',
-      workerName: 'worker_name',
-      pitakId: 'pitak_id',
-      pitakCode: 'pitak_code',
-      pitakName: 'pitak_name',
-      assignmentDate: 'date',
-      luwangCount: 'luwang',
-      status: 'status',
-      notes: 'notes'
+      workerId: "worker_id",
+      workerCode: "worker_code",
+      workerName: "worker_name",
+      pitakId: "pitak_id",
+      pitakCode: "pitak_code",
+      pitakName: "pitak_name",
+      assignmentDate: "date",
+      luwangCount: "luwang",
+      status: "status",
+      notes: "notes",
     };
 
     const columnMapping = { ...defaultMapping, ...mapping };
     const importOptions = {
       skipDuplicates: options.skipDuplicates || true,
       updateExisting: options.updateExisting || false,
-      dateFormat: options.dateFormat || 'YYYY-MM-DD',
-      ...options
+      dateFormat: options.dateFormat || "YYYY-MM-DD",
+      ...options,
     };
 
     const results = {
@@ -54,7 +54,7 @@ module.exports = async (params, queryRunner) => {
       failed: 0,
       errors: [],
       duplicates: [],
-      assignments: []
+      assignments: [],
     };
 
     const workerRepo = queryRunner.manager.getRepository(Worker);
@@ -69,18 +69,18 @@ module.exports = async (params, queryRunner) => {
 
     // Read CSV file
     /**
-       * @type {any[]}
-       */
+     * @type {any[]}
+     */
     const csvData = [];
     await new Promise((resolve, reject) => {
       fs.createReadStream(filePath)
         .pipe(csv())
-        .on('data', (/** @type {any} */ row) => {
+        .on("data", (/** @type {any} */ row) => {
           csvData.push(row);
           results.totalRows++;
         })
-        .on('end', resolve)
-        .on('error', reject);
+        .on("end", resolve)
+        .on("error", reject);
     });
 
     // Process each row
@@ -96,8 +96,8 @@ module.exports = async (params, queryRunner) => {
           pitakName: row[columnMapping.pitakName],
           assignmentDate: row[columnMapping.assignmentDate],
           luwangCount: row[columnMapping.luwangCount],
-          status: row[columnMapping.status] || 'active',
-          notes: row[columnMapping.notes]
+          status: row[columnMapping.status] || "active",
+          notes: row[columnMapping.notes],
         };
 
         // Validate required fields
@@ -120,10 +120,14 @@ module.exports = async (params, queryRunner) => {
         let worker;
         if (assignmentData.workerId) {
           // @ts-ignore
-          worker = await workerRepo.findOne({ where: { id: assignmentData.workerId } });
+          worker = await workerRepo.findOne({
+            where: { id: assignmentData.workerId },
+          });
         } else if (assignmentData.workerCode) {
           // @ts-ignore
-          worker = await workerRepo.findOne({ where: { code: assignmentData.workerCode } });
+          worker = await workerRepo.findOne({
+            where: { code: assignmentData.workerCode },
+          });
         }
 
         if (!worker) {
@@ -131,7 +135,7 @@ module.exports = async (params, queryRunner) => {
           results.errors.push({
             row: index + 1,
             error: `Worker not found: ${assignmentData.workerId || assignmentData.workerCode || assignmentData.workerName}`,
-            data: assignmentData
+            data: assignmentData,
           });
           results.failed++;
           continue;
@@ -140,10 +144,14 @@ module.exports = async (params, queryRunner) => {
         // Find or create pitak
         let pitak;
         if (assignmentData.pitakId) {
-          pitak = await pitakRepo.findOne({ where: { id: assignmentData.pitakId } });
+          pitak = await pitakRepo.findOne({
+            where: { id: assignmentData.pitakId },
+          });
         } else if (assignmentData.pitakCode) {
           // @ts-ignore
-          pitak = await pitakRepo.findOne({ where: { code: assignmentData.pitakCode } });
+          pitak = await pitakRepo.findOne({
+            where: { code: assignmentData.pitakCode },
+          });
         }
 
         if (!pitak) {
@@ -151,7 +159,7 @@ module.exports = async (params, queryRunner) => {
           results.errors.push({
             row: index + 1,
             error: `Pitak not found: ${assignmentData.pitakId || assignmentData.pitakCode || assignmentData.pitakName}`,
-            data: assignmentData
+            data: assignmentData,
           });
           results.failed++;
           continue;
@@ -163,8 +171,8 @@ module.exports = async (params, queryRunner) => {
             // @ts-ignore
             workerId: worker.id,
             assignmentDate: assignmentDate,
-            status: 'active'
-          }
+            status: "active",
+          },
         });
 
         if (existingAssignment) {
@@ -173,7 +181,7 @@ module.exports = async (params, queryRunner) => {
             results.duplicates.push({
               row: index + 1,
               existingAssignmentId: existingAssignment.id,
-              data: assignmentData
+              data: assignmentData,
             });
             results.skipped++;
             continue;
@@ -181,21 +189,24 @@ module.exports = async (params, queryRunner) => {
             // Update existing assignment
             // @ts-ignore
             existingAssignment.pitakId = pitak.id;
-            existingAssignment.luwangCount = assignmentData.luwangCount || existingAssignment.luwangCount;
-            existingAssignment.status = assignmentData.status || existingAssignment.status;
+            existingAssignment.luwangCount =
+              assignmentData.luwangCount || existingAssignment.luwangCount;
+            existingAssignment.status =
+              assignmentData.status || existingAssignment.status;
             existingAssignment.updatedAt = new Date();
-            
+
             if (assignmentData.notes) {
-              existingAssignment.notes = existingAssignment.notes 
+              existingAssignment.notes = existingAssignment.notes
                 ? `${existingAssignment.notes}\n[Imported Update]: ${assignmentData.notes}`
                 : `[Imported Update]: ${assignmentData.notes}`;
             }
 
-            const updatedAssignment = await assignmentRepo.save(existingAssignment);
+            const updatedAssignment =
+              await assignmentRepo.save(existingAssignment);
             // @ts-ignore
             results.assignments.push({
-              action: 'updated',
-              assignment: updatedAssignment
+              action: "updated",
+              assignment: updatedAssignment,
             });
             results.imported++;
           }
@@ -205,28 +216,27 @@ module.exports = async (params, queryRunner) => {
             // @ts-ignore
             workerId: worker.id,
             pitakId: pitak.id,
-            luwangCount: assignmentData.luwangCount || 0.00,
+            luwangCount: assignmentData.luwangCount || 0.0,
             assignmentDate: assignmentDate,
-            status: assignmentData.status || 'active',
-            notes: assignmentData.notes || null
+            status: assignmentData.status || "active",
+            notes: assignmentData.notes || null,
           });
 
           const savedAssignment = await assignmentRepo.save(newAssignment);
           // @ts-ignore
           results.assignments.push({
-            action: 'created',
-            assignment: savedAssignment
+            action: "created",
+            assignment: savedAssignment,
           });
           results.imported++;
         }
-
       } catch (error) {
         // @ts-ignore
         results.errors.push({
           row: index + 1,
           // @ts-ignore
           error: error.message,
-          data: row
+          data: row,
         });
         results.failed++;
       }
@@ -238,9 +248,10 @@ module.exports = async (params, queryRunner) => {
       imported: results.imported,
       skipped: results.skipped,
       failed: results.failed,
-      successRate: results.totalRows > 0 
-        ? ((results.imported / results.totalRows) * 100).toFixed(2) + '%'
-        : '0%'
+      successRate:
+        results.totalRows > 0
+          ? ((results.imported / results.totalRows) * 100).toFixed(2) + "%"
+          : "0%",
     };
 
     return {
@@ -248,17 +259,16 @@ module.exports = async (params, queryRunner) => {
       message: "CSV import completed",
       data: {
         results,
-        summary
-      }
+        summary,
+      },
     };
-
   } catch (error) {
     console.error("Error importing assignments from CSV:", error);
     return {
       status: false,
       // @ts-ignore
       message: `CSV import failed: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

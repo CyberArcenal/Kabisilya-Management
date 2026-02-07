@@ -20,7 +20,7 @@ module.exports = async function deleteBukid(params = {}, queryRunner = null) {
 
   try {
     // @ts-ignore
-    const { id, _userId } = params;
+    const { id, userId } = params;
 
     if (!id) {
       return {
@@ -52,7 +52,8 @@ module.exports = async function deleteBukid(params = {}, queryRunner = null) {
     if (bukid.pitaks && bukid.pitaks.length > 0) {
       return {
         status: false,
-        message: "Cannot delete bukid with existing pitaks. Remove pitaks first.",
+        message:
+          "Cannot delete bukid with existing pitaks. Remove pitaks first.",
         data: null,
       };
     }
@@ -64,7 +65,7 @@ module.exports = async function deleteBukid(params = {}, queryRunner = null) {
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "delete_bukid",
       entity: "Bukid",
       entity_id: id,

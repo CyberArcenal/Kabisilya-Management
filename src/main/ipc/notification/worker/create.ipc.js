@@ -5,9 +5,12 @@ const Notification = require("../../../../entities/Notification");
 const UserActivity = require("../../../../entities/UserActivity");
 const { AppDataSource } = require("../../../db/dataSource");
 
-module.exports = async function createWorkerNotification(params = {}, queryRunner = null) {
+module.exports = async function createWorkerNotification(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     queryRunner = AppDataSource.createQueryRunner();
     // @ts-ignore
@@ -19,44 +22,51 @@ module.exports = async function createWorkerNotification(params = {}, queryRunne
 
   try {
     // @ts-ignore
-    const { workerId, workerName, notificationType, message, context = {}, _userId } = params;
-    
+    const {
+      workerId,
+      workerName,
+      notificationType,
+      message,
+      context = {},
+      userId,
+    } = params;
+
     if (!workerId || !notificationType || !message) {
       return {
         status: false,
-        message: 'Worker ID, notification type, and message are required',
-        data: null
+        message: "Worker ID, notification type, and message are required",
+        data: null,
       };
     }
 
     // Create worker notification
     // @ts-ignore
     const notification = queryRunner.manager.create(Notification, {
-      type: 'worker',
+      type: "worker",
       context: {
         workerId,
         workerName: workerName || `Worker ${workerId}`,
         notificationType, // 'assignment', 'payment', 'debt', 'status_change', etc.
         message,
         timestamp: new Date().toISOString(),
-        ...context
+        ...context,
       },
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // @ts-ignore
     const savedNotification = await queryRunner.manager.save(notification);
-    
+
     // Log activity
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'create_worker_notification',
+      user_id: userId,
+      action: "create_worker_notification",
       description: `Created worker notification for ${workerName || `Worker ${workerId}`}`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -67,20 +77,20 @@ module.exports = async function createWorkerNotification(params = {}, queryRunne
 
     return {
       status: true,
-      message: 'Worker notification created successfully',
-      data: { notification: savedNotification }
+      message: "Worker notification created successfully",
+      data: { notification: savedNotification },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in createWorkerNotification:', error);
+    console.error("Error in createWorkerNotification:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to create worker notification: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

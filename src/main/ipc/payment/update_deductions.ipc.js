@@ -6,7 +6,10 @@ const PaymentHistory = require("../../../entities/PaymentHistory");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function updateDeductions(params = {}, queryRunner = null) {
+module.exports = async function updateDeductions(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -30,14 +33,18 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
       // @ts-ignore
       deductionBreakdown,
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -53,12 +60,17 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
 
     // Disallow changing deductions for completed payments or payments that already applied debt payments
     if (payment.status === "completed") {
-      return { status: false, message: "Cannot update deductions for completed payments", data: null };
+      return {
+        status: false,
+        message: "Cannot update deductions for completed payments",
+        data: null,
+      };
     }
     if (payment.debtPayments && payment.debtPayments.length > 0) {
       return {
         status: false,
-        message: "Cannot update deductions for payments that have applied debt payments. Reverse deductions first.",
+        message:
+          "Cannot update deductions for payments that have applied debt payments. Reverse deductions first.",
         data: null,
       };
     }
@@ -73,20 +85,42 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
       totalDebtDeduction: parseFloat(payment.totalDebtDeduction || 0),
     };
 
-    if (manualDeduction !== undefined && (isNaN(parseFloat(manualDeduction)) || parseFloat(manualDeduction) < 0)) {
-      return { status: false, message: "manualDeduction must be a non-negative number", data: null };
+    if (
+      manualDeduction !== undefined &&
+      (isNaN(parseFloat(manualDeduction)) || parseFloat(manualDeduction) < 0)
+    ) {
+      return {
+        status: false,
+        message: "manualDeduction must be a non-negative number",
+        data: null,
+      };
     }
-    if (otherDeductions !== undefined && (isNaN(parseFloat(otherDeductions)) || parseFloat(otherDeductions) < 0)) {
-      return { status: false, message: "otherDeductions must be a non-negative number", data: null };
+    if (
+      otherDeductions !== undefined &&
+      (isNaN(parseFloat(otherDeductions)) || parseFloat(otherDeductions) < 0)
+    ) {
+      return {
+        status: false,
+        message: "otherDeductions must be a non-negative number",
+        data: null,
+      };
     }
 
     // Build new deduction values (do not double-count)
-    const newManual = manualDeduction !== undefined ? parseFloat(manualDeduction || 0) : oldValues.manualDeduction;
-    const newOther = otherDeductions !== undefined ? parseFloat(otherDeductions || 0) : oldValues.otherDeductions;
+    const newManual =
+      manualDeduction !== undefined
+        ? parseFloat(manualDeduction || 0)
+        : oldValues.manualDeduction;
+    const newOther =
+      otherDeductions !== undefined
+        ? parseFloat(otherDeductions || 0)
+        : oldValues.otherDeductions;
     const totalDebt = oldValues.totalDebtDeduction; // debt deductions are separate and already on payment
 
     // Ensure deductions do not exceed gross pay
-    const totalDeductions = parseFloat((totalDebt + newManual + newOther).toFixed(2));
+    const totalDeductions = parseFloat(
+      (totalDebt + newManual + newOther).toFixed(2),
+    );
     if (totalDeductions > oldValues.grossPay) {
       return {
         status: false,
@@ -102,21 +136,49 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
     // Normalize deductionBreakdown to an object with numeric fields
     const normalizedBreakdown = (() => {
       try {
-        if (!deductionBreakdown) return {
-          manualDeduction: newManual,
-          debtDeductions: totalDebt,
-          otherDeductions: newOther,
-          totalDeductions,
-        };
-        const parsed = typeof deductionBreakdown === "object" ? deductionBreakdown : JSON.parse(deductionBreakdown);
+        if (!deductionBreakdown)
+          return {
+            manualDeduction: newManual,
+            debtDeductions: totalDebt,
+            otherDeductions: newOther,
+            totalDeductions,
+          };
+        const parsed =
+          typeof deductionBreakdown === "object"
+            ? deductionBreakdown
+            : JSON.parse(deductionBreakdown);
         return {
-          manualDeduction: parseFloat((parsed.manualDeduction !== undefined ? parseFloat(parsed.manualDeduction) : newManual).toFixed(2)),
-          debtDeductions: parseFloat((parsed.debtDeductions !== undefined ? parseFloat(parsed.debtDeductions) : totalDebt).toFixed(2)),
-          otherDeductions: parseFloat((parsed.otherDeductions !== undefined ? parseFloat(parsed.otherDeductions) : newOther).toFixed(2)),
-          totalDeductions: parseFloat(( (parsed.manualDeduction !== undefined ? parseFloat(parsed.manualDeduction) : newManual)
-            + (parsed.debtDeductions !== undefined ? parseFloat(parsed.debtDeductions) : totalDebt)
-            + (parsed.otherDeductions !== undefined ? parseFloat(parsed.otherDeductions) : newOther)
-          ).toFixed(2)),
+          manualDeduction: parseFloat(
+            (parsed.manualDeduction !== undefined
+              ? parseFloat(parsed.manualDeduction)
+              : newManual
+            ).toFixed(2),
+          ),
+          debtDeductions: parseFloat(
+            (parsed.debtDeductions !== undefined
+              ? parseFloat(parsed.debtDeductions)
+              : totalDebt
+            ).toFixed(2),
+          ),
+          otherDeductions: parseFloat(
+            (parsed.otherDeductions !== undefined
+              ? parseFloat(parsed.otherDeductions)
+              : newOther
+            ).toFixed(2),
+          ),
+          totalDeductions: parseFloat(
+            (
+              (parsed.manualDeduction !== undefined
+                ? parseFloat(parsed.manualDeduction)
+                : newManual) +
+              (parsed.debtDeductions !== undefined
+                ? parseFloat(parsed.debtDeductions)
+                : totalDebt) +
+              (parsed.otherDeductions !== undefined
+                ? parseFloat(parsed.otherDeductions)
+                : newOther)
+            ).toFixed(2),
+          ),
         };
       } catch (e) {
         return {
@@ -131,7 +193,9 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
     payment.deductionBreakdown = normalizedBreakdown;
 
     // Recalculate net pay and guard against negative
-    const recalculatedNet = parseFloat((oldValues.grossPay - normalizedBreakdown.totalDeductions).toFixed(2));
+    const recalculatedNet = parseFloat(
+      (oldValues.grossPay - normalizedBreakdown.totalDeductions).toFixed(2),
+    );
     payment.netPay = parseFloat(Math.max(0, recalculatedNet).toFixed(2));
     payment.updatedAt = new Date();
 
@@ -139,10 +203,14 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
 
     // Create payment history entries
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const historyEntries = [];
 
-    if (manualDeduction !== undefined && oldValues.manualDeduction !== newManual) {
+    if (
+      manualDeduction !== undefined &&
+      oldValues.manualDeduction !== newManual
+    ) {
       historyEntries.push({
         actionType: "update",
         changedField: "manualDeduction",
@@ -153,7 +221,10 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
       });
     }
 
-    if (otherDeductions !== undefined && oldValues.otherDeductions !== newOther) {
+    if (
+      otherDeductions !== undefined &&
+      oldValues.otherDeductions !== newOther
+    ) {
       historyEntries.push({
         actionType: "update",
         changedField: "otherDeductions",
@@ -194,12 +265,14 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
         payment: updatedPayment,
         actionType: entry.actionType,
         changedField: entry.changedField,
-        oldValue: entry.oldValue !== undefined ? String(entry.oldValue) : undefined,
-        newValue: entry.newValue !== undefined ? String(entry.newValue) : undefined,
+        oldValue:
+          entry.oldValue !== undefined ? String(entry.oldValue) : undefined,
+        newValue:
+          entry.newValue !== undefined ? String(entry.newValue) : undefined,
         oldAmount: entry.oldAmount !== undefined ? entry.oldAmount : undefined,
         newAmount: entry.newAmount !== undefined ? entry.newAmount : undefined,
         notes: entry.notes || null,
-        performedBy: String(_userId),
+        performedBy: String(userId),
         changeDate: new Date(),
         changeReason: entry.changeReason || "update_deductions",
       });
@@ -210,7 +283,7 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "update_payment_deductions",
       description: `Updated deductions for payment #${paymentId}`,
       ip_address: "127.0.0.1",
@@ -243,7 +316,11 @@ module.exports = async function updateDeductions(params = {}, queryRunner = null
     }
     console.error("Error in updateDeductions:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to update deductions: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to update deductions: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore

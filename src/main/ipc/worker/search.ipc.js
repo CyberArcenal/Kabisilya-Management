@@ -6,28 +6,28 @@ const { AppDataSource } = require("../../db/dataSource");
 
 module.exports = async function searchWorkers(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      query, 
+      query,
       // @ts-ignore
-      page = 1, 
+      page = 1,
       // @ts-ignore
-      limit = 50, 
+      limit = 50,
       // @ts-ignore
-      sortBy = 'name', 
+      sortBy = "name",
       // @ts-ignore
-      sortOrder = 'ASC',
+      sortOrder = "ASC",
       // @ts-ignore
       status = null,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
-    if (!query || query.trim() === '') {
+    if (!query || query.trim() === "") {
       return {
         status: false,
-        message: 'Search query is required',
-        data: null
+        message: "Search query is required",
+        data: null,
       };
     }
 
@@ -35,15 +35,15 @@ module.exports = async function searchWorkers(params = {}) {
 
     // Build query (removed kabisilya join)
     const qb = workerRepository
-      .createQueryBuilder('worker')
+      .createQueryBuilder("worker")
       .where(
-        'worker.name LIKE :query OR worker.contact LIKE :query OR worker.email LIKE :query OR worker.address LIKE :query',
-        { query: `%${query}%` }
+        "worker.name LIKE :query OR worker.contact LIKE :query OR worker.email LIKE :query OR worker.address LIKE :query",
+        { query: `%${query}%` },
       );
 
     // Apply filters
     if (status) {
-      qb.andWhere('worker.status = :status', { status });
+      qb.andWhere("worker.status = :status", { status });
     }
 
     // Get total count first
@@ -58,24 +58,24 @@ module.exports = async function searchWorkers(params = {}) {
 
     return {
       status: true,
-      message: 'Workers retrieved successfully',
+      message: "Workers retrieved successfully",
       data: {
         workers,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in searchWorkers:', error);
+    console.error("Error in searchWorkers:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to search workers: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

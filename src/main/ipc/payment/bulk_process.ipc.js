@@ -27,7 +27,7 @@ module.exports = async function bulkProcessPayments(
 
   try {
     // @ts-ignore
-    const { paymentIds, paymentDate, paymentMethod, referenceNumber, _userId } =
+    const { paymentIds, paymentDate, paymentMethod, referenceNumber, userId } =
       params;
 
     if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
@@ -37,7 +37,7 @@ module.exports = async function bulkProcessPayments(
         data: null,
       };
     }
-    if (!_userId) {
+    if (!userId) {
       return {
         status: false,
         message: "User ID is required for audit trail",
@@ -137,7 +137,7 @@ module.exports = async function bulkProcessPayments(
 
         // Apply debt deductions first (this will update debts and worker totals)
         if (totalDebtDeduction > 0) {
-          await applyDebtDeductions(payment, queryRunner, _userId);
+          await applyDebtDeductions(payment, queryRunner, userId);
         }
 
         // Save updated payment
@@ -174,7 +174,7 @@ module.exports = async function bulkProcessPayments(
           oldAmount: 0.0,
           newAmount: netPay,
           notes: `Payment processed via bulk operation (${payment.paymentMethod || paymentMethod || "unknown method"})`,
-          performedBy: String(_userId),
+          performedBy: String(userId),
           changeDate: new Date(),
           referenceNumber: payment.referenceNumber,
         });
@@ -198,7 +198,7 @@ module.exports = async function bulkProcessPayments(
 
     // Log user activity
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_process_payments",
       description: `Processed ${results.successCount} payments via bulk operation (${results.failedCount} failed). Total amount: ${results.totalAmount.toFixed(2)}`,
       ip_address: "127.0.0.1",

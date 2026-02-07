@@ -14,7 +14,7 @@ const { farmSessionDefaultSessionId } = require("../../../utils/system");
 module.exports = async (params, queryRunner) => {
   try {
     // @ts-ignore
-    const { pitaks, _userId } = params;
+    const { pitaks, userId } = params;
 
     if (!Array.isArray(pitaks) || pitaks.length === 0) {
       return {
@@ -137,11 +137,11 @@ module.exports = async (params, queryRunner) => {
           // @ts-ignore
           totalLuwang: parseFloat(p.totalLuwang),
           // @ts-ignore
-          areaSqm: parseFloat(p.areaSqm),       // 🆕 return area
+          areaSqm: parseFloat(p.areaSqm), // 🆕 return area
           // @ts-ignore
-          layoutType: p.layoutType,             // 🆕 return layout
+          layoutType: p.layoutType, // 🆕 return layout
           // @ts-ignore
-          sideLengths: p.sideLengths,           // 🆕 return side lengths
+          sideLengths: p.sideLengths, // 🆕 return side lengths
           // @ts-ignore
           status: p.status,
           sessionId,

@@ -8,7 +8,7 @@ const UserActivity = require("../../../entities/UserActivity");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { pitakIds, updates, _userId } = params;
+    const { pitakIds, updates, userId } = params;
 
     if (!Array.isArray(pitakIds) || pitakIds.length === 0) {
       return {
@@ -18,7 +18,11 @@ module.exports = async (params, queryRunner) => {
       };
     }
 
-    if (!updates || typeof updates !== "object" || Object.keys(updates).length === 0) {
+    if (
+      !updates ||
+      typeof updates !== "object" ||
+      Object.keys(updates).length === 0
+    ) {
       return {
         status: false,
         message: "updates object is required and must not be empty",
@@ -27,11 +31,20 @@ module.exports = async (params, queryRunner) => {
     }
 
     // 🆕 extend allowed updates
-    const allowedUpdates = ["location", "totalLuwang", "status", "layoutType", "sideLengths", "areaSqm"];
+    const allowedUpdates = [
+      "location",
+      "totalLuwang",
+      "status",
+      "layoutType",
+      "sideLengths",
+      "areaSqm",
+    ];
     const updateKeys = Object.keys(updates);
 
     // Validate update fields
-    const invalidKeys = updateKeys.filter((key) => !allowedUpdates.includes(key));
+    const invalidKeys = updateKeys.filter(
+      (key) => !allowedUpdates.includes(key),
+    );
     if (invalidKeys.length > 0) {
       return {
         status: false,
@@ -138,7 +151,7 @@ module.exports = async (params, queryRunner) => {
 
         // Log activity for each pitak
         await queryRunner.manager.getRepository(UserActivity).save({
-          user_id: _userId,
+          user_id: userId,
           action: "bulk_update_pitak",
           entity: "Pitak",
           entity_id: updatedPitak.id,

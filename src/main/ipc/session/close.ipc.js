@@ -10,33 +10,33 @@ const Session = require("../../../entities/Session");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       id,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     if (!id) {
       return {
         status: false,
         message: "Session ID is required",
-        data: null
+        data: null,
       };
     }
 
     const sessionRepo = queryRunner.manager.getRepository(Session);
-    
+
     // Get session
     const session = await sessionRepo.findOne({
-      where: { id: id }
+      where: { id: id },
     });
 
     if (!session) {
       return {
         status: false,
         message: "Session not found",
-        data: null
+        data: null,
       };
     }
 
@@ -45,7 +45,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Session is already closed",
-        data: null
+        data: null,
       };
     }
 
@@ -53,7 +53,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Cannot close an archived session",
-        data: null
+        data: null,
       };
     }
 
@@ -69,16 +69,15 @@ module.exports = async (params, queryRunner) => {
     return {
       status: true,
       message: "Session closed successfully",
-      data: updatedSession
+      data: updatedSession,
     };
-
   } catch (error) {
     console.error("Error closing session:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to close session: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

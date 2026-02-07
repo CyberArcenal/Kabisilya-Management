@@ -15,7 +15,8 @@ const { validateWorkers, validatePitak } = require("../utils/assignmentUtils");
 module.exports = async (params) => {
   try {
     // @ts-ignore
-    const { luwangCount, assignmentId, workerId, pitakId, dateRange, _userId } = params;
+    const { luwangCount, assignmentId, workerId, pitakId, dateRange, userId } =
+      params;
 
     if (luwangCount === undefined) {
       return { status: false, message: "LuWang count is required", data: null };
@@ -28,7 +29,7 @@ module.exports = async (params) => {
       errors: [],
       warnings: [],
       statistics: {},
-      recommendations: []
+      recommendations: [],
     };
 
     // Basic numeric validation
@@ -84,14 +85,15 @@ module.exports = async (params) => {
     if (assignmentId) {
       const assignment = await assignmentRepo.findOne({
         where: { id: assignmentId },
-        relations: ["worker"]
+        relations: ["worker"],
       });
 
       if (assignment) {
         // @ts-ignore
         const previousCount = parseFloat(assignment.luwangCount);
         const difference = count - previousCount;
-        const percentageChange = previousCount > 0 ? (difference / previousCount) * 100 : 100;
+        const percentageChange =
+          previousCount > 0 ? (difference / previousCount) * 100 : 100;
 
         // @ts-ignore
         validation.statistics.previousCount = previousCount;
@@ -102,24 +104,36 @@ module.exports = async (params) => {
 
         if (Math.abs(percentageChange) > 50) {
           // @ts-ignore
-          validation.warnings.push(`Significant change detected: ${percentageChange.toFixed(2)}% from previous count`);
+          validation.warnings.push(
+            `Significant change detected: ${percentageChange.toFixed(2)}% from previous count`,
+          );
         }
 
         // @ts-ignore
         if (assignment.worker?.id) {
           const historicalAssignments = await assignmentRepo.find({
             // @ts-ignore
-            where: { worker: { id: assignment.worker.id }, status: "completed" },
+            where: {
+              worker: { id: assignment.worker.id },
+              status: "completed",
+            },
             order: { assignmentDate: "DESC" },
-            take: 10
+            take: 10,
           });
 
           if (historicalAssignments.length > 0) {
             // @ts-ignore
-            const historicalCounts = historicalAssignments.map(a => parseFloat(a.luwangCount));
-            const average = historicalCounts.reduce((a, b) => a + b, 0) / historicalCounts.length;
+            const historicalCounts = historicalAssignments.map((a) =>
+              parseFloat(a.luwangCount),
+            );
+            const average =
+              historicalCounts.reduce((a, b) => a + b, 0) /
+              historicalCounts.length;
             const stdDev = Math.sqrt(
-              historicalCounts.reduce((sq, n) => sq + Math.pow(n - average, 2), 0) / historicalAssignments.length
+              historicalCounts.reduce(
+                (sq, n) => sq + Math.pow(n - average, 2),
+                0,
+              ) / historicalAssignments.length,
             );
 
             // @ts-ignore
@@ -127,11 +141,15 @@ module.exports = async (params) => {
             // @ts-ignore
             validation.statistics.historicalStdDev = stdDev.toFixed(2);
 
-            if (Math.abs(count - average) > (2 * stdDev) && stdDev > 0) {
+            if (Math.abs(count - average) > 2 * stdDev && stdDev > 0) {
               // @ts-ignore
-              validation.warnings.push("Count is significantly different from worker's historical performance");
+              validation.warnings.push(
+                "Count is significantly different from worker's historical performance",
+              );
               // @ts-ignore
-              validation.recommendations.push("Review worker's typical performance before accepting");
+              validation.recommendations.push(
+                "Review worker's typical performance before accepting",
+              );
             }
           }
         }
@@ -145,15 +163,21 @@ module.exports = async (params) => {
         where: {
           // @ts-ignore
           worker: { id: workerId },
-          assignmentDate: startDate && endDate ? Between(new Date(startDate), new Date(endDate)) : undefined,
-          status: "completed"
-        }
+          assignmentDate:
+            startDate && endDate
+              ? Between(new Date(startDate), new Date(endDate))
+              : undefined,
+          status: "completed",
+        },
       });
 
       if (dateRangeAssignments.length > 0) {
         // @ts-ignore
-        const dateRangeCounts = dateRangeAssignments.map(a => parseFloat(a.luwangCount));
-        const dateRangeAverage = dateRangeCounts.reduce((a, b) => a + b, 0) / dateRangeCounts.length;
+        const dateRangeCounts = dateRangeAssignments.map((a) =>
+          parseFloat(a.luwangCount),
+        );
+        const dateRangeAverage =
+          dateRangeCounts.reduce((a, b) => a + b, 0) / dateRangeCounts.length;
 
         // @ts-ignore
         validation.statistics.dateRangeAverage = dateRangeAverage.toFixed(2);
@@ -162,10 +186,14 @@ module.exports = async (params) => {
 
         if (count < dateRangeAverage * 0.5) {
           // @ts-ignore
-          validation.warnings.push("Count is significantly lower than worker's average for the date range");
+          validation.warnings.push(
+            "Count is significantly lower than worker's average for the date range",
+          );
         } else if (count > dateRangeAverage * 1.5) {
           // @ts-ignore
-          validation.warnings.push("Count is significantly higher than worker's average for the date range");
+          validation.warnings.push(
+            "Count is significantly higher than worker's average for the date range",
+          );
         }
       }
     }
@@ -174,18 +202,29 @@ module.exports = async (params) => {
     if (validation.isValid) {
       if (count === 0) {
         // @ts-ignore
-        validation.recommendations.push("Consider if zero LuWang count is correct for this assignment");
+        validation.recommendations.push(
+          "Consider if zero LuWang count is correct for this assignment",
+        );
       } else if (count < 10) {
         // @ts-ignore
-        validation.recommendations.push("Low LuWang count detected - ensure accuracy");
+        validation.recommendations.push(
+          "Low LuWang count detected - ensure accuracy",
+        );
       }
     }
 
-    return { status: true, message: "LuWang count validation completed", data: validation };
-
+    return {
+      status: true,
+      message: "LuWang count validation completed",
+      data: validation,
+    };
   } catch (error) {
     console.error("Error validating LuWang count:", error);
     // @ts-ignore
-    return { status: false, message: `Validation failed: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Validation failed: ${error.message}`,
+      data: null,
+    };
   }
 };

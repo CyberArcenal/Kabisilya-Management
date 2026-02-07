@@ -20,7 +20,7 @@ const { farmSessionDefaultSessionId } = require("../../../utils/system");
 module.exports = async (params, queryRunner) => {
   try {
     // @ts-ignore
-    const { assignments, _userId } = params;
+    const { assignments, userId } = params;
 
     if (!Array.isArray(assignments) || assignments.length === 0) {
       return {

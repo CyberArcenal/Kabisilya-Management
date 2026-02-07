@@ -23,7 +23,7 @@ module.exports = async function bulkUpdateWorkers(
 
   try {
     // @ts-ignore
-    const { updates, _userId } = params;
+    const { updates, userId } = params;
 
     if (!updates || !Array.isArray(updates) || updates.length === 0) {
       return {
@@ -121,7 +121,7 @@ module.exports = async function bulkUpdateWorkers(
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_update_workers",
       description: `Bulk updated ${results.updated.length} workers`,
       details: JSON.stringify({

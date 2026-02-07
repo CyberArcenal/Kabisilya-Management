@@ -8,10 +8,12 @@ const Worker = require("../../../entities/Worker");
 // @ts-ignore
 module.exports = async (params, queryRunner) => {
   try {
-    const { debt_id, amount, paymentMethod, referenceNumber, notes, _userId } = params;
+    const { debt_id, amount, paymentMethod, referenceNumber, notes, userId } =
+      params;
 
     const debtRepository = queryRunner.manager.getRepository(Debt);
-    const debtHistoryRepository = queryRunner.manager.getRepository(DebtHistory);
+    const debtHistoryRepository =
+      queryRunner.manager.getRepository(DebtHistory);
     const workerRepository = queryRunner.manager.getRepository(Worker);
 
     // Get debt with worker
@@ -36,12 +38,20 @@ module.exports = async (params, queryRunner) => {
 
     const paymentAmount = parseFloat(amount);
     if (!paymentAmount || paymentAmount <= 0) {
-      return { status: false, message: "Payment amount must be greater than 0", data: null };
+      return {
+        status: false,
+        message: "Payment amount must be greater than 0",
+        data: null,
+      };
     }
 
     const previousBalance = parseFloat(debt.balance);
     if (paymentAmount > previousBalance) {
-      return { status: false, message: "Payment amount exceeds debt balance", data: null };
+      return {
+        status: false,
+        message: "Payment amount exceeds debt balance",
+        data: null,
+      };
     }
 
     // Require method + reference for audit clarity
@@ -83,7 +93,7 @@ module.exports = async (params, queryRunner) => {
       referenceNumber,
       notes: notes || `[${new Date().toISOString()}] Payment processed`,
       transactionDate: new Date(),
-      performedBy: _userId ? String(_userId) : null,
+      performedBy: userId ? String(userId) : null,
       changeReason: "manual_payment",
     });
 
@@ -92,7 +102,8 @@ module.exports = async (params, queryRunner) => {
     // Update worker's summary
     const worker = debt.worker;
     worker.totalPaid = parseFloat(worker.totalPaid || 0) + paymentAmount;
-    worker.currentBalance = parseFloat(worker.currentBalance || 0) - paymentAmount;
+    worker.currentBalance =
+      parseFloat(worker.currentBalance || 0) - paymentAmount;
     await workerRepository.save(worker);
 
     return {

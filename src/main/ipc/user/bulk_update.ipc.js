@@ -5,9 +5,12 @@ const User = require("../../../entities/User");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null) {
+module.exports = async function bulkUpdateUsers(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
-  
+
   if (!queryRunner) {
     queryRunner = AppDataSource.createQueryRunner();
     // @ts-ignore
@@ -19,13 +22,13 @@ module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null)
 
   try {
     // @ts-ignore
-    const { updates, _userId } = params;
-    
+    const { updates, userId } = params;
+
     if (!Array.isArray(updates) || updates.length === 0) {
       return {
         status: false,
-        message: 'Updates array is required and must not be empty',
-        data: null
+        message: "Updates array is required and must not be empty",
+        data: null,
       };
     }
 
@@ -37,41 +40,41 @@ module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null)
     for (const updateData of updates) {
       try {
         const { id, ...updateFields } = updateData;
-        
+
         if (!id) {
-          errors.push({ 
-            update: updateData, 
-            error: 'User ID is required' 
+          errors.push({
+            update: updateData,
+            error: "User ID is required",
           });
           continue;
         }
 
         const user = await userRepository.findOne({
-          where: { id: parseInt(id) }
+          where: { id: parseInt(id) },
         });
 
         if (!user) {
-          errors.push({ 
-            update: updateData, 
-            error: 'User not found' 
+          errors.push({
+            update: updateData,
+            error: "User not found",
           });
           continue;
         }
 
         // Prevent self-updates for certain fields
-        if (parseInt(id) === parseInt(_userId)) {
-          if (updateFields.role && updateFields.role !== 'admin') {
-            errors.push({ 
-              update: updateData, 
-              error: 'Cannot change your own role to non-admin' 
+        if (parseInt(id) === parseInt(userId)) {
+          if (updateFields.role && updateFields.role !== "admin") {
+            errors.push({
+              update: updateData,
+              error: "Cannot change your own role to non-admin",
             });
             continue;
           }
 
           if (updateFields.isActive === false) {
-            errors.push({ 
-              update: updateData, 
-              error: 'Cannot deactivate your own account' 
+            errors.push({
+              update: updateData,
+              error: "Cannot deactivate your own account",
             });
             continue;
           }
@@ -83,15 +86,15 @@ module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null)
 
         // @ts-ignore
         const savedUser = await queryRunner.manager.save(user);
-        
+
         // Remove password from response
         const { password, ...userWithoutPassword } = savedUser;
         updatedUsers.push(userWithoutPassword);
       } catch (error) {
-        errors.push({ 
-          update: updateData, 
+        errors.push({
+          update: updateData,
           // @ts-ignore
-          error: error.message 
+          error: error.message,
         });
       }
     }
@@ -100,12 +103,12 @@ module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null)
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
-      action: 'bulk_update_users',
+      user_id: userId,
+      action: "bulk_update_users",
       description: `Updated ${updatedUsers.length} users in bulk`,
       ip_address: "127.0.0.1",
       user_agent: "Kabisilya-Management-System",
-      created_at: new Date()
+      created_at: new Date(),
     });
     await activityRepo.save(activity);
 
@@ -123,21 +126,21 @@ module.exports = async function bulkUpdateUsers(params = {}, queryRunner = null)
         summary: {
           total: updates.length,
           updated: updatedUsers.length,
-          failed: errors.length
-        }
-      }
+          failed: errors.length,
+        },
+      },
     };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
       await queryRunner.rollbackTransaction();
     }
-    console.error('Error in bulkUpdateUsers:', error);
+    console.error("Error in bulkUpdateUsers:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Bulk update failed: ${error.message}`,
-      data: null
+      data: null,
     };
   } finally {
     if (shouldRelease) {

@@ -8,19 +8,19 @@ const { AppDataSource } = require("../../../db/dataSource");
 
 module.exports = async function getActiveWorkers(params = {}) {
   try {
-    const { 
+    const {
       // @ts-ignore
-      page = 1, 
+      page = 1,
       // @ts-ignore
-      limit = 100, 
+      limit = 100,
       // @ts-ignore
-      sortBy = 'name', 
+      sortBy = "name",
       // @ts-ignore
-      sortOrder = 'ASC',
+      sortOrder = "ASC",
       // @ts-ignore
       includeStats = false,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     const workerRepository = AppDataSource.getRepository(Worker);
@@ -28,10 +28,10 @@ module.exports = async function getActiveWorkers(params = {}) {
     const paymentRepository = AppDataSource.getRepository(Payment);
 
     const [workers, total] = await workerRepository.findAndCount({
-      where: { status: 'active' },
+      where: { status: "active" },
       order: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
-      take: limit
+      take: limit,
     });
 
     // Calculate additional stats if requested
@@ -41,8 +41,8 @@ module.exports = async function getActiveWorkers(params = {}) {
     let stats = null;
     if (includeStats) {
       // Get financial data for all active workers in batch
-      const workerIds = workers.map(w => w.id);
-      
+      const workerIds = workers.map((w) => w.id);
+
       if (workerIds.length > 0) {
         // Get total payments for these workers
         const paymentResults = await paymentRepository
@@ -59,20 +59,20 @@ module.exports = async function getActiveWorkers(params = {}) {
           .select("debt.workerId", "workerId")
           .addSelect("SUM(debt.balance)", "activeDebt")
           .where("debt.workerId IN (:...ids)", { ids: workerIds })
-          .andWhere("debt.status IN (:...statuses)", { 
-            statuses: ['pending', 'partially_paid'] 
+          .andWhere("debt.status IN (:...statuses)", {
+            statuses: ["pending", "partially_paid"],
           })
           .groupBy("debt.workerId")
           .getRawMany();
 
         // Create lookup maps
         const paymentsMap = new Map();
-        paymentResults.forEach(p => {
+        paymentResults.forEach((p) => {
           paymentsMap.set(p.workerId, parseFloat(p.totalPaid) || 0);
         });
 
         const debtsMap = new Map();
-        debtResults.forEach(d => {
+        debtResults.forEach((d) => {
           debtsMap.set(d.workerId, parseFloat(d.activeDebt) || 0);
         });
 
@@ -80,11 +80,11 @@ module.exports = async function getActiveWorkers(params = {}) {
         let totalBalance = 0;
         let totalDebt = 0;
 
-        workers.forEach(worker => {
+        workers.forEach((worker) => {
           const workerPaid = paymentsMap.get(worker.id) || 0;
           const workerDebt = debtsMap.get(worker.id) || 0;
           const workerBalance = workerPaid - workerDebt;
-          
+
           totalBalance += workerBalance;
           totalDebt += workerDebt;
         });
@@ -95,7 +95,7 @@ module.exports = async function getActiveWorkers(params = {}) {
           totalBalance: totalBalance,
           totalDebt: totalDebt,
           averageBalance: total > 0 ? totalBalance / total : 0,
-          averageDebt: total > 0 ? totalDebt / total : 0
+          averageDebt: total > 0 ? totalDebt / total : 0,
         };
       } else {
         stats = {
@@ -104,14 +104,14 @@ module.exports = async function getActiveWorkers(params = {}) {
           totalBalance: 0,
           totalDebt: 0,
           averageBalance: 0,
-          averageDebt: 0
+          averageDebt: 0,
         };
       }
     }
 
     return {
       status: true,
-      message: 'Active workers retrieved successfully',
+      message: "Active workers retrieved successfully",
       data: {
         workers,
         stats,
@@ -119,17 +119,17 @@ module.exports = async function getActiveWorkers(params = {}) {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          totalPages: Math.ceil(total / limit),
+        },
+      },
     };
   } catch (error) {
-    console.error('Error in getActiveWorkers:', error);
+    console.error("Error in getActiveWorkers:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve active workers: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

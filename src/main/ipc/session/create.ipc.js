@@ -10,7 +10,7 @@ const Session = require("../../../entities/Session");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       name,
       // @ts-ignore
@@ -24,7 +24,7 @@ module.exports = async (params, queryRunner) => {
       // @ts-ignore
       status,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
@@ -32,7 +32,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Session name is required",
-        data: null
+        data: null,
       };
     }
 
@@ -40,7 +40,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Year is required",
-        data: null
+        data: null,
       };
     }
 
@@ -48,25 +48,25 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Start date is required",
-        data: null
+        data: null,
       };
     }
 
     const sessionRepo = queryRunner.manager.getRepository(Session);
-    
+
     // Check if session with same name and year already exists
     const existingSession = await sessionRepo.findOne({
-      where: { 
+      where: {
         name: name.trim(),
-        year: year 
-      }
+        year: year,
+      },
     });
 
     if (existingSession) {
       return {
         status: false,
         message: "Session with this name and year already exists",
-        data: null
+        data: null,
       };
     }
 
@@ -79,26 +79,25 @@ module.exports = async (params, queryRunner) => {
       endDate: endDate ? new Date(endDate) : null,
       status: status || "active",
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     const savedSession = await sessionRepo.save(newSession);
 
     // Log activity (called from main handler)
-    
+
     return {
       status: true,
       message: "Session created successfully",
-      data: savedSession
+      data: savedSession,
     };
-
   } catch (error) {
     console.error("Error creating session:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to create session: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

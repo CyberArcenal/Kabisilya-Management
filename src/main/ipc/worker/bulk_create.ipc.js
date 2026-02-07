@@ -5,7 +5,10 @@ const Worker = require("../../../entities/Worker");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function bulkCreateWorkers(params = {}, queryRunner = null) {
+module.exports = async function bulkCreateWorkers(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -20,7 +23,7 @@ module.exports = async function bulkCreateWorkers(params = {}, queryRunner = nul
 
   try {
     // @ts-ignore
-    const { workers, _userId } = params;
+    const { workers, userId } = params;
 
     if (!workers || !Array.isArray(workers) || workers.length === 0) {
       return {
@@ -44,9 +47,13 @@ module.exports = async function bulkCreateWorkers(params = {}, queryRunner = nul
 
       if (workerData.email) {
         // @ts-ignore
-        const duplicateInBatch = validWorkers.some((w) => w.email === workerData.email);
+        const duplicateInBatch = validWorkers.some(
+          (w) => w.email === workerData.email,
+        );
         if (duplicateInBatch) {
-          errors.push(`Worker ${i + 1}: Email ${workerData.email} is duplicated in batch`);
+          errors.push(
+            `Worker ${i + 1}: Email ${workerData.email} is duplicated in batch`,
+          );
           continue;
         }
       }
@@ -78,18 +85,19 @@ module.exports = async function bulkCreateWorkers(params = {}, queryRunner = nul
     }
 
     const workersToCreate = validWorkers.filter(
-      (worker) => !worker.email || !existingEmails.has(worker.email)
+      (worker) => !worker.email || !existingEmails.has(worker.email),
     );
 
     const workersWithExistingEmails = validWorkers.filter(
-      (worker) => worker.email && existingEmails.has(worker.email)
+      (worker) => worker.email && existingEmails.has(worker.email),
     );
 
     if (workersWithExistingEmails.length > 0) {
       errors.push(
         ...workersWithExistingEmails.map(
-          (w) => `Worker ${w.name}: Email ${w.email} already exists in database`
-        )
+          (w) =>
+            `Worker ${w.name}: Email ${w.email} already exists in database`,
+        ),
       );
     }
 
@@ -103,7 +111,9 @@ module.exports = async function bulkCreateWorkers(params = {}, queryRunner = nul
         email: workerData.email || null,
         address: workerData.address || null,
         status: workerData.status || "active",
-        hireDate: workerData.hireDate ? new Date(workerData.hireDate) : currentDate,
+        hireDate: workerData.hireDate
+          ? new Date(workerData.hireDate)
+          : currentDate,
       });
 
       const savedWorker = await workerRepository.save(worker);
@@ -113,7 +123,7 @@ module.exports = async function bulkCreateWorkers(params = {}, queryRunner = nul
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_create_workers",
       description: `Bulk created ${createdWorkers.length} workers`,
       details: JSON.stringify({

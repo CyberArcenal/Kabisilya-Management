@@ -9,7 +9,10 @@ const Worker = require("../../../entities/Worker");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
-module.exports = async function processPayment(params = {}, queryRunner = null) {
+module.exports = async function processPayment(
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -33,14 +36,18 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
       // @ts-ignore
       referenceNumber,
       // @ts-ignore
-      _userId,
+      userId,
     } = params;
 
     if (!paymentId) {
       return { status: false, message: "Payment ID is required", data: null };
     }
-    if (!_userId) {
-      return { status: false, message: "User ID is required for audit trail", data: null };
+    if (!userId) {
+      return {
+        status: false,
+        message: "User ID is required for audit trail",
+        data: null,
+      };
     }
 
     // @ts-ignore
@@ -94,13 +101,14 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
     // Update payment details
     payment.paymentDate = paymentDate ? new Date(paymentDate) : new Date();
     payment.paymentMethod = paymentMethod || payment.paymentMethod || null;
-    payment.referenceNumber = referenceNumber || payment.referenceNumber || null;
+    payment.referenceNumber =
+      referenceNumber || payment.referenceNumber || null;
     payment.status = "completed";
     payment.updatedAt = new Date();
 
     // Apply debt deductions first (this will update debts and worker totals)
     if (totalDebtDeduction > 0) {
-      await applyDebtDeductions(payment, queryRunner, _userId);
+      await applyDebtDeductions(payment, queryRunner, userId);
     }
 
     // Save updated payment
@@ -110,10 +118,18 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
     if (payment.worker && payment.worker.id) {
       // @ts-ignore
       const workerRepository = queryRunner.manager.getRepository(Worker);
-      const worker = await workerRepository.findOne({ where: { id: payment.worker.id } });
+      const worker = await workerRepository.findOne({
+        where: { id: payment.worker.id },
+      });
       if (worker) {
-        worker.totalPaid = parseFloat((parseFloat(worker.totalPaid || 0) + netPay).toFixed(2));
-        worker.currentBalance = parseFloat(Math.max(0, parseFloat(worker.currentBalance || 0) - netPay).toFixed(2));
+        worker.totalPaid = parseFloat(
+          (parseFloat(worker.totalPaid || 0) + netPay).toFixed(2),
+        );
+        worker.currentBalance = parseFloat(
+          Math.max(0, parseFloat(worker.currentBalance || 0) - netPay).toFixed(
+            2,
+          ),
+        );
         worker.updatedAt = new Date();
         await workerRepository.save(worker);
       }
@@ -121,7 +137,8 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
 
     // Create payment history entry for status change
     // @ts-ignore
-    const paymentHistoryRepository = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepository =
+      queryRunner.manager.getRepository(PaymentHistory);
     const paymentHistory = paymentHistoryRepository.create({
       payment: updatedPayment,
       actionType: "status_change",
@@ -129,7 +146,7 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
       oldValue: "pending",
       newValue: "completed",
       notes: `Payment processed via ${payment.paymentMethod || "unknown method"}`,
-      performedBy: String(_userId),
+      performedBy: String(userId),
       changeDate: new Date(),
       changeReason: "process_payment",
     });
@@ -139,7 +156,7 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "process_payment",
       description: `Processed payment #${paymentId} for ${payment.worker ? payment.worker.name : "unknown worker"}`,
       ip_address: "127.0.0.1",
@@ -153,7 +170,11 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
       await queryRunner.commitTransaction();
     }
 
-    return { status: true, message: "Payment processed successfully", data: { payment: updatedPayment } };
+    return {
+      status: true,
+      message: "Payment processed successfully",
+      data: { payment: updatedPayment },
+    };
   } catch (error) {
     if (shouldRelease) {
       // @ts-ignore
@@ -161,7 +182,11 @@ module.exports = async function processPayment(params = {}, queryRunner = null) 
     }
     console.error("Error in processPayment:", error);
     // @ts-ignore
-    return { status: false, message: `Failed to process payment: ${error.message}`, data: null };
+    return {
+      status: false,
+      message: `Failed to process payment: ${error.message}`,
+      data: null,
+    };
   } finally {
     if (shouldRelease) {
       // @ts-ignore
@@ -189,7 +214,9 @@ async function applyDebtDeductions(payment, queryRunner, performedBy) {
   if (remainingDeduction <= 0) return;
 
   // Load worker once
-  const worker = await workerRepository.findOne({ where: { id: payment.worker.id } });
+  const worker = await workerRepository.findOne({
+    where: { id: payment.worker.id },
+  });
 
   for (const debt of debts) {
     if (remainingDeduction <= 0) break;
@@ -203,8 +230,12 @@ async function applyDebtDeductions(payment, queryRunner, performedBy) {
     const oldDebtTotalPaid = parseFloat(debt.totalPaid || 0);
 
     // Update debt safely
-    const newDebtBalance = parseFloat((debtBalance - deductionAmount).toFixed(2));
-    const newDebtTotalPaid = parseFloat((oldDebtTotalPaid + deductionAmount).toFixed(2));
+    const newDebtBalance = parseFloat(
+      (debtBalance - deductionAmount).toFixed(2),
+    );
+    const newDebtTotalPaid = parseFloat(
+      (oldDebtTotalPaid + deductionAmount).toFixed(2),
+    );
 
     debt.balance = newDebtBalance;
     debt.totalPaid = newDebtTotalPaid;
@@ -237,18 +268,28 @@ async function applyDebtDeductions(payment, queryRunner, performedBy) {
 
     // Update worker aggregates to reflect debt payment
     if (worker) {
-      worker.totalPaid = parseFloat((parseFloat(worker.totalPaid || 0) + deductionAmount).toFixed(2));
-      worker.currentBalance = parseFloat(Math.max(0, parseFloat(worker.currentBalance || 0) - deductionAmount).toFixed(2));
+      worker.totalPaid = parseFloat(
+        (parseFloat(worker.totalPaid || 0) + deductionAmount).toFixed(2),
+      );
+      worker.currentBalance = parseFloat(
+        Math.max(
+          0,
+          parseFloat(worker.currentBalance || 0) - deductionAmount,
+        ).toFixed(2),
+      );
       worker.updatedAt = new Date();
       await workerRepository.save(worker);
     }
 
-    remainingDeduction = parseFloat((remainingDeduction - deductionAmount).toFixed(2));
+    remainingDeduction = parseFloat(
+      (remainingDeduction - deductionAmount).toFixed(2),
+    );
   }
 
   // Create a PaymentHistory entry summarizing the deduction applied
   if (parseFloat(payment.totalDebtDeduction || 0) > 0) {
-    const paymentHistoryRepo = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepo =
+      queryRunner.manager.getRepository(PaymentHistory);
     const paymentHistory = paymentHistoryRepo.create({
       payment: { id: payment.id },
       actionType: "deduction",

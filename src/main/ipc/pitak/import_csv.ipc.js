@@ -10,11 +10,11 @@ const { Readable } = require("stream");
 const UserActivity = require("../../../entities/UserActivity");
 
 module.exports = async (
-  /** @type {{ csvData: any; options?: {} | undefined; _userId: any; }} */ params,
+  /** @type {{ csvData: any; options?: {} | undefined; userId: any; }} */ params,
   /** @type {{ manager: { getRepository: (arg0: import("typeorm").EntitySchema<{ id: unknown; location: unknown; totalLuwang: unknown; status: unknown; createdAt: unknown; updatedAt: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; user_id: unknown; action: unknown; entity: unknown; entity_id: unknown; ip_address: unknown; user_agent: unknown; details: unknown; created_at: unknown; }> | import("typeorm").EntitySchema<{ id: unknown; name: unknown; location: unknown; createdAt: unknown; updatedAt: unknown; }>) => { (): any; new (): any; save: { (arg0: { user_id: any; action: string; entity: string; entity_id: any; details: string; }): any; new (): any; }; }; }; }} */ queryRunner,
 ) => {
   try {
-    const { csvData, options = {}, _userId } = params;
+    const { csvData, options = {}, userId } = params;
 
     if (!csvData) {
       return {
@@ -134,7 +134,7 @@ module.exports = async (
 
         // Log activity
         await queryRunner.manager.getRepository(UserActivity).save({
-          user_id: _userId,
+          user_id: userId,
           action: "import_pitak_csv",
           entity: "Pitak",
           entity_id: savedPitak.id,

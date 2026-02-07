@@ -1,10 +1,10 @@
 // src/ipc/assignment/export_csv.ipc.js
 //@ts-check
-const { Parser } = require('json2csv');
-const fs = require('fs');
-const path = require('path');
-const { AppDataSource } = require('../../db/dataSource');
-const Assignment = require('../../../entities/Assignment');
+const { Parser } = require("json2csv");
+const fs = require("fs");
+const path = require("path");
+const { AppDataSource } = require("../../db/dataSource");
+const Assignment = require("../../../entities/Assignment");
 
 /**
  * Export assignments to CSV file
@@ -13,20 +13,20 @@ const Assignment = require('../../../entities/Assignment');
  */
 module.exports = async (params) => {
   try {
-    const { 
+    const {
       // @ts-ignore
-      filters = {}, 
+      filters = {},
       // @ts-ignore
-      fields = [], 
+      fields = [],
       // @ts-ignore
       outputPath,
       // @ts-ignore
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     const assignmentRepo = AppDataSource.getRepository(Assignment);
-    
+
     // Build query
     const queryBuilder = assignmentRepo
       .createQueryBuilder("assignment")
@@ -35,22 +35,31 @@ module.exports = async (params) => {
 
     // Apply filters
     if (filters.dateFrom && filters.dateTo) {
-      queryBuilder.where("assignment.assignmentDate BETWEEN :dateFrom AND :dateTo", {
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo
-      });
+      queryBuilder.where(
+        "assignment.assignmentDate BETWEEN :dateFrom AND :dateTo",
+        {
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+        },
+      );
     }
 
     if (filters.status) {
-      queryBuilder.andWhere("assignment.status = :status", { status: filters.status });
+      queryBuilder.andWhere("assignment.status = :status", {
+        status: filters.status,
+      });
     }
 
     if (filters.workerId) {
-      queryBuilder.andWhere("assignment.workerId = :workerId", { workerId: filters.workerId });
+      queryBuilder.andWhere("assignment.workerId = :workerId", {
+        workerId: filters.workerId,
+      });
     }
 
     if (filters.pitakId) {
-      queryBuilder.andWhere("assignment.pitakId = :pitakId", { pitakId: filters.pitakId });
+      queryBuilder.andWhere("assignment.pitakId = :pitakId", {
+        pitakId: filters.pitakId,
+      });
     }
 
     const assignments = await queryBuilder.getMany();
@@ -59,7 +68,7 @@ module.exports = async (params) => {
       return {
         status: false,
         message: "No assignments found to export",
-        data: null
+        data: null,
       };
     }
 
@@ -68,15 +77,15 @@ module.exports = async (params) => {
       const baseData = {
         id: assignment.id,
         // @ts-ignore
-        assignment_date: assignment.assignmentDate.toISOString().split('T')[0],
+        assignment_date: assignment.assignmentDate.toISOString().split("T")[0],
         // @ts-ignore
         luwang_count: parseFloat(assignment.luwangCount).toFixed(2),
         status: assignment.status,
-        notes: assignment.notes || '',
+        notes: assignment.notes || "",
         // @ts-ignore
         created_at: assignment.createdAt.toISOString(),
         // @ts-ignore
-        updated_at: assignment.updatedAt.toISOString()
+        updated_at: assignment.updatedAt.toISOString(),
       };
 
       // Add worker information
@@ -89,7 +98,7 @@ module.exports = async (params) => {
         // @ts-ignore
         baseData.worker_name = assignment.worker.name;
         // @ts-ignore
-        baseData.worker_contact = assignment.worker.contactNumber || '';
+        baseData.worker_contact = assignment.worker.contactNumber || "";
       }
 
       // Add pitak information
@@ -102,26 +111,29 @@ module.exports = async (params) => {
         // @ts-ignore
         baseData.pitak_name = assignment.pitak.name;
         // @ts-ignore
-        baseData.pitak_location = assignment.pitak.location || '';
+        baseData.pitak_location = assignment.pitak.location || "";
       }
 
       return baseData;
     });
 
     // Define fields for CSV
-    let csvFields = fields.length > 0 ? fields : [
-      'id',
-      'assignment_date',
-      'worker_code',
-      'worker_name',
-      'pitak_code',
-      'pitak_name',
-      'luwang_count',
-      'status',
-      'notes',
-      'created_at',
-      'updated_at'
-    ];
+    let csvFields =
+      fields.length > 0
+        ? fields
+        : [
+            "id",
+            "assignment_date",
+            "worker_code",
+            "worker_name",
+            "pitak_code",
+            "pitak_name",
+            "luwang_count",
+            "status",
+            "notes",
+            "created_at",
+            "updated_at",
+          ];
 
     // Create CSV parser
     const parser = new Parser({ fields: csvFields });
@@ -130,8 +142,11 @@ module.exports = async (params) => {
     // Determine output path
     let finalOutputPath = outputPath;
     if (!finalOutputPath) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      finalOutputPath = path.join(process.cwd(), `assignments_export_${timestamp}.csv`);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      finalOutputPath = path.join(
+        process.cwd(),
+        `assignments_export_${timestamp}.csv`,
+      );
     }
 
     // Ensure directory exists
@@ -148,15 +163,24 @@ module.exports = async (params) => {
       totalExported: assignments.length,
       fileSize: fs.statSync(finalOutputPath).size,
       filePath: finalOutputPath,
-      dateRange: filters.dateFrom && filters.dateTo ? {
-        from: filters.dateFrom,
-        to: filters.dateTo
-      } : null,
+      dateRange:
+        filters.dateFrom && filters.dateTo
+          ? {
+              from: filters.dateFrom,
+              to: filters.dateTo,
+            }
+          : null,
       // @ts-ignore
-      statusBreakdown: assignments.reduce((/** @type {{ [x: string]: any; }} */ acc, /** @type {{ status: string | number; }} */ assignment) => {
-        acc[assignment.status] = (acc[assignment.status] || 0) + 1;
-        return acc;
-      }, {})
+      statusBreakdown: assignments.reduce(
+        (
+          /** @type {{ [x: string]: any; }} */ acc,
+          /** @type {{ status: string | number; }} */ assignment,
+        ) => {
+          acc[assignment.status] = (acc[assignment.status] || 0) + 1;
+          return acc;
+        },
+        {},
+      ),
     };
 
     return {
@@ -167,19 +191,18 @@ module.exports = async (params) => {
         fileInfo: {
           path: finalOutputPath,
           size: summary.fileSize,
-          rowCount: summary.totalExported
+          rowCount: summary.totalExported,
         },
-        summary
-      }
+        summary,
+      },
     };
-
   } catch (error) {
     console.error("Error exporting assignments to CSV:", error);
     return {
       status: false,
       // @ts-ignore
       message: `CSV export failed: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

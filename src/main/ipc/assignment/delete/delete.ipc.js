@@ -7,7 +7,7 @@ const Pitak = require("../../../../entities/Pitak");
 module.exports = async (params, queryRunner) => {
   try {
     // @ts-ignore
-    const { assignmentId, reason, _userId } = params;
+    const { assignmentId, reason, userId } = params;
     if (!assignmentId)
       return { status: false, message: "Assignment ID required", data: null };
 

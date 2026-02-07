@@ -12,13 +12,13 @@ const Kabisilya = require("../../../entities/Kabisilya");
  */
 module.exports = async (params, queryRunner) => {
   try {
-    const { 
+    const {
       // @ts-ignore
       id,
       // @ts-ignore
       name,
       // @ts-ignore
-      _userId 
+      userId,
     } = params;
 
     // Validate required fields
@@ -26,7 +26,7 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Kabisilya ID is required",
-        data: null
+        data: null,
       };
     }
 
@@ -34,38 +34,38 @@ module.exports = async (params, queryRunner) => {
       return {
         status: false,
         message: "Kabisilya name is required",
-        data: null
+        data: null,
       };
     }
 
     const kabisilyaRepo = queryRunner.manager.getRepository(Kabisilya);
-    
+
     // Find kabisilya
     const kabisilya = await kabisilyaRepo.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!kabisilya) {
       return {
         status: false,
         message: "Kabisilya not found",
-        data: null
+        data: null,
       };
     }
 
     // Check if name is already taken by another kabisilya
     const existingKabisilya = await kabisilyaRepo.findOne({
-      where: { 
+      where: {
         name: name.trim(),
-        id: Not(id) // Exclude current kabisilya
-      }
+        id: Not(id), // Exclude current kabisilya
+      },
     });
 
     if (existingKabisilya) {
       return {
         status: false,
         message: "Another Kabisilya with this name already exists",
-        data: null
+        data: null,
       };
     }
 
@@ -81,17 +81,16 @@ module.exports = async (params, queryRunner) => {
       data: {
         id: updatedKabisilya.id,
         name: updatedKabisilya.name,
-        updatedAt: updatedKabisilya.updatedAt
-      }
+        updatedAt: updatedKabisilya.updatedAt,
+      },
     };
-
   } catch (error) {
     console.error("Error updating kabisilya:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to update kabisilya: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };
