@@ -8,6 +8,7 @@ interface BukidTableViewProps {
   bukids: BukidData[];
   summary: BukidSummaryData[];
   selectedBukids: number[];
+  onComplete: (id: number) => void;
   toggleSelectAll: () => void;
   toggleSelectBukid: (id: number) => void;
   onView: (id: number) => void;
@@ -48,6 +49,7 @@ const BukidTableView: React.FC<BukidTableViewProps> = ({
   onViewPlots,
   onViewMap,
   onViewNote,
+  onComplete,
 }) => {
   const [expandedBukid, setExpandedBukid] = useState<number | null>(null);
 
@@ -127,6 +129,7 @@ const BukidTableView: React.FC<BukidTableViewProps> = ({
                   onViewPlots={onViewPlots}
                   onViewMap={onViewMap}
                   onViewNote={onViewNote}
+                  onComplete={onComplete}
                 />
               );
             })}

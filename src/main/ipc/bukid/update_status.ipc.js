@@ -7,7 +7,10 @@ const Pitak = require("../../../entities/Pitak");
 const Assignment = require("../../../entities/Assignment");
 const Payment = require("../../../entities/Payment");
 const PaymentHistory = require("../../../entities/PaymentHistory");
-const { farmRatePerLuwang, farmSessionDefaultSessionId } = require("../../../utils/system");
+const {
+  farmRatePerLuwang,
+  farmSessionDefaultSessionId,
+} = require("../../../utils/system");
 const { generateReferenceNumber } = require("../debt/utils/reference");
 
 /**
@@ -26,7 +29,11 @@ const { generateReferenceNumber } = require("../debt/utils/reference");
  * @param {import("typeorm").QueryRunner|null} queryRunner
  */
 // @ts-ignore
-module.exports = async function updateBukidStatus(params = {}, queryRunner = null) {
+module.exports = async function updateBukidStatus(
+  // @ts-ignore
+  params = {},
+  queryRunner = null,
+) {
   let shouldRelease = false;
 
   if (!queryRunner) {
@@ -55,7 +62,8 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
     const assignmentRepo = queryRunner.manager.getRepository(Assignment);
     const paymentRepo = queryRunner.manager.getRepository(Payment);
-    const paymentHistoryRepo = queryRunner.manager.getRepository(PaymentHistory);
+    const paymentHistoryRepo =
+      queryRunner.manager.getRepository(PaymentHistory);
 
     const bukid = await bukidRepo.findOne({ where: { id } });
     if (!bukid) {
@@ -111,7 +119,9 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
             // compute payment
             // Assignment.luwangCount may be stored as decimal/string; coerce safely
             const luwangCount = Number(assignment.luwangCount || 0);
-            const grossPay = parseFloat((luwangCount * ratePerLuwang).toFixed(2));
+            const grossPay = parseFloat(
+              (luwangCount * ratePerLuwang).toFixed(2),
+            );
 
             // === Pre-check: skip if payment already exists for pitak+worker+session ===
             const existingPayment = await paymentRepo.findOne({
@@ -145,7 +155,7 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
               otherDeductions: 0.0,
               deductionBreakdown: null,
               status: "pending",
-              paymentMethod: 'cash',
+              paymentMethod: "cash",
               // @ts-ignore
               referenceNumber: referenceNumber,
               // @ts-ignore
@@ -186,7 +196,9 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
                 // @ts-ignore
                 (err.code === "SQLITE_CONSTRAINT" ||
                   // @ts-ignore
-                  (err.message && err.message.includes("UNIQUE constraint failed")));
+                  (err.message &&
+                    // @ts-ignore
+                    err.message.includes("UNIQUE constraint failed")));
 
               if (isSqliteUnique) {
                 // concurrent process created the payment — fetch it and skip
@@ -226,7 +238,8 @@ module.exports = async function updateBukidStatus(params = {}, queryRunner = nul
     bukid.updatedAt = new Date();
     if (notes) {
       // @ts-ignore
-      bukid.notes = (bukid.notes ? bukid.notes + "\n" : "") +
+      bukid.notes =
+        (bukid.notes ? bukid.notes + "\n" : "") +
         `[${new Date().toISOString()}] Status changed to ${status}: ${notes}`;
     }
     const updatedBukid = await bukidRepo.save(bukid);

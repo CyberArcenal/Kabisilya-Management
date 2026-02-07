@@ -45,7 +45,7 @@ const WorkerFormDialog: React.FC<WorkerFormDialogProps> = ({
         contact: '',
         email: '',
         address: '',
-        status: 'active',
+        status: 'active', // Default to active for new worker
         hireDate: new Date().toISOString().split('T')[0],
         initialBalance: 0,
         notes: ''
@@ -186,9 +186,15 @@ const WorkerFormDialog: React.FC<WorkerFormDialogProps> = ({
 
             // Prepare data for API
             const workerData: any = {
-                name: formData.name.trim(),
-                status: formData.status
+                name: formData.name.trim()
             };
+
+            // Set status based on mode
+            if (mode === 'add') {
+                workerData.status = 'active'; // Always active for new worker
+            } else if (mode === 'edit') {
+                workerData.status = formData.status; // Keep existing status
+            }
 
             // Add optional fields if provided
             if (formData.contact.trim()) workerData.contact = formData.contact.trim();
@@ -453,42 +459,22 @@ const WorkerFormDialog: React.FC<WorkerFormDialogProps> = ({
                                             Employment Details
                                         </h4>
                                         <div className="space-y-4">
-                                            {/* Status Selection */}
-                                            <div>
-                                                <label className="block text-sm font-medium mb-3 text-gray-700 windows-text">
-                                                    Employment Status <span className="text-red-500">*</span>
-                                                </label>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    {(['active', 'inactive', 'on-leave', 'terminated'] as const).map((status) => (
-                                                        <button
-                                                            key={status}
-                                                            type="button"
-                                                            onClick={() => handleChange('status', status)}
-                                                            className={`p-3 rounded-lg transition-all flex flex-col items-center justify-center gap-2 ${formData.status === status
-                                                                    ? 'ring-2 ring-blue-500 ring-offset-1'
-                                                                    : 'opacity-90 hover:opacity-100 hover:scale-[1.02]'
-                                                                } windows-button-secondary`}
-                                                            style={{
-                                                                backgroundColor: formData.status === status
-                                                                    ? status === 'active' ? 'rgba(34, 197, 94, 0.1)'
-                                                                        : status === 'inactive' ? 'rgba(239, 68, 68, 0.1)'
-                                                                            : status === 'on-leave' ? 'rgba(245, 158, 11, 0.1)'
-                                                                                : 'rgba(107, 114, 128, 0.1)'
-                                                                    : 'white',
-                                                            }}
-                                                            disabled={submitting}
-                                                        >
-                                                            {status === 'active' && <CheckCircle className="w-5 h-5 text-green-600" />}
-                                                            {status === 'inactive' && <X className="w-5 h-5 text-red-600" />}
-                                                            {status === 'on-leave' && <Calendar className="w-5 h-5 text-amber-600" />}
-                                                            {status === 'terminated' && <Briefcase className="w-5 h-5 text-gray-600" />}
-                                                            <span className="text-sm font-medium windows-text">
-                                                                {status.replace('-', ' ').charAt(0).toUpperCase() + status.slice(1)}
-                                                            </span>
-                                                        </button>
-                                                    ))}
+                                            {/* Status Display (Edit Mode Only) */}
+                                            {mode === 'edit' && (
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2 text-gray-700 windows-text">
+                                                        Current Status
+                                                    </label>
+                                                    <div className="inline-flex items-center px-3 py-2 rounded-lg bg-gray-100">
+                                                        <span className="text-sm font-medium text-gray-800 windows-text capitalize">
+                                                            {formData.status.replace('-', ' ')}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-gray-500 windows-text">
+                                                        Status can only be changed in the worker's profile page
+                                                    </p>
                                                 </div>
-                                            </div>
+                                            )}
 
                                             {/* Hire Date and Initial Balance */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

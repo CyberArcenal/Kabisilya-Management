@@ -33,6 +33,8 @@ import PaymentViewDialog from "../../Payment/Table/Dialogs/View/PaymentViewDialo
 
 const PitakTablePage: React.FC = () => {
   const {
+    bukidFilter,
+    setBukidFilter,
     pitaks,
     stats,
     loading,
@@ -395,6 +397,8 @@ const PitakTablePage: React.FC = () => {
             {/* Filters */}
             <div className="mb-6">
               <PitakFilters
+                bukidFilter={bukidFilter}
+                setBukidFilter={setBukidFilter}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 statusFilter={statusFilter}

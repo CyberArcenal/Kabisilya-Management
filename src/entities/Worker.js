@@ -17,24 +17,7 @@ const Worker = new EntitySchema({
     },
     hireDate: { type: Date, nullable: true },
     // Summary fields for quick access
-    totalDebt: { 
-      type: "decimal", 
-      precision: 10, 
-      scale: 2,
-      default: 0.00
-    },
-    totalPaid: { 
-      type: "decimal", 
-      precision: 10, 
-      scale: 2,
-      default: 0.00
-    },
-    currentBalance: { 
-      type: "decimal", 
-      precision: 10, 
-      scale: 2,
-      default: 0.00
-    },
+
     createdAt: { type: Date, createDate: true },
     updatedAt: { type: Date, updateDate: true }
   },

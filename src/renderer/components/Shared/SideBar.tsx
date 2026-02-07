@@ -27,6 +27,8 @@ import {
   HistoryIcon
 } from "lucide-react";
 import dashboardAPI from "../../apis/dashboard";
+import { kabAuthStore } from "../../lib/kabAuthStore";
+import { dialogs } from "../../utils/dialogs";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -285,8 +287,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     { id: "system", name: "System" },
   ];
 
-  const handleLogOut = () => {
-    console.log("Logging out...");
+  const handleLogOut = async () => {
+    const confirmed = await dialogs.confirm({
+      title: "Logout",
+      message: "Are you sure you want to logout?",
+    });
+
+    if (confirmed) {
+      kabAuthStore.logout();
+    }
   };
 
   // Format currency
@@ -425,7 +434,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             <HelpCircle className="w-5 h-5" />
           </button>
           <Link
-            to="/system"
+            to="/system/settings"
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
             title="Settings"
             style={{ color: 'white' }}

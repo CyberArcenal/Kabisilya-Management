@@ -30,7 +30,6 @@ interface AssignmentTableRowProps {
   onSelect: () => void;
   onToggleExpand: () => void;
   onView: (id: number) => void;
-  onEdit: (id: number) => void;
   onDelete: (id: number) => void;
   onUpdateStatus: (id: number, currentStatus: string) => void;
   onCancel: (id: number) => void;
@@ -46,7 +45,6 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
   onSelect,
   onToggleExpand,
   onView,
-  onEdit,
   onDelete,
   onUpdateStatus,
   onCancel,
@@ -457,7 +455,7 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
             >
               <Eye className="w-4 h-4" style={{ color: "var(--accent-sky)" }} />
             </button>
-            <button
+            {/* <button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit(assignment.id);
@@ -469,13 +467,12 @@ const AssignmentTableRow: React.FC<AssignmentTableRowProps> = ({
                 className="w-4 h-4"
                 style={{ color: "var(--accent-gold)" }}
               />
-            </button>
+            </button> */}
 
             {/* Actions Dropdown */}
             <AssignmentActionsDropdown
               assignment={assignment}
               onView={onView}
-              onEdit={onEdit}
               onCancel={onCancel}
               onDelete={onDelete}
               onAddNote={onAddNote}

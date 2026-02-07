@@ -174,6 +174,8 @@ export const usePitakData = () => {
   }, [currentPage]);
 
   return {
+      bukidFilter,
+  setBukidFilter,
     pitaks: paginatedPitaks,
     allPitaks,
     stats,

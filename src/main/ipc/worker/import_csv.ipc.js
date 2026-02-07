@@ -5,15 +5,8 @@ const csv = require("csv-parser");
 const fs = require("fs");
 const { createReadStream } = require("fs");
 const Worker = require("../../../entities/Worker");
-// @ts-ignore
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
-// @ts-ignore
-const Payment = require("../../../entities/Payment");
-// @ts-ignore
-const Debt = require("../../../entities/Debt");
-// @ts-ignore
-const Assignment = require("../../../entities/Assignment");
 const { unlink } = require("fs/promises");
 
 module.exports = async function importWorkersFromCSV(
@@ -53,13 +46,9 @@ module.exports = async function importWorkersFromCSV(
       };
     }
 
-    /**
-     * @type {{ name: any; contact: any; email: any; address: any; status: any; hireDate: any; totalDebt: any; totalPaid: any; currentBalance: any; }[]}
-     */
+    // @ts-ignore
     const workers = [];
-    /**
-     * @type {string[]}
-     */
+    // @ts-ignore
     const errors = [];
     let rowNumber = 0;
 
@@ -73,98 +62,74 @@ module.exports = async function importWorkersFromCSV(
             skipLines: hasHeader ? 0 : 0,
           }),
         )
-        .on(
-          "data",
-          (
-            /** @type {{ name: any; Name: any; NAME: any; contact: any; Contact: any; CONTACT: any; phone: any; Phone: any; email: any; Email: any; EMAIL: any; address: any; Address: any; ADDRESS: any; status: any; Status: any; STATUS: any; hireDate: any; hire_date: any; HireDate: any; hiredate: any;  totalDebt: any; total_debt: any; TotalDebt: any; totalPaid: any; total_paid: any; TotalPaid: any; currentBalance: any; current_balance: any; CurrentBalance: any; }} */ row,
-          ) => {
-            rowNumber++;
+        .on("data", (row) => {
+          rowNumber++;
 
-            try {
-              // Map CSV columns to worker fields
-              const workerData = {
-                name: row.name || row.Name || row.NAME,
-                contact:
-                  row.contact ||
-                  row.Contact ||
-                  row.CONTACT ||
-                  row.phone ||
-                  row.Phone,
-                email: row.email || row.Email || row.EMAIL,
-                address: row.address || row.Address || row.ADDRESS,
-                status: (
-                  row.status ||
-                  row.Status ||
-                  row.STATUS ||
-                  "active"
-                ).toLowerCase(),
-                hireDate:
-                  row.hireDate || row.hire_date || row.HireDate || row.hiredate,
-                totalDebt:
-                  row.totalDebt || row.total_debt || row.TotalDebt || 0,
-                totalPaid:
-                  row.totalPaid || row.total_paid || row.TotalPaid || 0,
-                currentBalance:
-                  row.currentBalance ||
-                  row.current_balance ||
-                  row.CurrentBalance ||
-                  0,
-              };
+          try {
+            // Map CSV columns to worker fields (removed financial fields)
+            const workerData = {
+              name: row.name || row.Name || row.NAME,
+              contact:
+                row.contact ||
+                row.Contact ||
+                row.CONTACT ||
+                row.phone ||
+                row.Phone,
+              email: row.email || row.Email || row.EMAIL,
+              address: row.address || row.Address || row.ADDRESS,
+              status: (
+                row.status ||
+                row.Status ||
+                row.STATUS ||
+                "active"
+              ).toLowerCase(),
+              hireDate:
+                row.hireDate || row.hire_date || row.HireDate || row.hiredate,
+            };
 
-              // Validate required fields
-              if (!workerData.name) {
-                errors.push(`Row ${rowNumber}: Name is required`);
-                return;
-              }
-
-              // Validate status
-              const validStatuses = [
-                "active",
-                "inactive",
-                "on-leave",
-                "terminated",
-              ];
-              if (
-                workerData.status &&
-                !validStatuses.includes(workerData.status)
-              ) {
-                errors.push(
-                  `Row ${rowNumber}: Invalid status '${workerData.status}'. Must be one of: ${validStatuses.join(", ")}`,
-                );
-                return;
-              }
-
-              // Validate email format if provided
-              if (workerData.email && !isValidEmail(workerData.email)) {
-                errors.push(
-                  `Row ${rowNumber}: Invalid email format '${workerData.email}'`,
-                );
-                return;
-              }
-
-              // Parse numeric fields
-              if (workerData.totalDebt)
-                workerData.totalDebt = parseFloat(workerData.totalDebt);
-              if (workerData.totalPaid)
-                workerData.totalPaid = parseFloat(workerData.totalPaid);
-              if (workerData.currentBalance)
-                workerData.currentBalance = parseFloat(
-                  workerData.currentBalance,
-                );
-
-              workers.push(workerData);
-            } catch (error) {
-              errors.push(
-                // @ts-ignore
-                `Row ${rowNumber}: Error parsing data - ${error.message}`,
-              );
+            // Validate required fields
+            if (!workerData.name) {
+              errors.push(`Row ${rowNumber}: Name is required`);
+              return;
             }
-          },
-        )
+
+            // Validate status
+            const validStatuses = [
+              "active",
+              "inactive",
+              "on-leave",
+              "terminated",
+            ];
+            if (
+              workerData.status &&
+              !validStatuses.includes(workerData.status)
+            ) {
+              errors.push(
+                `Row ${rowNumber}: Invalid status '${workerData.status}'. Must be one of: ${validStatuses.join(", ")}`,
+              );
+              return;
+            }
+
+            // Validate email format if provided
+            if (workerData.email && !isValidEmail(workerData.email)) {
+              errors.push(
+                `Row ${rowNumber}: Invalid email format '${workerData.email}'`,
+              );
+              return;
+            }
+
+            workers.push(workerData);
+          } catch (error) {
+            errors.push(
+              // @ts-ignore
+              `Row ${rowNumber}: Error parsing data - ${error.message}`,
+            );
+          }
+        })
         .on("end", () => {
           resolve(undefined);
         })
-        .on("error", (/** @type {any} */ error) => {
+        .on("error", (error) => {
           reject(error);
         });
     });
@@ -173,17 +138,17 @@ module.exports = async function importWorkersFromCSV(
       return {
         status: false,
         message: "CSV parsing failed",
+        // @ts-ignore
         data: { errors },
       };
     }
 
     // Check for duplicate emails in CSV
     const emailMap = new Map();
-    /**
-     * @type {{ email: any; rows: any[]; }[]}
-     */
+    // @ts-ignore
     const duplicateEmailsInCSV = [];
 
+    // @ts-ignore
     workers.forEach((worker, index) => {
       if (worker.email) {
         if (emailMap.has(worker.email)) {
@@ -198,6 +163,7 @@ module.exports = async function importWorkersFromCSV(
     });
 
     if (duplicateEmailsInCSV.length > 0) {
+      // @ts-ignore
       duplicateEmailsInCSV.forEach((dup) => {
         errors.push(
           `Duplicate email '${dup.email}' found in rows ${dup.rows.join(" and ")}`,
@@ -210,6 +176,7 @@ module.exports = async function importWorkersFromCSV(
     const workerRepository = queryRunner.manager.getRepository(Worker);
     const existingEmails = new Set();
 
+    // @ts-ignore
     const emails = workers.map((w) => w.email).filter((email) => email);
     if (emails.length > 0) {
       const existingWorkers = await workerRepository
@@ -217,16 +184,17 @@ module.exports = async function importWorkersFromCSV(
         .where("worker.email IN (:...emails)", { emails })
         .getMany();
 
-      existingWorkers.forEach((/** @type {{ email: any; }} */ w) =>
-        existingEmails.add(w.email),
-      );
+      // @ts-ignore
+      existingWorkers.forEach((w) => existingEmails.add(w.email));
     }
 
     // Filter out workers with existing emails
+    // @ts-ignore
     const workersToCreate = workers.filter(
       (worker) => !worker.email || !existingEmails.has(worker.email),
     );
 
+    // @ts-ignore
     const workersWithExistingEmails = workers.filter(
       (worker) => worker.email && existingEmails.has(worker.email),
     );
@@ -257,9 +225,6 @@ module.exports = async function importWorkersFromCSV(
           hireDate: workerData.hireDate
             ? new Date(workerData.hireDate)
             : currentDate,
-          totalDebt: workerData.totalDebt || 0,
-          totalPaid: workerData.totalPaid || 0,
-          currentBalance: workerData.currentBalance || 0,
           createdAt: currentDate,
           updatedAt: currentDate,
         });
@@ -342,9 +307,6 @@ module.exports = async function importWorkersFromCSV(
             "address",
             "status",
             "hireDate",
-            "totalDebt",
-            "totalPaid",
-            "currentBalance",
           ],
           example: {
             name: "Juan Dela Cruz",
@@ -353,9 +315,6 @@ module.exports = async function importWorkersFromCSV(
             address: "Manila",
             status: "active",
             hireDate: "2024-01-15",
-            totalDebt: "1000.00",
-            totalPaid: "500.00",
-            currentBalance: "500.00",
           },
         },
       },
@@ -395,9 +354,7 @@ module.exports = async function importWorkersFromCSV(
   }
 };
 
-/**
- * @param {string} email
- */
+// @ts-ignore
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

@@ -95,6 +95,7 @@ export interface BukidPaginationResponse {
 }
 
 export interface BukidFilters {
+  id?: number;
   status?: string;
   page?: number;
   limit?: number;

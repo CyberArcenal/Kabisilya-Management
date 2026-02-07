@@ -6,9 +6,9 @@ const Assignment = require("../../../entities/Assignment");
 const { AppDataSource } = require("../../db/dataSource");
 const { In } = require("typeorm");
 
-module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _userId: any; }} */ params) => {
+// @ts-ignore
+module.exports = async (params) => {
   try {
-    // @ts-ignore
     // @ts-ignore
     const { pitakId, date, workerId, _userId } = params;
 
@@ -20,52 +20,53 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
     const assignmentRepo = AppDataSource.getRepository(Assignment);
 
     // Get pitak
-    const pitak = await pitakRepo.findOne({ 
+    const pitak = await pitakRepo.findOne({
       where: { id: pitakId },
-      relations: ['bukid']
+      relations: ["bukid"],
     });
 
     if (!pitak) {
       return { status: false, message: "Pitak not found", data: null };
     }
 
-    // Check pitak status
+    // Base availability object
     const availability = {
       pitakId,
       location: pitak.location,
       status: pitak.status,
       // @ts-ignore
       totalLuwang: parseFloat(pitak.totalLuwang),
-      isAvailable: pitak.status === 'active',
-      reasons: []
+      isAvailable: pitak.status === "active",
+      reasons: [],
     };
 
-    if (pitak.status !== 'active') {
+    if (pitak.status !== "active") {
       // @ts-ignore
       availability.reasons.push(`Pitak status is "${pitak.status}"`);
     }
 
-    // Check if date is provided for assignment checks
+    // Check assignments for specific date
     if (date) {
       const checkDate = new Date(date);
-      
-      // Check for existing assignments on this date
+
       const existingAssignments = await assignmentRepo.find({
         where: {
           // @ts-ignore
-          pitakId,
+          pitak: { id: pitakId }, // ✅ relation object
           assignmentDate: checkDate,
-          status: In(['active', 'completed'])
+          status: In(["active", "completed"]),
         },
-        relations: ['worker']
+        relations: ["worker"],
       });
 
       if (existingAssignments.length > 0) {
-        // @ts-ignore
-        const assignedWorkers = existingAssignments.map((/** @type {{ workerId: any; worker: { name: any; }; luwangCount: string; }} */ a) => ({
-          workerId: a.workerId,
-          workerName: a.worker ? a.worker.name : 'Unknown',
-          luwangCount: parseFloat(a.luwangCount)
+        const assignedWorkers = existingAssignments.map((a) => ({
+          // @ts-ignore
+          workerId: a.worker?.id || a.workerId,
+          // @ts-ignore
+          workerName: a.worker ? a.worker.name : "Unknown",
+          // @ts-ignore
+          luwangCount: parseFloat(a.luwangCount),
         }));
 
         // @ts-ignore
@@ -73,19 +74,29 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
         // @ts-ignore
         availability.assignedWorkers = assignedWorkers;
         // @ts-ignore
-        availability.totalAssignedLuWang = assignedWorkers.reduce((/** @type {any} */ sum, /** @type {{ luwangCount: any; }} */ w) => 
-          sum + w.luwangCount, 0);
+        availability.totalAssignedLuWang = assignedWorkers.reduce(
+          (sum, w) => sum + w.luwangCount,
+          0,
+        );
         // @ts-ignore
-        availability.remainingLuWang = parseFloat(pitak.totalLuwang) - availability.totalAssignedLuWang;
+        availability.remainingLuWang =
+          // @ts-ignore
+          parseFloat(pitak.totalLuwang) - availability.totalAssignedLuWang;
 
         // Check if worker is already assigned
         if (workerId) {
-          // @ts-ignore
-          const isWorkerAssigned = existingAssignments.some((/** @type {{ workerId: any; }} */ a) => a.workerId === workerId);
+          const isWorkerAssigned = existingAssignments.some(
+            // @ts-ignore
+            (a) => a.worker?.id === workerId || a.workerId === workerId,
+          );
           if (isWorkerAssigned) {
             availability.isAvailable = false;
-            // @ts-ignore
-            availability.reasons.push(`Worker is already assigned to this pitak on ${checkDate.toISOString().split('T')[0]}`);
+            availability.reasons.push(
+              // @ts-ignore
+              `Worker is already assigned to this pitak on ${
+                checkDate.toISOString().split("T")[0]
+              }`,
+            );
           }
         }
 
@@ -93,8 +104,10 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
         // @ts-ignore
         if (availability.remainingLuWang <= 0) {
           availability.isAvailable = false;
-          // @ts-ignore
-          availability.reasons.push("Pitak is fully utilized (no remaining LuWang capacity)");
+          availability.reasons.push(
+            // @ts-ignore
+            "Pitak is fully utilized (no remaining LuWang capacity)",
+          );
         }
       } else {
         // @ts-ignore
@@ -108,20 +121,19 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
     const activeAssignmentsCount = await assignmentRepo.count({
       where: {
         // @ts-ignore
-        pitakId,
-        status: 'active'
-      }
+        pitak: { id: pitakId }, // ✅ relation object
+        status: "active",
+      },
     });
-
     // @ts-ignore
     availability.activeAssignments = activeAssignmentsCount;
 
-    // Calculate utilization rate
+    // Utilization rate
     if (availability.totalLuwang > 0) {
       // @ts-ignore
-      availability.utilizationRate = availability.totalAssignedLuWang 
+      availability.utilizationRate = availability.totalAssignedLuWang
         // @ts-ignore
-        ? (availability.totalAssignedLuWang / availability.totalLuwang) * 100 
+        ? (availability.totalAssignedLuWang / availability.totalLuwang) * 100
         : 0;
     }
 
@@ -135,7 +147,9 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
           // @ts-ignore
           maxLuWang: availability.remainingLuWang.toFixed(2),
           // @ts-ignore
-          message: `Pitak is available with ${availability.remainingLuWang.toFixed(2)} LuWang capacity remaining`
+          message: `Pitak is available with ${availability.remainingLuWang.toFixed(
+            2,
+          )} LuWang capacity remaining`,
         };
       }
     } else {
@@ -143,29 +157,30 @@ module.exports = async (/** @type {{ pitakId: any; date: any; workerId: any; _us
       availability.recommendation = {
         canAssign: false,
         reasons: availability.reasons,
-        // @ts-ignore
-        suggestedAction: availability.reasons.includes('Pitak status is "inactive"') 
-          ? 'Activate the pitak first' 
+        suggestedAction: availability.reasons.includes(
           // @ts-ignore
-          : availability.reasons.includes('Pitak is fully utilized') 
-            ? 'Consider assigning to a different pitak or increasing capacity' 
-            : 'Resolve the issues mentioned above'
+          'Pitak status is "inactive"',
+        )
+          ? "Activate the pitak first"
+          // @ts-ignore
+          : availability.reasons.includes("Pitak is fully utilized")
+            ? "Consider assigning to a different pitak or increasing capacity"
+            : "Resolve the issues mentioned above",
       };
     }
 
     return {
       status: true,
       message: "Availability check completed",
-      data: availability
+      data: availability,
     };
-
   } catch (error) {
     console.error("Error checking pitak availability:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to check availability: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

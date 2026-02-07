@@ -1,6 +1,15 @@
 // components/Session/SessionTablePage.tsx
 import React, { useState } from "react";
-import { Calendar, Plus, Download, AlertCircle, Filter, BarChart2, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Calendar,
+  Plus,
+  Download,
+  AlertCircle,
+  Filter,
+  BarChart2,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { useSessionData } from "./hooks/useSessionData";
 import SessionFormDialog from "./Dialogs/SessionFormDialog";
 import { useSessionActions } from "./hooks/useSessionActions";
@@ -12,6 +21,7 @@ import SessionTableView from "./components/SessionTableView";
 import SessionGridView from "./components/SessionGridView";
 import SessionPagination from "./components/SessionPagination";
 import SessionViewDialog from "./Dialogs/SessionViewDialog";
+import DuplicateSessionDialog from "./Dialogs/DuplicateSessionDialog";
 
 const SessionTablePage: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -53,15 +63,38 @@ const SessionTablePage: React.FC = () => {
   );
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
   const [showStats, setShowStats] = useState(false);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [sessionToDuplicate, setSessionToDuplicate] = useState<{
+    id: number;
+    name: string;
+    year: number;
+  } | null>(null);
   const {
     handleDeleteSession,
     handleBulkDelete,
     handleExportCSV,
     handleCloseSession,
     handleArchiveSession,
-    handleDuplicateSession,
     handleActivateSession,
   } = useSessionActions(sessions, fetchSessions, selectedSessions);
+
+  const handleDuplicateSession = async (id: number) => {
+    const session = sessions.find((s) => s.id === id);
+    if (!session) return;
+
+    openDuplicateDialog(id, session.name, session.year);
+  };
+
+  const openDuplicateDialog = (id: number, name: string, year: number) => {
+    setSessionToDuplicate({ id, name, year });
+    setIsDuplicateDialogOpen(true);
+  };
+
+  // Close handler
+  const closeDuplicateDialog = async () => {
+    setIsDuplicateDialogOpen(false);
+    setSessionToDuplicate(null);
+  };
 
   // Dialog handlers
   const openCreateDialog = () => {
@@ -83,7 +116,6 @@ const SessionTablePage: React.FC = () => {
   };
 
   const closeFormDialog = async () => {
-  
     setIsFormDialogOpen(false);
     setSelectedSessionId(null);
   };
@@ -510,6 +542,18 @@ const SessionTablePage: React.FC = () => {
           id={selectedSessionId}
           onClose={closeViewDialog}
           onEdit={openEditDialog}
+        />
+      )}
+
+      {isDuplicateDialogOpen && sessionToDuplicate && (
+        <DuplicateSessionDialog
+          id={sessionToDuplicate.id}
+          originalName={sessionToDuplicate.name}
+          onClose={closeDuplicateDialog}
+          onSuccess={async () => {
+            await fetchSessions();
+            closeDuplicateDialog();
+          }}
         />
       )}
     </>

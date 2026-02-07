@@ -37,6 +37,7 @@ import AuditTrailTablePage from '../pages/Audit/AuditTrailTablePage';
 import SessionTablePage from '../pages/Session/SessionTablePage';
 import FarmManagementSettingsPage from '../pages/Settings';
 import HistoryPage from '../pages/History';
+import MyProfileView from '../pages/User/Table/Dialogs/MyProfile/View';
 
 // import FarmManagementSettingsPage from '../pages/Settings/FarmManagementSettingsPage';
 
@@ -160,6 +161,7 @@ function App() {
 
             <Route path="/system/sessions" element={<SessionTablePage/>} />
             <Route path="/system/settings" element={<FarmManagementSettingsPage />} />
+            <Route path='/system/profile' element={<MyProfileView/>}/>
 
             {/* Default redirect */}
             <Route path="/" element={

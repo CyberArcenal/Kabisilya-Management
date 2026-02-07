@@ -1,33 +1,29 @@
 // ipc/worker/get_payment_summary.ipc.js
 //@ts-check
 
-// @ts-ignore
-// @ts-ignore
-const Worker = require("../../../entities/Worker");
-// @ts-ignore
-// @ts-ignore
-// @ts-ignore
-const UserActivity = require("../../../entities/UserActivity");
-const { AppDataSource } = require("../../db/dataSource");
 const Payment = require("../../../entities/Payment");
-// @ts-ignore
-// @ts-ignore
-const Debt = require("../../../entities/Debt");
-// @ts-ignore
-// @ts-ignore
-const Assignment = require("../../../entities/Assignment");
+const { AppDataSource } = require("../../db/dataSource");
 
 module.exports = async function getWorkerPaymentSummary(params = {}) {
   try {
-    // @ts-ignore
-    // @ts-ignore
-    const { workerId, periodStart, periodEnd, groupBy = 'month', _userId } = params;
+    const {
+      // @ts-ignore
+      workerId,
+      // @ts-ignore
+      periodStart,
+      // @ts-ignore
+      periodEnd,
+      // @ts-ignore
+      groupBy = "month",
+      // @ts-ignore
+      _userId,
+    } = params;
 
     if (!workerId) {
       return {
         status: false,
-        message: 'Worker ID is required',
-        data: null
+        message: "Worker ID is required",
+        data: null,
       };
     }
 
@@ -35,87 +31,104 @@ module.exports = async function getWorkerPaymentSummary(params = {}) {
 
     // Build query
     const qb = paymentRepository
-      .createQueryBuilder('payment')
-      .where('payment.workerId = :workerId', { workerId: parseInt(workerId) });
+      .createQueryBuilder("payment")
+      .where("payment.workerId = :workerId", { workerId: parseInt(workerId) });
 
     // Apply date filter if provided
     if (periodStart && periodEnd) {
-      qb.andWhere('payment.paymentDate BETWEEN :start AND :end', {
+      qb.andWhere("payment.paymentDate BETWEEN :start AND :end", {
         start: new Date(periodStart),
-        end: new Date(periodEnd)
+        end: new Date(periodEnd),
       });
     }
 
-    const payments = await qb
-      .orderBy('payment.paymentDate', 'DESC')
-      .getMany();
+    const payments = await qb.orderBy("payment.paymentDate", "DESC").getMany();
 
     // Calculate summary
     const summary = {
       totalPayments: payments.length,
-      totalGrossPay: payments.reduce((/** @type {number} */ sum, /** @type {{ grossPay: any; }} */ payment) => 
-        sum + parseFloat(payment.grossPay || 0), 0
+      totalGrossPay: payments.reduce(
+        // @ts-ignore
+        (sum, payment) => sum + parseFloat(payment.grossPay || 0),
+        0,
       ),
-      totalNetPay: payments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ payment) => 
-        sum + parseFloat(payment.netPay || 0), 0
+      totalNetPay: payments.reduce(
+        // @ts-ignore
+        (sum, payment) => sum + parseFloat(payment.netPay || 0),
+        0,
       ),
-      totalDebtDeduction: payments.reduce((/** @type {number} */ sum, /** @type {{ totalDebtDeduction: any; }} */ payment) => 
-        sum + parseFloat(payment.totalDebtDeduction || 0), 0
+      totalDebtDeduction: payments.reduce(
+        // @ts-ignore
+        (sum, payment) => sum + parseFloat(payment.totalDebtDeduction || 0),
+        0,
       ),
-      totalOtherDeductions: payments.reduce((/** @type {number} */ sum, /** @type {{ otherDeductions: any; }} */ payment) => 
-        sum + parseFloat(payment.otherDeductions || 0), 0
+      totalOtherDeductions: payments.reduce(
+        // @ts-ignore
+        (sum, payment) => sum + parseFloat(payment.otherDeductions || 0),
+        0,
       ),
       byStatus: {
-        // @ts-ignore
-        pending: payments.filter((/** @type {{ status: string; }} */ p) => p.status === 'pending').length,
-        // @ts-ignore
-        processing: payments.filter((/** @type {{ status: string; }} */ p) => p.status === 'processing').length,
-        // @ts-ignore
-        completed: payments.filter((/** @type {{ status: string; }} */ p) => p.status === 'completed').length,
-        // @ts-ignore
-        cancelled: payments.filter((/** @type {{ status: string; }} */ p) => p.status === 'cancelled').length,
-        // @ts-ignore
-        partially_paid: payments.filter((/** @type {{ status: string; }} */ p) => p.status === 'partially_paid').length
+        pending: payments.filter((p) => p.status === "pending").length,
+        processing: payments.filter((p) => p.status === "processing").length,
+        completed: payments.filter((p) => p.status === "completed").length,
+        cancelled: payments.filter((p) => p.status === "cancelled").length,
+        partially_paid: payments.filter((p) => p.status === "partially_paid")
+          .length,
       },
       byPaymentMethod: {},
-      averageNetPay: payments.length > 0 
-        ? payments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ p) => sum + parseFloat(p.netPay || 0), 0) / payments.length 
-        : 0
+      averageNetPay:
+        payments.length > 0
+          // @ts-ignore
+          ? payments.reduce((sum, p) => sum + parseFloat(p.netPay || 0), 0) /
+            payments.length
+          : 0,
     };
 
     // Group by payment method
-    // @ts-ignore
-    payments.forEach((/** @type {{ paymentMethod: string; netPay: any; }} */ payment) => {
-      const method = payment.paymentMethod || 'Unknown';
+    payments.forEach((payment) => {
+      const method = payment.paymentMethod || "Unknown";
       // @ts-ignore
       if (!summary.byPaymentMethod[method]) {
         // @ts-ignore
         summary.byPaymentMethod[method] = {
           count: 0,
-          totalAmount: 0
+          totalAmount: 0,
         };
       }
       // @ts-ignore
       summary.byPaymentMethod[method].count++;
       // @ts-ignore
-      summary.byPaymentMethod[method].totalAmount += parseFloat(payment.netPay || 0);
+      summary.byPaymentMethod[method].totalAmount += parseFloat(
+        // @ts-ignore
+        payment.netPay || 0,
+      );
     });
 
     // Group by time period if requested
     let groupedPayments = {};
     if (groupBy && payments.length > 0) {
-      payments.forEach((/** @type {{ paymentDate: any; createdAt: any; netPay: any; grossPay: any; }} */ payment) => {
+      payments.forEach((payment) => {
         let key;
         const date = payment.paymentDate || payment.createdAt;
-        
-        if (groupBy === 'day') {
-          key = date.toISOString().split('T')[0];
-        } else if (groupBy === 'week') {
-          const weekNum = Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7);
+
+        if (groupBy === "day") {
+          // @ts-ignore
+          key = date.toISOString().split("T")[0];
+        } else if (groupBy === "week") {
+          const weekNum = Math.ceil(
+            // @ts-ignore
+            (date.getDate() +
+              // @ts-ignore
+              new Date(date.getFullYear(), date.getMonth(), 1).getDay()) /
+              7,
+          );
+          // @ts-ignore
           key = `${date.getFullYear()}-W${weekNum}`;
-        } else if (groupBy === 'month') {
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        } else if (groupBy === 'year') {
+        } else if (groupBy === "month") {
+          // @ts-ignore
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        } else if (groupBy === "year") {
+          // @ts-ignore
           key = date.getFullYear().toString();
         }
 
@@ -127,7 +140,7 @@ module.exports = async function getWorkerPaymentSummary(params = {}) {
             count: 0,
             totalNetPay: 0,
             totalGrossPay: 0,
-            averageNetPay: 0
+            averageNetPay: 0,
           };
         }
         // @ts-ignore
@@ -139,36 +152,36 @@ module.exports = async function getWorkerPaymentSummary(params = {}) {
       });
 
       // Calculate averages for each period
-      Object.keys(groupedPayments).forEach(key => {
+      Object.keys(groupedPayments).forEach((key) => {
         // @ts-ignore
-        groupedPayments[key].averageNetPay = 
+        groupedPayments[key].averageNetPay =
           // @ts-ignore
           groupedPayments[key].totalNetPay / groupedPayments[key].count;
       });
 
       // Convert to array and sort
-      groupedPayments = Object.values(groupedPayments).sort((a, b) => 
-        a.period.localeCompare(b.period)
+      groupedPayments = Object.values(groupedPayments).sort((a, b) =>
+        a.period.localeCompare(b.period),
       );
     }
 
     return {
       status: true,
-      message: 'Worker payment summary retrieved successfully',
+      message: "Worker payment summary retrieved successfully",
       data: {
         payments,
         summary,
         groupedPayments,
-        recentPayments: payments.slice(0, 10) // Last 10 payments
-      }
+        recentPayments: payments.slice(0, 10), // Last 10 payments
+      },
     };
   } catch (error) {
-    console.error('Error in getWorkerPaymentSummary:', error);
+    console.error("Error in getWorkerPaymentSummary:", error);
     return {
       status: false,
       // @ts-ignore
       message: `Failed to retrieve worker payment summary: ${error.message}`,
-      data: null
+      data: null,
     };
   }
 };

@@ -132,14 +132,14 @@ const PitakActionsDropdown: React.FC<PitakActionsDropdownProps> = ({
               className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
             >
               <BookOpen className="w-4 h-4 text-green-500" />{" "}
-              <span>View Assignments</span>
+              <span>View Assignments History</span>
             </button>
             <button
               onClick={() => handleAction(onViewAssignedWorkers)}
               className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-gray-50"
             >
               <Users className="w-4 h-4 text-amber-600" />{" "}
-              <span>Assigned Workers</span>
+              <span>View Assigned Workers</span>
             </button>
 
             {/* Management Section */}

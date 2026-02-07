@@ -1,15 +1,21 @@
 // components/Bukid/hooks/useBukidActions.ts
-import { useNavigate } from 'react-router-dom';
-import { dialogs, showConfirm } from '../../../../utils/dialogs';
-import { showError, showSuccess, showToast } from '../../../../utils/notification';
-import bukidAPI from '../../../../apis/bukid';
-import type { BukidData } from '../../../../apis/bukid';
+import { useNavigate } from "react-router-dom";
+import { dialogs, showConfirm } from "../../../../utils/dialogs";
+import {
+  hideLoading,
+  showError,
+  showLoading,
+  showSuccess,
+  showToast,
+} from "../../../../utils/notification";
+import bukidAPI from "../../../../apis/bukid";
+import type { BukidData } from "../../../../apis/bukid";
 
 export const useBukidActions = (
   bukids: BukidData[],
   fetchBukids: () => Promise<void>,
   selectedBukids: number[] = [],
-  statusFilter: string = 'all',
+  statusFilter: string = "all",
 ) => {
   const navigate = useNavigate();
 
@@ -18,7 +24,7 @@ export const useBukidActions = (
     if (!confirmed) return;
 
     try {
-      showToast('Deleting bukid...', 'info');
+      showToast("Deleting bukid...", "info");
       const response = await bukidAPI.delete(id);
 
       if (response.status) {
@@ -28,26 +34,29 @@ export const useBukidActions = (
         throw new Error(response.message);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to delete bukid');
+      showError(err.message || "Failed to delete bukid");
     }
   };
 
   const handleUpdateStatus = async (id: number, currentStatus: string) => {
     const newStatus = currentStatus;
-    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    const action = newStatus === "active" ? "activate" : "deactivate";
 
     const confirmed = await showConfirm({
       title: `${action.charAt(0).toUpperCase() + action.slice(1)} Bukid`,
       message: `Are you sure you want to ${action} this bukid?`,
-      icon: 'warning',
+      icon: "warning",
       confirmText: action.charAt(0).toUpperCase() + action.slice(1),
-      cancelText: 'Cancel'
+      cancelText: "Cancel",
     });
 
     if (!confirmed) return;
 
     try {
-      showToast(`${action.charAt(0).toUpperCase() + action.slice(1)}ing bukid...`, 'info');
+      showToast(
+        `${action.charAt(0).toUpperCase() + action.slice(1)}ing bukid...`,
+        "info",
+      );
       const response = await bukidAPI.updateStatus(id, newStatus);
 
       if (response.status) {
@@ -65,46 +74,58 @@ export const useBukidActions = (
     if (selectedBukids.length === 0) return;
 
     const confirmed = await showConfirm({
-      title: 'Bulk Delete Confirmation',
+      title: "Bulk Delete Confirmation",
       message: `Are you sure you want to delete ${selectedBukids.length} selected bukid(s)? This action cannot be undone.`,
-      icon: 'danger',
-      confirmText: 'Delete All',
-      cancelText: 'Cancel'
+      icon: "danger",
+      confirmText: "Delete All",
+      cancelText: "Cancel",
     });
 
     if (!confirmed) return;
 
     try {
-      showToast('Deleting selected bukid...', 'info');
+      showToast("Deleting selected bukid...", "info");
       const results = await Promise.allSettled(
-        selectedBukids.map(id => bukidAPI.delete(id))
+        selectedBukids.map((id) => bukidAPI.delete(id)),
       );
 
-      const successful = results.filter(r => r.status === 'fulfilled' && r.value.status);
-      const failed = results.filter(r => r.status === 'rejected' || !r.value?.status);
+      const successful = results.filter(
+        (r) => r.status === "fulfilled" && r.value.status,
+      );
+      const failed = results.filter(
+        (r) => r.status === "rejected" || !r.value?.status,
+      );
 
       if (failed.length === 0) {
         showSuccess(`Successfully deleted ${successful.length} bukid(s)`);
       } else {
-        showError(`Deleted ${successful.length} bukid(s), failed to delete ${failed.length} bukid(s)`);
+        showError(
+          `Deleted ${successful.length} bukid(s), failed to delete ${failed.length} bukid(s)`,
+        );
       }
 
       fetchBukids();
     } catch (err: any) {
-      showError(err.message || 'Failed to delete bukid');
+      showError(err.message || "Failed to delete bukid");
     }
   };
 
   const handleExportCSV = async () => {
-    if(!await dialogs.confirm({title: 'Export Bukid Data', message: 'Do you want to export the bukid data to a CSV file?'}))return;
+    if (
+      !(await dialogs.confirm({
+        title: "Export Bukid Data",
+        message: "Do you want to export the bukid data to a CSV file?",
+      }))
+    )
+      return;
     try {
-      showToast('Exporting to CSV...', 'info');
+      showToast("Exporting to CSV...", "info");
       const response = await bukidAPI.exportToCSV({
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
       });
 
       if (response.status) {
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = response.data.downloadUrl;
         link.download = response.data.filename;
         document.body.appendChild(link);
@@ -116,25 +137,25 @@ export const useBukidActions = (
         throw new Error(response.message);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to export CSV');
+      showError(err.message || "Failed to export CSV");
     }
   };
 
   // Add Note handler
   const handleAddNote = async (id: number, note: string) => {
     try {
-      showToast('Adding note...', 'info');
+      showToast("Adding note...", "info");
       const response = await bukidAPI.addNote(id, note);
-      
+
       if (response.status) {
-        showSuccess('Note added successfully');
+        showSuccess("Note added successfully");
         fetchBukids();
         return true;
       } else {
         throw new Error(response.message);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to add note');
+      showError(err.message || "Failed to add note");
       return false;
     }
   };
@@ -147,21 +168,21 @@ export const useBukidActions = (
 
   // Bulk Update handler
   const handleBulkUpdate = async (id: number) => {
-    showToast('Bulk update feature coming soon...', 'info');
+    showToast("Bulk update feature coming soon...", "info");
     // Implement bulk update logic here
     return id;
   };
 
   // Bulk Create handler
   const handleBulkCreate = async (id: number) => {
-    showToast('Bulk create feature coming soon...', 'info');
+    showToast("Bulk create feature coming soon...", "info");
     // Implement bulk create logic here
     return id;
   };
 
   // Import CSV handler
   const handleImportCSV = async (id: number) => {
-    showToast('Import CSV feature coming soon...', 'info');
+    showToast("Import CSV feature coming soon...", "info");
     // Implement import CSV logic here
     return id;
   };
@@ -169,17 +190,23 @@ export const useBukidActions = (
   // Export Single Bukid CSV handler
   const handleExportSingleCSV = async (id: number) => {
     try {
-      if(!await dialogs.confirm({title: 'Export Bukid Data', message: 'Do you want to export this bukid data to a CSV file?'}))return;
-      showToast('Exporting bukid data...', 'info');
-      
+      if (
+        !(await dialogs.confirm({
+          title: "Export Bukid Data",
+          message: "Do you want to export this bukid data to a CSV file?",
+        }))
+      )
+        return;
+      showToast("Exporting bukid data...", "info");
+
       // Call API to export single bukid
       const response = await bukidAPI.exportToCSV({
         id: id,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
       });
 
       if (response.status) {
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = response.data.downloadUrl;
         link.download = response.data.filename;
         document.body.appendChild(link);
@@ -191,19 +218,38 @@ export const useBukidActions = (
         throw new Error(response.message);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to export CSV');
+      showError(err.message || "Failed to export CSV");
     }
   };
 
-  const handleSort = (field: string, currentSortBy: string, currentSortOrder: 'ASC' | 'DESC') => {
+  const handleSort = (
+    field: string,
+    currentSortBy: string,
+    currentSortOrder: "ASC" | "DESC",
+  ) => {
     if (currentSortBy === field) {
-      return currentSortOrder === 'ASC' ? 'DESC' : 'ASC';
+      return currentSortOrder === "ASC" ? "DESC" : "ASC";
     }
-    return 'ASC';
+    return "ASC";
   };
 
   const handleStatusFilterChange = (status: string) => {
     return status;
+  };
+
+  const handleOnBukidComplete = async (id: number) => {
+    try {
+      showLoading("Marking bukid as completed...")
+      const response = await bukidAPI.updateStatus(id, "completed");
+      if (response.status) {
+        fetchBukids();
+        dialogs.success("Bukid marked as completed", "Success");
+      }
+    } catch (err) {
+      showError("Failed to complete bukid");
+    }finally{
+      hideLoading();
+    }
   };
 
   return {
@@ -219,5 +265,6 @@ export const useBukidActions = (
     handleBulkCreate,
     handleImportCSV,
     handleExportSingleCSV,
+    handleOnBukidComplete,
   };
 };

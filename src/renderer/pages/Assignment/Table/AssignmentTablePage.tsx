@@ -101,6 +101,11 @@ const AssignmentTablePage: React.FC = () => {
   const [showAddNoteDialog, setShowAddNoteDialog] = useState(false);
   const [selectedAssignment, setSelectedAssignment] =
     useState<Assignment | null>(null);
+  const [formWorkerIds, setFormWorkerIds] = useState<number[]>([]);
+  const [isReassignment, setIsReassignment] = useState(false);
+  const [reassignmentAssignmentId, setReassignmentAssignmentId] = useState<
+    number | null
+  >(null);
 
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
@@ -119,9 +124,15 @@ const AssignmentTablePage: React.FC = () => {
   };
 
   // Form Dialog handlers
-  const openFormDialog = (mode: "add" | "edit", id?: number) => {
-    setFormDialogMode(mode);
-    setFormDialogAssignmentId(id || null);
+  // Open form dialog with parameters
+  const openFormDialog = (
+    workerIds: number[] = [],
+    reassignment = false,
+    assignmentId: number | null = null,
+  ) => {
+    setFormWorkerIds(workerIds);
+    setIsReassignment(reassignment);
+    setReassignmentAssignmentId(assignmentId);
     setIsFormDialogOpen(true);
   };
 
@@ -137,12 +148,10 @@ const AssignmentTablePage: React.FC = () => {
   };
 
   const handleCreateAssignment = () => {
-    openFormDialog("add");
+    openFormDialog();
   };
 
-  const handleEditAssignment = (id: number) => {
-    openFormDialog("edit", id);
-  };
+  const handleEditAssignment = (id: number) => {};
 
   // Delete handler with dialog integration
   const handleDeleteWithDialog = async (id: number) => {
@@ -377,9 +386,25 @@ const AssignmentTablePage: React.FC = () => {
     await fetchAssignments();
   };
 
-  function handleReassignWorker(id: number): void {
-    throw new Error("Function not implemented.");
-  }
+  const handleReassignWorker = async (id: number) => {
+    try {
+      const response = await assignmentAPI.getAssignmentById(id);
+      if (response.status && response.data) {
+        const assignment = response.data;
+        const workerId = assignment.worker?.id;
+        if (workerId) {
+          openFormDialog([workerId], true, id);
+        } else {
+          showApiError(
+            new Error("No worker found for this assignment"),
+            "Cannot reassign",
+          );
+        }
+      }
+    } catch (error: any) {
+      showApiError(error, "Failed to fetch assignment details");
+    }
+  };
 
   const handleUpdateLuWang = async (id: number) => {
     try {
@@ -546,7 +571,6 @@ const AssignmentTablePage: React.FC = () => {
                       toggleSelectAll={toggleSelectAll}
                       toggleSelectAssignment={toggleSelectAssignment}
                       onView={openViewDialog}
-                      onEdit={handleEditAssignment}
                       onDelete={handleDeleteWithDialog}
                       onUpdateStatus={handleUpdateStatusWithDialog}
                       onCancel={handleCancelWithDialog}
@@ -564,7 +588,6 @@ const AssignmentTablePage: React.FC = () => {
                         selectedAssignments={selectedAssignments}
                         toggleSelectAssignment={toggleSelectAssignment}
                         onView={openViewDialog}
-                        onEdit={handleEditAssignment}
                         onUpdateStatus={handleUpdateStatusWithDialog}
                         onCancel={handleCancelWithDialog}
                         onDelete={handleDeleteWithDialog}
@@ -607,10 +630,11 @@ const AssignmentTablePage: React.FC = () => {
       {/* Assignment Form Dialog */}
       {isFormDialogOpen && (
         <AssignmentFormDialog
-          id={formDialogAssignmentId || undefined}
-          mode={formDialogMode}
+          workerIds={formWorkerIds}
           onClose={closeFormDialog}
           onSuccess={handleFormSuccess}
+          isReassignment={isReassignment}
+          reassignmentAssignmentId={reassignmentAssignmentId || undefined}
         />
       )}
 

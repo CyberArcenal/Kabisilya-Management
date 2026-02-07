@@ -8,7 +8,6 @@ interface AssignmentGridViewProps {
     selectedAssignments: number[];
     toggleSelectAssignment: (id: number) => void;
     onView: (id: number) => void;
-    onEdit: (id: number) => void;
     onUpdateStatus: (id: number, currentStatus: string) => void;
     onCancel: (id: number) => void;
     onDelete: (id: number) => void;
@@ -19,7 +18,6 @@ const AssignmentGridView: React.FC<AssignmentGridViewProps> = ({
     selectedAssignments,
     toggleSelectAssignment,
     onView,
-    onEdit,
     onUpdateStatus,
     onCancel,
     onDelete
@@ -33,7 +31,6 @@ const AssignmentGridView: React.FC<AssignmentGridViewProps> = ({
                     isSelected={selectedAssignments.includes(assignment.id)}
                     onSelect={() => toggleSelectAssignment(assignment.id)}
                     onView={() => onView(assignment.id)}
-                    onEdit={() => onEdit(assignment.id)}
                     onUpdateStatus={() => onUpdateStatus(assignment.id, assignment.status)}
                     onCancel={() => onCancel(assignment.id)}
                     onDelete={() => onDelete(assignment.id)}

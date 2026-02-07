@@ -339,12 +339,12 @@ const ViewSingleAssignmentDialog: React.FC<ViewSingleAssignmentDialogProps> = ({
               {onEdit && (
                 <button
                   onClick={onEdit}
-                  className="px-3 py-1.5 rounded text-sm font-medium border border-gray-300 hover:bg-gray-100 text-gray-700"
+                  className="px-3 py-1.5 rounded text-sm font-medium border border-gray-300 hover:bg-gray-100 text-gray-700 hidden"
                 >
                   Edit
                 </button>
               )}
-              {onDelete && (
+              {onDelete && assignment?.status === "active" && (
                 <button
                   onClick={onDelete}
                   className="px-3 py-1.5 rounded text-sm font-medium border border-red-300 hover:bg-red-50 text-red-600"

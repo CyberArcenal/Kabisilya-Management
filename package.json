@@ -1,11 +1,11 @@
 {
-  "name": "kabisilya-management",
+  "name": "farm-laborer-management",
   "private": true,
   "version": "1.0.0",
   "main": "src/main/index.js",
   "build": {
-    "appId": "com.CyberArcenal.kabisilya.app",
-    "productName": "Kabisilya Management",
+    "appId": "com.CyberArcenal.farm-laborer-management.app",
+    "productName": "Farm Laborer Management",
     "directories": {
       "output": "release"
     },
@@ -23,7 +23,7 @@
       {
         "provider": "github",
         "owner": "CyberArcenal",
-        "repo": "Kabisilya-Management"
+        "repo": "Farm-Laborer-Management"
       }
     ]
   },

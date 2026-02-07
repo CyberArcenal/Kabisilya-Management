@@ -9,7 +9,6 @@ interface AssignmentGridCardProps {
     isSelected: boolean;
     onSelect: () => void;
     onView: () => void;
-    onEdit: () => void;
     onUpdateStatus: () => void;
     onCancel: () => void;
     onDelete: () => void;
@@ -20,7 +19,6 @@ const AssignmentGridCard: React.FC<AssignmentGridCardProps> = ({
     isSelected,
     onSelect,
     onView,
-    onEdit,
     onUpdateStatus,
     onCancel,
     onDelete
@@ -176,7 +174,7 @@ const AssignmentGridCard: React.FC<AssignmentGridCardProps> = ({
                 <div className="flex items-center gap-2">
                     <Hash className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
                     <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {formatNumber(assignment.luwangCount)} LuWang
+                        {assignment.luwangCount} LuWang
                     </span>
                 </div>
             </div>
@@ -203,13 +201,13 @@ const AssignmentGridCard: React.FC<AssignmentGridCardProps> = ({
                     >
                         <Eye className="w-4 h-4" style={{ color: 'var(--accent-sky)' }} />
                     </button>
-                    <button
+                    {/* <button
                         onClick={onEdit}
                         className="p-1.5 rounded hover:bg-gray-100 transition-colors"
                         title="Edit"
                     >
                         <Edit className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
-                    </button>
+                    </button> */}
                     
                     {/* Actions Dropdown for Grid View */}
                     <div className="relative" ref={dropdownRef}>
@@ -239,13 +237,13 @@ const AssignmentGridCard: React.FC<AssignmentGridCardProps> = ({
                                         <Eye className="w-4 h-4" style={{ color: 'var(--accent-sky)' }} />
                                         View Details
                                     </button>
-                                    <button
+                                    {/* <button
                                         onClick={() => handleActionClick(onEdit)}
                                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                                     >
                                         <Edit className="w-4 h-4" style={{ color: 'var(--accent-gold)' }} />
                                         Edit
-                                    </button>
+                                    </button> */}
                                     
                                     {assignment.status === 'active' && (
                                         <>

@@ -2,16 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Users, Calendar, Hash, MapPin, Phone, CheckCircle, 
-  AlertCircle, Clock, Download, Filter, ChevronRight 
+  AlertCircle, Clock, Download, Filter, ChevronRight, Trash2,
+  UserMinus, AlertTriangle
 } from 'lucide-react';
 import assignmentAPI from '../../../../apis/assignment';
 import type { Assignment } from '../../../../apis/assignment';
+import { dialogs } from '../../../../utils/dialogs';
 
 interface ViewAssignedWorkersDialogProps {
   pitakId: number;
   pitakLocation?: string;
   onClose: () => void;
   onViewAssignment?: (assignmentId: number) => void;
+  onWorkerRemoved?: (workerId: number) => void;
 }
 
 interface WorkerSummary {
@@ -30,13 +33,21 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
   pitakId,
   pitakLocation = 'Unknown Location',
   onClose,
-  onViewAssignment
+  onViewAssignment,
+  onWorkerRemoved
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workers, setWorkers] = useState<WorkerSummary[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [removingWorkerId, setRemovingWorkerId] = useState<number | null>(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null);
+  const [removeConfirmData, setRemoveConfirmData] = useState<{
+    workerId: number;
+    workerName: string;
+    activeAssignments: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchAssignedWorkers();
@@ -74,7 +85,7 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
             const worker = workerMap.get(workerId)!;
             worker.assignments.push(assignment);
             worker.totalAssignments++;
-            worker.totalLuWang += assignment.luwangCount || 0;
+            worker.totalLuWang += (assignment.luwangCount as unknown as number || 0);
             
             if (assignment.status === 'active') worker.activeAssignments++;
             if (assignment.status === 'completed') worker.completedAssignments++;
@@ -91,6 +102,74 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRemoveWorker = (workerId: number, workerName: string, activeAssignments: number) => {
+    setRemoveConfirmData({
+      workerId,
+      workerName,
+      activeAssignments
+    });
+    setShowRemoveConfirm(workerId);
+  };
+
+  const confirmRemoveWorker = async () => {
+    if (!removeConfirmData) return;
+    
+    const { workerId, workerName } = removeConfirmData;
+    setRemovingWorkerId(workerId);
+    
+    try {
+      // First, get all active assignments for this worker in this pitak
+      const workerAssignments = workers.find(w => w.id === workerId)?.assignments || [];
+      const activeAssignments = workerAssignments.filter(a => a.status === 'active');
+      
+      if (activeAssignments.length === 0) {
+        dialogs.warning(`No active assignments found for ${workerName}.`);
+        setRemovingWorkerId(null);
+        setShowRemoveConfirm(null);
+        return;
+      }
+      
+      // Update each active assignment to cancelled status
+      const updatePromises = activeAssignments.map(assignment => 
+        assignmentAPI.updateAssignmentStatus(
+          assignment.id, 
+          'cancelled', 
+          `Worker ${workerName} (${workerId}) removed from pitak by user`
+        )
+      );
+      
+      const results = await Promise.all(updatePromises);
+      const successCount = results.filter(r => r.status).length;
+      
+      if (successCount > 0) {
+        // Refresh the workers list
+        await fetchAssignedWorkers();
+        
+        // Notify parent component if callback provided
+        if (onWorkerRemoved) {
+          onWorkerRemoved(workerId);
+        }
+        
+        dialogs.success(`Successfully removed ${workerName} from ${successCount} assignment(s).`);
+      } else {
+        dialogs.error(`Failed to remove ${workerName} from assignments. Please try again.`);
+      }
+      
+    } catch (err: any) {
+      console.error('Error removing worker:', err);
+      dialogs.error(`Error removing worker: ${err.message || 'Unknown error'}`);
+    } finally {
+      setRemovingWorkerId(null);
+      setShowRemoveConfirm(null);
+      setRemoveConfirmData(null);
+    }
+  };
+
+  const cancelRemoveWorker = () => {
+    setShowRemoveConfirm(null);
+    setRemoveConfirmData(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -152,16 +231,11 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } else {
-        alert('Export failed: ' + response.message);
+        dialogs.error('Export failed: ' + response.message);
       }
     } catch (err: any) {
-      alert('Export failed: ' + err.message);
+      dialogs.error('Export failed: ' + err.message);
     }
-  };
-
-  const handleViewWorkerAssignments = (workerId: number) => {
-    // Navigate to worker's assignments or show in dialog
-    console.log('View worker assignments:', workerId);
   };
 
   return (
@@ -277,7 +351,7 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
                   </div>
                   <div className="text-center">
                     <div className="text-xs text-gray-600">Total LuWang</div>
-                    <div className="font-semibold text-gray-900">{totalLuWang}</div>
+                    <div className="font-semibold text-gray-900">{totalLuWang.toFixed(2)}</div>
                   </div>
                 </div>
               </div>
@@ -302,6 +376,11 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
                               {worker.code}
                             </span>
+                            {worker.activeAssignments > 0 && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                {worker.activeAssignments} active
+                              </span>
+                            )}
                           </div>
                           
                           <div className="text-xs text-gray-600 flex items-center gap-3 flex-wrap">
@@ -320,33 +399,34 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
                               {worker.totalLuWang} total LuWang
                             </span>
                           </div>
-                          
-                          {/* Assignment Status Summary */}
-                          <div className="flex items-center gap-3 mt-2">
-                            {worker.activeAssignments > 0 && (
-                              <span className="flex items-center gap-1 text-xs">
-                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                <span className="text-green-700">{worker.activeAssignments} active</span>
-                              </span>
-                            )}
-                            {worker.completedAssignments > 0 && (
-                              <span className="flex items-center gap-1 text-xs">
-                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                <span className="text-blue-700">{worker.completedAssignments} completed</span>
-                              </span>
-                            )}
-                          </div>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleViewWorkerAssignments(worker.id)}
-                          className="px-3 py-1.5 rounded text-xs font-medium border border-gray-300 hover:bg-gray-100 text-gray-700 flex items-center gap-1"
-                        >
-                          View Details
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
+                        {worker.activeAssignments > 0 && (
+                          <button
+                            onClick={() => handleRemoveWorker(worker.id, worker.name, worker.activeAssignments)}
+                            disabled={removingWorkerId === worker.id}
+                            className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-colors ${
+                              removingWorkerId === worker.id
+                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300'
+                            }`}
+                            title={`Remove ${worker.name} from pitak assignments`}
+                          >
+                            {removingWorkerId === worker.id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                Removing...
+                              </>
+                            ) : (
+                              <>
+                                <UserMinus className="w-3.5 h-3.5" />
+                                Remove from Pitak
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                     
@@ -387,7 +467,7 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
                     {worker.assignments.length > 2 && (
                       <div className="mt-2 ml-13 pl-3">
                         <button
-                          onClick={() => handleViewWorkerAssignments(worker.id)}
+                          onClick={() => onViewAssignment?.(worker.assignments[0]?.id)}
                           className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
                         >
                           + {worker.assignments.length - 2} more assignments...
@@ -423,6 +503,75 @@ const ViewAssignedWorkersDialog: React.FC<ViewAssignedWorkersDialogProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Remove Confirmation Modal */}
+        {showRemoveConfirm && removeConfirmData && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
+            <div className="bg-white rounded-lg w-full max-w-md shadow-lg border border-gray-200">
+              <div className="p-4 border-b border-gray-200 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Remove Worker</h3>
+                  <p className="text-xs text-gray-600">Confirm removal action</p>
+                </div>
+              </div>
+              
+              <div className="p-4">
+                <p className="text-sm text-gray-700 mb-4">
+                  Are you sure you want to remove <span className="font-semibold">{removeConfirmData.workerName}</span> from this pitak?
+                </p>
+                
+                {removeConfirmData.activeAssignments > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-yellow-800 mb-1">Important:</p>
+                        <p className="text-xs text-yellow-700">
+                          This will cancel <span className="font-semibold">{removeConfirmData.activeAssignments} active assignment(s)</span> for this worker.
+                          Completed assignments will not be affected.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={cancelRemoveWorker}
+                    className="px-3 py-1.5 rounded text-sm font-medium border border-gray-300 hover:bg-gray-100 text-gray-700"
+                    disabled={removingWorkerId !== null}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmRemoveWorker}
+                    disabled={removingWorkerId !== null}
+                    className={`px-3 py-1.5 rounded text-sm font-medium text-white flex items-center gap-1 ${
+                      removingWorkerId !== null
+                        ? 'bg-red-400 cursor-not-allowed'
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {removingWorkerId !== null ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <UserMinus className="w-3.5 h-3.5" />
+                        Remove Worker
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

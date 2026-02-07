@@ -26,6 +26,7 @@ interface BukidTableRowProps {
   bukidSummary: BukidSummaryData | undefined;
   isSelected: boolean;
   isExpanded: boolean;
+  onComplete: (id: number) => void;
   onSelect: () => void;
   onToggleExpand: () => void;
   onView: (id: number) => void;
@@ -47,6 +48,7 @@ const BukidTableRow: React.FC<BukidTableRowProps> = ({
   bukidSummary,
   isSelected,
   isExpanded,
+  onComplete,
   onSelect,
   onToggleExpand,
   onView,
@@ -520,6 +522,7 @@ const BukidTableRow: React.FC<BukidTableRowProps> = ({
             {/* Bukid Actions Dropdown */}
             <BukidActionsDropdown
               bukid={bukid}
+              onComplete={onComplete}
               onViewMap={onViewMap}
               onAddPlot={onAddPlot}
               onViewPlots={onViewPlots}

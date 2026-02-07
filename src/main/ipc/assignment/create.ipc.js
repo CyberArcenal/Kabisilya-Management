@@ -11,44 +11,33 @@ const {
 } = require("./utils/assignmentUtils");
 const { farmSessionDefaultSessionId } = require("../../../utils/system");
 
-/**
- * Create new assignments for multiple workers
- * - If luwangCount is 0 or not provided, compute from pitak.totalLuwang / workerCount
- * - Robust date validation (normalizes to YYYY-MM-DD to avoid timezone issues)
- * - TypeORM v0.3+ patterns (relation objects)
- *
- * @param {Object} params - { workerIds: number[], pitakId: number, luwangCount?: number, assignmentDate: string, notes?: string, userId?: number }
- * @param {import("typeorm").QueryRunner} [externalQueryRunner] - Optional transaction query runner
- * @returns {Promise<Object>} Response object
- */
-// @ts-ignore
 module.exports = async (params = {}, externalQueryRunner = null) => {
   let queryRunner = externalQueryRunner;
   let shouldRelease = false;
 
   if (!queryRunner) {
+    // @ts-ignore
     queryRunner = AppDataSource.createQueryRunner();
+    // @ts-ignore
     await queryRunner.connect();
+    // @ts-ignore
     await queryRunner.startTransaction();
     shouldRelease = true;
   }
 
   try {
     // @ts-ignore
-    const { workerIds, pitakId, luwangCount, assignmentDate, notes, userId } =
-      params;
+    const { workerIds, pitakId, assignmentDate, notes } = params;
 
-    // ✅ Always require default session
     const sessionId = await farmSessionDefaultSessionId();
     if (!sessionId || sessionId === 0) {
       return {
         status: false,
-        message: "No default session configured. Please set one in Settings.",
+        message: "No default session configured.",
         data: null,
       };
     }
 
-    // Basic validation
     if (
       !workerIds ||
       !Array.isArray(workerIds) ||
@@ -56,15 +45,9 @@ module.exports = async (params = {}, externalQueryRunner = null) => {
       !pitakId ||
       !assignmentDate
     ) {
-      return {
-        status: false,
-        message:
-          "Missing required fields: workerIds (array with at least one worker), pitakId, and assignmentDate are required",
-        data: null,
-      };
+      return { status: false, message: "Missing required fields", data: null };
     }
 
-    // Dedupe and normalize worker IDs
     const uniqueWorkerIds = [
       ...new Set(workerIds.map((id) => Number(id))),
     ].filter(Boolean);
@@ -76,50 +59,27 @@ module.exports = async (params = {}, externalQueryRunner = null) => {
       };
     }
 
-    // Normalize assignment date
-    const normalizeToDateString = (/** @type {string | number | Date} */ d) => {
-      const dt = new Date(d);
-      if (Number.isNaN(dt.getTime())) return null;
-      return dt.toISOString().split("T")[0];
-    };
-
-    const assignmentDateStr = normalizeToDateString(assignmentDate);
-    if (!assignmentDateStr) {
-      return { status: false, message: "Invalid assignmentDate", data: null };
-    }
-
-    const todayStr = new Date().toISOString().split("T")[0];
-    if (assignmentDateStr > todayStr) {
-      return {
-        status: false,
-        message: "Assignment date cannot be in the future",
-        data: null,
-      };
-    }
-
+    const assignmentDateStr = new Date(assignmentDate)
+      .toISOString()
+      .split("T")[0];
     const assignmentDateObj = new Date(`${assignmentDateStr}T00:00:00`);
 
-    // Repositories
+    // @ts-ignore
     const pitakRepo = queryRunner.manager.getRepository(Pitak);
+    // @ts-ignore
     const workerRepo = queryRunner.manager.getRepository(Worker);
+    // @ts-ignore
     const assignmentRepo = queryRunner.manager.getRepository(Assignment);
 
-    // ✅ Validate pitak
     const pitakCheck = await validatePitak(pitakRepo, pitakId);
-    if (!pitakCheck.valid) {
+    if (!pitakCheck.valid)
       return { status: false, message: pitakCheck.message, data: null };
-    }
     const pitak = pitakCheck.pitak;
 
-    // ✅ Validate workers
     const workerCheck = await validateWorkers(workerRepo, uniqueWorkerIds);
-    if (!workerCheck.valid) {
+    if (!workerCheck.valid)
       return { status: false, message: workerCheck.message, data: null };
-    }
-    // @ts-ignore
-    const workers = workerCheck.workers;
 
-    // ✅ Skip already assigned
     const skippedWorkers = await findAlreadyAssigned(
       assignmentRepo,
       uniqueWorkerIds,
@@ -128,121 +88,97 @@ module.exports = async (params = {}, externalQueryRunner = null) => {
     const workersToAssign = uniqueWorkerIds.filter(
       (id) => !skippedWorkers.includes(id),
     );
-
     if (workersToAssign.length === 0) {
       return {
         status: true,
-        message: `All selected workers are already assigned to pitak ${pitakId}`,
-        data: {
-          assignments: [],
-          summary: {
-            totalWorkers: 0,
-            totalLuWangCount: 0,
-            assignmentDate: assignmentDateStr,
-            pitakId,
-            sessionId,
-            skippedWorkers,
-          },
-        },
+        message: "All workers already assigned",
+        data: { assignments: [], summary: {} },
       };
     }
 
-    // Compute luwangCount per worker
-    const workerCount = workersToAssign.length;
-    let luwangCountPerWorker = 0.0;
+    // ✅ Query existing assignments
+    const existingAssignments = await assignmentRepo.find({
+      where: { pitak: { id: pitakId }, assignmentDate: assignmentDateObj },
+      relations: ["worker", "pitak"],
+    });
 
-    if (typeof luwangCount === "number" && luwangCount > 0) {
-      luwangCountPerWorker = parseFloat((luwangCount / workerCount).toFixed(2));
-    } else {
-      const pitakTotalRaw = pitak.totalLuwang ?? 0;
-      const pitakTotal = parseFloat(pitakTotalRaw) || 0;
-      if (pitakTotal > 0) {
-        luwangCountPerWorker = parseFloat(
-          (pitakTotal / workerCount).toFixed(2),
-        );
-      } else {
-        luwangCountPerWorker = 0.0;
-      }
+    const completedAssignments = existingAssignments.filter(
+      // @ts-ignore
+      (a) => a.status === "completed",
+    );
+    const activeAssignments = existingAssignments.filter(
+      // @ts-ignore
+      (a) => a.status === "active",
+    );
+
+    const lockedLuWang = completedAssignments.reduce(
+      // @ts-ignore
+      (sum, a) => sum + parseFloat(a.luwangCount || 0),
+      0,
+    );
+    const pitakTotal = parseFloat(pitak.totalLuwang) || 0;
+    const remainingLuWang = pitakTotal - lockedLuWang;
+
+    if (remainingLuWang <= 0) {
+      return {
+        status: false,
+        message: "Pitak fully utilized by completed assignments",
+        data: null,
+      };
     }
 
-    // ✅ Create assignment entities with sessionId
+    const totalAssignableCount =
+      activeAssignments.length + workersToAssign.length;
+    const newShare = parseFloat(
+      (remainingLuWang / totalAssignableCount).toFixed(2),
+    );
+
+    // Update active assignments
+    for (const a of activeAssignments) {
+      a.luwangCount = newShare;
+      a.updatedAt = new Date();
+      await assignmentRepo.save(a);
+    }
+
+    // Create new assignments
     const assignmentsToSave = workersToAssign.map((workerId) =>
       assignmentRepo.create({
-        // @ts-ignore
         worker: { id: workerId },
         pitak: { id: pitakId },
-        session: { id: sessionId }, // 🔑 always tie to default session
-        luwangCount: luwangCountPerWorker,
+        session: { id: sessionId },
+        luwangCount: newShare,
         assignmentDate: assignmentDateObj,
         status: "active",
         notes: notes || null,
       }),
     );
-
     const savedAssignments = await assignmentRepo.save(assignmentsToSave);
 
-    // Format response
-    const formattedAssignments = savedAssignments.map((a) => ({
-      id: a.id,
-      // @ts-ignore
-      workerId: a.worker?.id ?? null,
-      // @ts-ignore
-      pitakId: a.pitak?.id ?? null,
-      // @ts-ignore
-      sessionId: a.session?.id ?? sessionId,
-      luwangCount:
-        typeof a.luwangCount === "string"
-          ? parseFloat(a.luwangCount)
-          : (a.luwangCount ?? 0),
-      assignmentDate: a.assignmentDate
-        // @ts-ignore
-        ? a.assignmentDate.toISOString().split("T")[0]
-        : assignmentDateStr,
-      status: a.status,
-      notes: a.notes,
-      // @ts-ignore
-      createdAt: a.createdAt ? a.createdAt.toISOString() : undefined,
-      // @ts-ignore
-      updatedAt: a.updatedAt ? a.updatedAt.toISOString() : undefined,
-    }));
-
-    if (shouldRelease) {
-      await queryRunner.commitTransaction();
-    }
+    // @ts-ignore
+    if (shouldRelease) await queryRunner.commitTransaction();
 
     return {
       status: true,
-      message: `${formattedAssignments.length} assignment(s) created successfully. ${skippedWorkers.length > 0 ? `Skipped ${skippedWorkers.length} already-assigned worker(s).` : ""}`,
+      message: "Assignments created and redistributed successfully",
       data: {
-        assignments: formattedAssignments,
-        summary: {
-          totalWorkers: formattedAssignments.length,
-          totalLuWangCount: formattedAssignments.reduce(
-            // @ts-ignore
-            (sum, x) => sum + (x.luwangCount || 0),
-            0,
-          ),
-          assignmentDate: assignmentDateStr,
-          pitakId,
-          sessionId,
-          skippedWorkers,
-        },
+        assignments: [
+          ...completedAssignments,
+          ...activeAssignments,
+          ...savedAssignments,
+        ],
       },
     };
   } catch (error) {
-    if (shouldRelease) {
-      await queryRunner.rollbackTransaction();
-    }
-    console.error("Error creating assignments:", error);
+    // @ts-ignore
+    if (shouldRelease) await queryRunner.rollbackTransaction();
     return {
       status: false,
       // @ts-ignore
-      message: `Failed to create assignments: ${error?.message || error}`,
+      message: `Failed to create assignments: ${error.message}`,
       data: null,
     };
   } finally {
-    if (shouldRelease) {
-      await queryRunner.release();
-    }
+    // @ts-ignore
+    if (shouldRelease) await queryRunner.release();
   }
 };

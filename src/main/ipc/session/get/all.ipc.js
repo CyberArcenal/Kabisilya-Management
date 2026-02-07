@@ -38,10 +38,8 @@ module.exports = async (filters = {}, userId = 0) => {
 
     if (filters.search && filters.search.trim() !== "") {
       queryBuilder.andWhere(
-        "(session.name ILIKE :search OR session.seasonType ILIKE :search)",
-        {
-          search: `%${filters.search}%`,
-        }
+        "(LOWER(session.name) LIKE LOWER(:search) OR LOWER(session.seasonType) LIKE LOWER(:search))",
+        { search: `%${filters.search}%` },
       );
     }
 

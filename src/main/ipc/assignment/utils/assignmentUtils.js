@@ -37,14 +37,17 @@ async function validateWorkers(workerRepo, workerIds) {
   return { valid: true, workers };
 }
 
+
 /**
- * @param {{ find: (arg0: { where: { worker: { id: import("typeorm").FindOperator<any>; }; pitak: { id: any; }; status: string; }; relations: string[]; }) => any; }} assignmentRepo
+ * @param {{ find: (arg0: { where: { worker: { id: import("typeorm").FindOperator<any>; }; pitak: { id: any; }; }; relations: string[]; }) => any; }} assignmentRepo
  * @param {readonly any[] | import("typeorm").FindOperator<any>} workerIds
  * @param {any} pitakId
  */
 async function findAlreadyAssigned(assignmentRepo, workerIds, pitakId) {
   const existing = await assignmentRepo.find({
-    where: { worker: { id: In(workerIds) }, pitak: { id: pitakId }, status: "active" },
+    where: {
+      worker: { id: In(workerIds) }, pitak: { id: pitakId }
+    },
     relations: ["worker", "pitak"]
   });
   return existing.map((/** @type {{ worker: { id: any; }; }} */ a) => a.worker?.id).filter(Boolean);

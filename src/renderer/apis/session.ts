@@ -158,7 +158,8 @@ class SessionAPI {
     try {
       const user = kabAuthStore.getUser();
       if (user && user.id) {
-        const userId = typeof user.id === "string" ? parseInt(user.id, 10) : user.id;
+        const userId =
+          typeof user.id === "string" ? parseInt(user.id, 10) : user.id;
         return isNaN(userId) ? null : userId;
       }
       return null;
@@ -179,7 +180,9 @@ class SessionAPI {
   /**
    * Get all sessions with optional filters
    */
-  async getAll(filters: FilterParams = {}): Promise<SessionResponse<SessionListData[]>> {
+  async getAll(
+    filters: FilterParams = {},
+  ): Promise<SessionResponse<SessionListData[]>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
         throw new Error("Electron API not available");
@@ -207,7 +210,9 @@ class SessionAPI {
   /**
    * Get session by ID
    */
-  async getById(id: number): Promise<SessionResponse<SessionWithRelationsData>> {
+  async getById(
+    id: number,
+  ): Promise<SessionResponse<SessionWithRelationsData>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
         throw new Error("Electron API not available");
@@ -235,7 +240,9 @@ class SessionAPI {
   /**
    * Get only active sessions
    */
-  async getActive(includeBukids = false): Promise<SessionResponse<SessionListData[]>> {
+  async getActive(
+    includeBukids = false,
+  ): Promise<SessionResponse<SessionListData[]>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
         throw new Error("Electron API not available");
@@ -271,7 +278,7 @@ class SessionAPI {
     startDate: Date | string,
     seasonType?: string,
     endDate?: Date | string,
-    status: "active" | "closed" | "archived" = "active"
+    status: "active" | "closed" | "archived" = "active",
   ): Promise<SessionResponse<SessionData>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
@@ -284,8 +291,13 @@ class SessionAPI {
           name,
           seasonType,
           year,
-          startDate: typeof startDate === "string" ? startDate : startDate.toISOString(),
-          endDate: endDate ? (typeof endDate === "string" ? endDate : endDate.toISOString()) : null,
+          startDate:
+            typeof startDate === "string" ? startDate : startDate.toISOString(),
+          endDate: endDate
+            ? typeof endDate === "string"
+              ? endDate
+              : endDate.toISOString()
+            : null,
           status,
         }),
       });
@@ -316,7 +328,7 @@ class SessionAPI {
       startDate: Date | string;
       endDate: Date | string | null;
       status: "active" | "closed" | "archived";
-    }>
+    }>,
   ): Promise<SessionResponse<SessionData>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
@@ -325,21 +337,24 @@ class SessionAPI {
 
       // Prepare update data
       const updateData: any = { id };
-      
+
       if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.seasonType !== undefined) updateData.seasonType = updates.seasonType;
+      if (updates.seasonType !== undefined)
+        updateData.seasonType = updates.seasonType;
       if (updates.year !== undefined) updateData.year = updates.year;
       if (updates.startDate !== undefined) {
-        updateData.startDate = typeof updates.startDate === "string" 
-          ? updates.startDate 
-          : updates.startDate.toISOString();
+        updateData.startDate =
+          typeof updates.startDate === "string"
+            ? updates.startDate
+            : updates.startDate.toISOString();
       }
       if (updates.endDate !== undefined) {
-        updateData.endDate = updates.endDate === null 
-          ? null 
-          : (typeof updates.endDate === "string" 
-            ? updates.endDate 
-            : updates.endDate.toISOString());
+        updateData.endDate =
+          updates.endDate === null
+            ? null
+            : typeof updates.endDate === "string"
+              ? updates.endDate
+              : updates.endDate.toISOString();
       }
       if (updates.status !== undefined) updateData.status = updates.status;
 
@@ -367,8 +382,10 @@ class SessionAPI {
    */
   async delete(
     id: number,
-    force = false
-  ): Promise<SessionResponse<{ id: number; name: string; bukidsDeleted: number }>> {
+    force = false,
+  ): Promise<
+    SessionResponse<{ id: number; name: string; bukidsDeleted: number }>
+  > {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
         throw new Error("Electron API not available");
@@ -399,7 +416,9 @@ class SessionAPI {
   async duplicate(
     sessionId: number,
     newName: string,
-    newYear?: number
+    newYear?: number,
+    copyBukidPitak: boolean = true, // <-- new flag
+    copyAssignments: boolean = false,
   ): Promise<SessionResponse<SessionWithRelationsData>> {
     try {
       if (!window.backendAPI || !window.backendAPI.session) {
@@ -408,7 +427,7 @@ class SessionAPI {
 
       const response = await window.backendAPI.session({
         method: "duplicateSession",
-        params: this.enrichParams({ sessionId, newName, newYear }),
+        params: this.enrichParams({ sessionId, newName, newYear, copyBukidPitak, copyAssignments }),
       });
 
       if (response.status) {
@@ -511,7 +530,7 @@ class SessionAPI {
   async checkNameExists(
     name: string,
     year: number,
-    excludeId?: number
+    excludeId?: number,
   ): Promise<ValidationResponse> {
     try {
       const allSessions = await this.getAll({ search: name, year });
@@ -523,12 +542,14 @@ class SessionAPI {
         (s) =>
           s.name.toLowerCase() === name.toLowerCase() &&
           s.year === year &&
-          (!excludeId || s.id !== excludeId)
+          (!excludeId || s.id !== excludeId),
       );
 
       return {
         status: true,
-        message: exists ? "Session with this name and year already exists" : "Name is available",
+        message: exists
+          ? "Session with this name and year already exists"
+          : "Name is available",
         data: !exists, // Return true if name is available (doesn't exist)
       };
     } catch (error: any) {
@@ -554,16 +575,22 @@ class SessionAPI {
       }
 
       const sessions = allSessions.data;
-      
-      const activeSessions = sessions.filter(s => s.status === "active").length;
-      const closedSessions = sessions.filter(s => s.status === "closed").length;
-      const archivedSessions = sessions.filter(s => s.status === "archived").length;
+
+      const activeSessions = sessions.filter(
+        (s) => s.status === "active",
+      ).length;
+      const closedSessions = sessions.filter(
+        (s) => s.status === "closed",
+      ).length;
+      const archivedSessions = sessions.filter(
+        (s) => s.status === "archived",
+      ).length;
 
       // For more detailed stats, we might need to fetch additional data
       // For now, we'll use summary data
       let totalBukids = 0;
       let totalAssignments = 0;
-      
+
       for (const session of sessions) {
         totalBukids += session.bukidCount || 0;
         totalAssignments += session.assignmentCount || 0;
@@ -605,13 +632,16 @@ class SessionAPI {
   /**
    * Get sessions by year
    */
-  async getByYear(year: number, includeBukids = false): Promise<SessionResponse<SessionListData[]>> {
+  async getByYear(
+    year: number,
+    includeBukids = false,
+  ): Promise<SessionResponse<SessionListData[]>> {
     try {
       const allSessions = await this.getAll({ year, includeBukids });
       return {
         status: true,
         message: "Sessions retrieved by year",
-        data: allSessions.data.filter(s => s.year === year),
+        data: allSessions.data.filter((s) => s.year === year),
       };
     } catch (error: any) {
       console.error("Error getting sessions by year:", error);
@@ -627,12 +657,14 @@ class SessionAPI {
    * Get session list for dropdowns
    */
   async getList(
-    status?: "active" | "closed" | "archived"
-  ): Promise<SessionResponse<Array<{ id: number; name: string; year: number }>>> {
+    status?: "active" | "closed" | "archived",
+  ): Promise<
+    SessionResponse<Array<{ id: number; name: string; year: number }>>
+  > {
     try {
       const filters: FilterParams = {};
       if (status) filters.status = status;
-      
+
       const allSessions = await this.getAll(filters);
       if (!allSessions.status) {
         throw new Error("Failed to get sessions");
@@ -641,7 +673,7 @@ class SessionAPI {
       return {
         status: true,
         message: "Session list retrieved",
-        data: allSessions.data.map(s => ({
+        data: allSessions.data.map((s) => ({
           id: s.id,
           name: s.name,
           year: s.year,
@@ -695,7 +727,9 @@ class SessionAPI {
       const canModify = session.data.status !== "archived";
       return {
         status: true,
-        message: canModify ? "Session can be modified" : "Session is archived and cannot be modified",
+        message: canModify
+          ? "Session can be modified"
+          : "Session is archived and cannot be modified",
         data: canModify,
       };
     } catch (error: any) {
@@ -724,7 +758,8 @@ class SessionAPI {
 
       // Get the most recent active session (by start date)
       const sortedSessions = activeSessions.data.sort(
-        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+        (a, b) =>
+          new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
       );
 
       // Get full details of the most recent session
@@ -750,13 +785,15 @@ class SessionAPI {
       year: number;
       startDate: string;
       seasonType?: string;
+    }>,
+  ): Promise<
+    SessionResponse<{
+      successCount: number;
+      failedCount: number;
+      createdIds: number[];
+      failures: Array<{ name: string; reason: string }>;
     }>
-  ): Promise<SessionResponse<{
-    successCount: number;
-    failedCount: number;
-    createdIds: number[];
-    failures: Array<{ name: string; reason: string }>;
-  }>> {
+  > {
     try {
       const results = [];
       const createdIds = [];
@@ -768,7 +805,7 @@ class SessionAPI {
             session.name,
             session.year,
             session.startDate,
-            session.seasonType
+            session.seasonType,
           );
           if (result.status) {
             results.push(result);
@@ -800,7 +837,10 @@ class SessionAPI {
           successCount: 0,
           failedCount: sessions.length,
           createdIds: [],
-          failures: sessions.map(session => ({ name: session.name, reason: "Bulk operation failed" })),
+          failures: sessions.map((session) => ({
+            name: session.name,
+            reason: "Bulk operation failed",
+          })),
         },
       };
     }
@@ -825,7 +865,9 @@ class SessionAPI {
   /**
    * Get seasons by type (tag-ulan or tag-araw)
    */
-  async getBySeasonType(seasonType: "tag-ulan" | "tag-araw"): Promise<SessionResponse<SessionListData[]>> {
+  async getBySeasonType(
+    seasonType: "tag-ulan" | "tag-araw",
+  ): Promise<SessionResponse<SessionListData[]>> {
     try {
       const allSessions = await this.getAll();
       if (!allSessions.status) {
@@ -833,7 +875,7 @@ class SessionAPI {
       }
 
       const filtered = allSessions.data.filter(
-        s => s.seasonType?.toLowerCase() === seasonType.toLowerCase()
+        (s) => s.seasonType?.toLowerCase() === seasonType.toLowerCase(),
       );
 
       return {
@@ -856,19 +898,25 @@ class SessionAPI {
   /**
    * Get session summary (for dashboard)
    */
-  async getSummary(): Promise<SessionResponse<{
-    active: SessionListData[];
-    recent: SessionListData[];
-    upcoming: SessionListData[];
-    stats: {
-      activeCount: number;
-      totalBukids: number;
-      totalAssignments: number;
-    };
-  }>> {
+  async getSummary(): Promise<
+    SessionResponse<{
+      active: SessionListData[];
+      recent: SessionListData[];
+      upcoming: SessionListData[];
+      stats: {
+        activeCount: number;
+        totalBukids: number;
+        totalAssignments: number;
+      };
+    }>
+  > {
     try {
       const activeSessions = await this.getActive(true);
-      const allSessions = await this.getAll({ sortBy: "startDate", sortOrder: "DESC", limit: 10 });
+      const allSessions = await this.getAll({
+        sortBy: "startDate",
+        sortOrder: "DESC",
+        limit: 10,
+      });
 
       if (!activeSessions.status || !allSessions.status) {
         throw new Error("Failed to get session data");
@@ -876,7 +924,7 @@ class SessionAPI {
 
       const now = new Date();
       const upcomingSessions = allSessions.data.filter(
-        s => new Date(s.startDate) > now && s.status === "active"
+        (s) => new Date(s.startDate) > now && s.status === "active",
       );
 
       // Calculate stats

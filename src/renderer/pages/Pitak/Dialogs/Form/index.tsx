@@ -429,7 +429,16 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
             </div>
           </div>
           <button
-            onClick={async () => {if(!await dialogs.confirm({title: 'Close Form', message: 'Are you sure do you want to close this form?.'}))return;onClose();}}
+            onClick={async () => {
+              if (
+                !(await dialogs.confirm({
+                  title: "Close Form",
+                  message: "Are you sure do you want to close this form?.",
+                }))
+              )
+                return;
+              onClose();
+            }}
             className="w-7 h-7 rounded flex items-center justify-center hover:bg-gray-200 transition-colors"
             title="Close"
           >
@@ -701,7 +710,7 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                       <div className="flex items-center gap-2 mb-3">
                         <MapPin className="w-4 h-4 text-gray-500" />
                         <h4 className="text-sm font-semibold text-gray-900">
-                          Location & Status
+                          Location
                         </h4>
                       </div>
                       <div className="space-y-4">
@@ -737,7 +746,7 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                         </div>
 
                         {/* Status Selection */}
-                        <div>
+                        {/* <div>
                           <label className="block text-xs font-medium mb-2 text-gray-700">
                             Plot Status <span className="text-red-500">*</span>
                           </label>
@@ -821,7 +830,7 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
 
@@ -844,11 +853,11 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
                             errors.notes ? "border-red-500" : "border-gray-300"
                           } focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none`}
                           placeholder="Enter any additional notes about this pitak... 
-                          • Soil type and quality
-                          • Special conditions or requirements
-                          • Landmarks for easy identification
-                          • Previous crop history
-                          • Any equipment requirements"
+• Soil type and quality
+• Special conditions or requirements
+• Landmarks for easy identification
+• Previous crop history
+• Any equipment requirements"
                           rows={4}
                         />
                         {errors.notes && (
@@ -894,7 +903,16 @@ const PitakFormDialog: React.FC<PitakFormDialogProps> = ({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={async () => {if(!await dialogs.confirm({title: 'Close Form', message: 'Are you sure do you want to close this form?.'}))return;onClose();}}
+                onClick={async () => {
+                  if (
+                    !(await dialogs.confirm({
+                      title: "Close Form",
+                      message: "Are you sure do you want to close this form?.",
+                    }))
+                  )
+                    return;
+                  onClose();
+                }}
                 className="px-3 py-1.5 rounded text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
                 disabled={submitting}
               >

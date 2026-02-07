@@ -16,7 +16,6 @@ import type { Assignment } from "../../../../apis/assignment";
 interface AssignmentActionsDropdownProps {
   assignment: Assignment;
   onView: (id: number) => void;
-  onEdit: (id: number) => void;
   onUpdateStatus: (id: number, status: string) => void;
   onCancel: (id: number) => void;
   onDelete: (id: number) => void;
@@ -28,7 +27,6 @@ interface AssignmentActionsDropdownProps {
 const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
   assignment,
   onView,
-  onEdit,
   onUpdateStatus,
   onCancel,
   onDelete,
@@ -89,7 +87,10 @@ const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
     <div className="assignment-actions-dropdown-container" ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={(e) => {e.stopPropagation(); handleToggle(e);}}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggle(e);
+        }}
         className="p-1.5 rounded hover:bg-gray-100 transition-colors relative z-50"
         title="More Actions"
       >
@@ -114,7 +115,7 @@ const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
             >
               <Eye className="w-4 h-4 text-sky-500" /> <span>View Details</span>
             </button>
-            <button
+            {/* <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleAction(() => onEdit(assignment.id));
@@ -122,13 +123,11 @@ const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Edit className="w-4 h-4 text-yellow-500" /> <span>Edit</span>
-            </button>
+            </button> */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleAction(() =>
-                  onAddNote(assignment.id, assignment.name)
-                );
+                handleAction(() => onAddNote(assignment.id, assignment.name));
               }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
@@ -162,7 +161,7 @@ const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     handleAction(() =>
-                      onUpdateStatus(assignment.id, "completed")
+                      onUpdateStatus(assignment.id, "completed"),
                     );
                   }}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
@@ -184,15 +183,17 @@ const AssignmentActionsDropdown: React.FC<AssignmentActionsDropdownProps> = ({
             )}
 
             <div className="border-t border-gray-200 my-1"></div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAction(() => onDelete(assignment.id));
-              }}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4" /> <span>Delete</span>
-            </button>
+            {assignment.status === "active" && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAction(() => onDelete(assignment.id));
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" /> <span>Delete</span>
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -55,6 +55,7 @@ const BukidTablePage: React.FC = () => {
     setSortBy,
     sortOrder,
     setSortOrder,
+    
   } = useBukidData();
 
   const [showStats, setShowStats] = useState(false); // Add show/hide stats state
@@ -90,6 +91,7 @@ const BukidTablePage: React.FC = () => {
     handleBulkDelete,
     handleExportCSV,
     handleExportSingleCSV, // Renamed to avoid conflict
+    handleOnBukidComplete,
   } = useBukidActions(bukids, fetchBukids, selectedBukids, statusFilter);
 
   // 2. Palitan ang placeholder na `openAddPlotDialog` function:
@@ -608,6 +610,7 @@ const BukidTablePage: React.FC = () => {
                       onViewPlots={openViewPlotsDialog}
                       onViewMap={handleViewMap}
                       onViewNote={openViewNoteDialog}
+                      onComplete={handleOnBukidComplete}
                     />
                   ) : (
                     <div className="p-6">

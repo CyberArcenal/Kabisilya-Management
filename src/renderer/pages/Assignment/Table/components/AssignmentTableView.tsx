@@ -10,7 +10,6 @@ interface AssignmentTableViewProps {
   toggleSelectAll: () => void;
   toggleSelectAssignment: (id: number) => void;
   onView: (id: number) => void;
-  onEdit: (id: number) => void;
   onDelete: (id: number) => void;
   onUpdateStatus: (id: number, currentStatus: string) => void;
   onCancel: (id: number) => void;
@@ -29,7 +28,6 @@ const AssignmentTableView: React.FC<AssignmentTableViewProps> = ({
   toggleSelectAll,
   toggleSelectAssignment,
   onView,
-  onEdit,
   onDelete,
   onUpdateStatus,
   onCancel,
@@ -137,7 +135,6 @@ const AssignmentTableView: React.FC<AssignmentTableViewProps> = ({
                 onSelect={() => toggleSelectAssignment(assignment.id)}
                 onToggleExpand={() => toggleExpandAssignment(assignment.id)}
                 onView={onView}
-                onEdit={onEdit}
                 onDelete={onDelete}
                 onUpdateStatus={onUpdateStatus}
                 onCancel={onCancel}

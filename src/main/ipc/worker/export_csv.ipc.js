@@ -5,6 +5,8 @@ const { stringify } = require('csv-stringify');
 const fs = require('fs');
 const path = require('path');
 const Worker = require("../../../entities/Worker");
+const Debt = require("../../../entities/Debt");
+const Payment = require("../../../entities/Payment");
 const UserActivity = require("../../../entities/UserActivity");
 const { AppDataSource } = require("../../db/dataSource");
 
@@ -26,6 +28,8 @@ module.exports = async function exportWorkersToCSV(params = {}) {
     } = params;
 
     const workerRepository = AppDataSource.getRepository(Worker);
+    const debtRepository = AppDataSource.getRepository(Debt);
+    const paymentRepository = AppDataSource.getRepository(Payment);
 
     // Build query
     const qb = workerRepository.createQueryBuilder('worker');
@@ -60,6 +64,44 @@ module.exports = async function exportWorkersToCSV(params = {}) {
         data: null
       };
     }
+
+    // Get worker IDs for batch financial queries
+    const workerIdsList = workers.map(w => w.id);
+
+    // Get financial data in batch
+    const [debtResults, paymentResults] = await Promise.all([
+      // Get total active debt per worker
+      debtRepository
+        .createQueryBuilder('debt')
+        .select('debt.workerId', 'workerId')
+        .addSelect('SUM(debt.balance)', 'totalDebt')
+        .where('debt.workerId IN (:...workerIds)', { workerIds: workerIdsList })
+        .andWhere('debt.status IN (:...statuses)', { 
+          statuses: ['pending', 'partially_paid'] 
+        })
+        .groupBy('debt.workerId')
+        .getRawMany(),
+      
+      // Get total payments per worker
+      paymentRepository
+        .createQueryBuilder('payment')
+        .select('payment.workerId', 'workerId')
+        .addSelect('SUM(payment.netPay)', 'totalPaid')
+        .where('payment.workerId IN (:...workerIds)', { workerIds: workerIdsList })
+        .groupBy('payment.workerId')
+        .getRawMany()
+    ]);
+
+    // Create lookup maps
+    const debtMap = new Map();
+    debtResults.forEach(d => {
+      debtMap.set(d.workerId, parseFloat(d.totalDebt) || 0);
+    });
+
+    const paymentMap = new Map();
+    paymentResults.forEach(p => {
+      paymentMap.set(p.workerId, parseFloat(p.totalPaid) || 0);
+    });
 
     // Define field mappings (removed kabisilyaName)
     const allFields = [
@@ -98,9 +140,14 @@ module.exports = async function exportWorkersToCSV(params = {}) {
       }
     }
 
-    // Prepare data for CSV
+    // Prepare data for CSV with calculated financial fields
     const csvData = workers.map(worker => {
       const row = {};
+      
+      // Get financial data for this worker
+      const workerDebt = debtMap.get(worker.id) || 0;
+      const workerPaid = paymentMap.get(worker.id) || 0;
+      const workerBalance = workerPaid - workerDebt;
       
       selectedFields.forEach(field => {
         switch (field.key) {
@@ -134,15 +181,15 @@ module.exports = async function exportWorkersToCSV(params = {}) {
             break;
           case 'totalDebt':
             // @ts-ignore
-            row[field.header] = worker.totalDebt;
+            row[field.header] = workerDebt;
             break;
           case 'totalPaid':
             // @ts-ignore
-            row[field.header] = worker.totalPaid;
+            row[field.header] = workerPaid;
             break;
           case 'currentBalance':
             // @ts-ignore
-            row[field.header] = worker.currentBalance;
+            row[field.header] = workerBalance;
             break;
           case 'createdAt':
             // @ts-ignore
@@ -208,6 +255,11 @@ module.exports = async function exportWorkersToCSV(params = {}) {
     const fileBuffer = fs.readFileSync(filePath);
     const base64Data = fileBuffer.toString('base64');
 
+    // Calculate summary statistics
+    const totalDebt = Array.from(debtMap.values()).reduce((sum, val) => sum + val, 0);
+    const totalPaid = Array.from(paymentMap.values()).reduce((sum, val) => sum + val, 0);
+    const totalBalance = totalPaid - totalDebt;
+
     // Clean up temporary file
     setTimeout(() => {
       try {
@@ -240,12 +292,9 @@ module.exports = async function exportWorkersToCSV(params = {}) {
             acc[worker.status] = (acc[worker.status] || 0) + 1;
             return acc;
           }, {}),
-          // @ts-ignore
-          totalDebt: workers.reduce((sum, worker) => sum + parseFloat(worker.totalDebt || 0), 0),
-          // @ts-ignore
-          totalPaid: workers.reduce((sum, worker) => sum + parseFloat(worker.totalPaid || 0), 0),
-          // @ts-ignore
-          totalBalance: workers.reduce((sum, worker) => sum + parseFloat(worker.currentBalance || 0), 0)
+          totalDebt: totalDebt,
+          totalPaid: totalPaid,
+          totalBalance: totalBalance
         },
         sampleData: csvData.slice(0, 3)
       }

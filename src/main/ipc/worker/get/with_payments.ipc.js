@@ -2,6 +2,8 @@
 //@ts-check
 
 const Worker = require("../../../../entities/Worker");
+const Payment = require("../../../../entities/Payment");
+const Debt = require("../../../../entities/Debt");
 const { AppDataSource } = require("../../../db/dataSource");
 
 module.exports = async function getWorkerWithPayments(params = {}) {
@@ -19,10 +21,11 @@ module.exports = async function getWorkerWithPayments(params = {}) {
     }
 
     const workerRepository = AppDataSource.getRepository(Worker);
+    const paymentRepository = AppDataSource.getRepository(Payment);
+    const debtRepository = AppDataSource.getRepository(Debt);
 
     const worker = await workerRepository.findOne({
-      where: { id: parseInt(id) },
-      relations: includeDetails ? ['payments', 'payments.history'] : []
+      where: { id: parseInt(id) }
     });
 
     if (!worker) {
@@ -33,36 +36,76 @@ module.exports = async function getWorkerWithPayments(params = {}) {
       };
     }
 
-    // Filter payments by date if specified
-    // @ts-ignore
-    let filteredPayments = worker.payments || [];
+    // Get financial summary
+    const [debtSummary, paymentSummary] = await Promise.all([
+      // Active debt
+      debtRepository
+        .createQueryBuilder("debt")
+        .select("SUM(debt.balance)", "totalDebt")
+        .where("debt.workerId = :workerId", { workerId: id })
+        .andWhere("debt.status IN (:...statuses)", {
+          statuses: ['pending', 'partially_paid']
+        })
+        .getRawOne(),
+      
+      // Total paid
+      paymentRepository
+        .createQueryBuilder("payment")
+        .select("SUM(payment.netPay)", "totalPaid")
+        .where("payment.workerId = :workerId", { workerId: id })
+        .getRawOne()
+    ]);
+
+    const totalDebt = parseFloat(debtSummary?.totalDebt || 0);
+    const totalPaid = parseFloat(paymentSummary?.totalPaid || 0);
+    const currentBalance = totalPaid - totalDebt;
+
+    // Get payments with optional filters
+    let paymentsQuery = paymentRepository
+      .createQueryBuilder("payment")
+      .where("payment.workerId = :workerId", { workerId: id });
+
     if (periodStart && periodEnd) {
       const startDate = new Date(periodStart);
       const endDate = new Date(periodEnd);
-      filteredPayments = filteredPayments.filter((/** @type {{ paymentDate: any; createdAt: any; }} */ payment) => {
-        const paymentDate = new Date(payment.paymentDate || payment.createdAt);
-        return paymentDate >= startDate && paymentDate <= endDate;
-      });
+      endDate.setHours(23, 59, 59, 999); // End of day
+      
+      paymentsQuery = paymentsQuery
+        .andWhere("(payment.paymentDate BETWEEN :start AND :end OR payment.createdAt BETWEEN :start AND :end)", {
+          start: startDate,
+          end: endDate
+        });
     }
 
-    // Calculate totals
+    const filteredPayments = includeDetails ? 
+      await paymentsQuery
+        .orderBy("payment.paymentDate", "DESC")
+        .addOrderBy("payment.createdAt", "DESC")
+        .getMany() :
+      [];
+
+    // Calculate totals from filtered payments
     const totalPayments = filteredPayments.length;
-    const totalNetPay = filteredPayments.reduce((/** @type {number} */ sum, /** @type {{ netPay: any; }} */ payment) =>
+    const totalNetPay = filteredPayments.reduce((sum, payment) =>
+      // @ts-ignore
       sum + parseFloat(payment.netPay || 0), 0
     );
-    const totalGrossPay = filteredPayments.reduce((/** @type {number} */ sum, /** @type {{ grossPay: any; }} */ payment) =>
+    const totalGrossPay = filteredPayments.reduce((sum, payment) =>
+      // @ts-ignore
       sum + parseFloat(payment.grossPay || 0), 0
     );
-    const totalDebtDeduction = filteredPayments.reduce((/** @type {number} */ sum, /** @type {{ totalDebtDeduction: any; }} */ payment) =>
+    const totalDebtDeduction = filteredPayments.reduce((sum, payment) =>
+      // @ts-ignore
       sum + parseFloat(payment.totalDebtDeduction || 0), 0
     );
-    const totalOtherDeductions = filteredPayments.reduce((/** @type {number} */ sum, /** @type {{ otherDeductions: any; }} */ payment) =>
+    const totalOtherDeductions = filteredPayments.reduce((sum, payment) =>
+      // @ts-ignore
       sum + parseFloat(payment.otherDeductions || 0), 0
     );
 
     // Group by payment method
     const paymentsByMethod = {};
-    filteredPayments.forEach((/** @type {{ paymentMethod: string; netPay: any; id: any; paymentDate: any; status: any; }} */ payment) => {
+    filteredPayments.forEach(payment => {
       const method = payment.paymentMethod || 'Unknown';
       // @ts-ignore
       if (!paymentsByMethod[method]) {
@@ -90,7 +133,7 @@ module.exports = async function getWorkerWithPayments(params = {}) {
 
     // Group by status
     const paymentsByStatus = {};
-    filteredPayments.forEach((/** @type {{ status: string; netPay: any; }} */ payment) => {
+    filteredPayments.forEach(payment => {
       const status = payment.status || 'unknown';
       // @ts-ignore
       if (!paymentsByStatus[status]) {
@@ -106,6 +149,26 @@ module.exports = async function getWorkerWithPayments(params = {}) {
       paymentsByStatus[status].totalAmount += parseFloat(payment.netPay || 0);
     });
 
+    // Get recent payments
+    const recentPayments = filteredPayments
+      .slice(0, 10)
+      .map(payment => ({
+        id: payment.id,
+        date: payment.paymentDate,
+        netPay: payment.netPay,
+        status: payment.status,
+        method: payment.paymentMethod
+      }));
+
+    // Calculate period days if specified
+    let periodDays = null;
+    if (periodStart && periodEnd) {
+      const start = new Date(periodStart);
+      const end = new Date(periodEnd);
+      // @ts-ignore
+      periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
     return {
       status: true,
       message: 'Worker with payments retrieved successfully',
@@ -113,9 +176,9 @@ module.exports = async function getWorkerWithPayments(params = {}) {
         worker: {
           id: worker.id,
           name: worker.name,
-          totalDebt: worker.totalDebt,
-          totalPaid: worker.totalPaid,
-          currentBalance: worker.currentBalance
+          totalDebt: totalDebt,
+          totalPaid: totalPaid,
+          currentBalance: currentBalance
         },
         paymentSummary: {
           totalPayments,
@@ -140,23 +203,12 @@ module.exports = async function getWorkerWithPayments(params = {}) {
             count: data.count,
             totalAmount: data.totalAmount
           })),
-          recentPayments: filteredPayments
-            // @ts-ignore
-            .sort((/** @type {{ paymentDate: any; createdAt: any; }} */ a, /** @type {{ paymentDate: any; createdAt: any; }} */ b) => new Date(b.paymentDate || b.createdAt) - new Date(a.paymentDate || a.createdAt))
-            .slice(0, 10)
-            .map((/** @type {{ id: any; paymentDate: any; netPay: any; status: any; paymentMethod: any; }} */ payment) => ({
-              id: payment.id,
-              date: payment.paymentDate,
-              netPay: payment.netPay,
-              status: payment.status,
-              method: payment.paymentMethod
-            }))
+          recentPayments
         },
         period: periodStart && periodEnd ? {
           start: periodStart,
           end: periodEnd,
-          // @ts-ignore
-          days: Math.ceil((new Date(periodEnd) - new Date(periodStart)) / (1000 * 60 * 60 * 24)) + 1
+          days: periodDays
         } : null
       }
     };

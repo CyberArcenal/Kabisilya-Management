@@ -47,7 +47,11 @@ module.exports = async (params) => {
       // Check for duplicate location in same bukid
       if (bukidId && location) {
         const pitakRepo = AppDataSource.getRepository(Pitak);
-        const whereClause = { bukidId, location };
+
+        const whereClause = {
+          bukid: { id: bukidId },
+          location,
+        };
 
         if (excludePitakId) {
           // @ts-ignore
@@ -85,19 +89,18 @@ module.exports = async (params) => {
       }
     }
 
-    // 🆕 Validate layoutType
+    // Validate layoutType
     if (layoutType !== undefined && layoutType !== null) {
       if (!validLayouts.includes(layoutType)) {
         errors.push(`layoutType must be one of: ${validLayouts.join(", ")}`);
       }
     }
 
-    // 🆕 Validate sideLengths
+    // Validate sideLengths
     if (sideLengths !== undefined && sideLengths !== null) {
       if (typeof sideLengths !== "object") {
         errors.push("sideLengths must be an object or array");
       } else {
-        // basic sanity check
         const values = Array.isArray(sideLengths)
           ? sideLengths
           : Object.values(sideLengths);
@@ -107,7 +110,7 @@ module.exports = async (params) => {
       }
     }
 
-    // 🆕 Validate areaSqm
+    // Validate areaSqm
     if (areaSqm !== undefined) {
       const areaNum = parseFloat(areaSqm);
       if (isNaN(areaNum)) {
@@ -129,7 +132,7 @@ module.exports = async (params) => {
       const pitakRepo = AppDataSource.getRepository(Pitak);
       const bukidPitaks = await pitakRepo.find({
         // @ts-ignore
-        where: { bukidId },
+        where: { bukid: { id: bukidId } },
         select: ["totalLuwang"],
       });
 

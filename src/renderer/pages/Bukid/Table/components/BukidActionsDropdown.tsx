@@ -16,9 +16,11 @@ import {
   Map,
   BookOpen,
 } from "lucide-react";
+import { dialogs } from "../../../../utils/dialogs";
 
 interface BukidActionsDropdownProps {
   bukid: any;
+  onComplete: (id: number) => void;
   onView: (id: number) => void;
   onEdit: (id: number) => void;
   onUpdateStatus: (id: number, status: string) => void;
@@ -35,6 +37,7 @@ interface BukidActionsDropdownProps {
 
 const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
   bukid,
+  onComplete,
   onView,
   onEdit,
   onUpdateStatus,
@@ -95,7 +98,10 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
     <div className="bukid-actions-dropdown-container" ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={(e)=> {e.stopPropagation(); handleToggle();}}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggle();
+        }}
         className="p-1.5 rounded hover:bg-gray-100 transition-colors relative cursor-pointer"
         title="More Actions"
       >
@@ -113,20 +119,46 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
           <div className="py-1">
             {/* General */}
             <button
-              onClick={(e)=> {e.stopPropagation();handleAction(() => onView(bukid.id))}}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (
+                  !(await dialogs.confirm({
+                    title: "Confirm Completion",
+                    message: `Are you sure you want to mark Bukid ${bukid.name} as completed?`,
+                  }))
+                )
+                  return;
+                handleAction(() => onComplete(bukid.id));
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              <CheckCircle className="w-4 h-4 text-green-500" />{" "}
+              <span>Mark as Completed</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onView(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Eye className="w-4 h-4 text-sky-500" /> <span>View Details</span>
             </button>
             <button
-              onClick={(e)=> {e.stopPropagation(); handleAction(() => onEdit(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onEdit(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Edit className="w-4 h-4 text-yellow-500" />{" "}
               <span>Edit Bukid</span>
             </button>
             <button
-              onClick={(e)=> {e.stopPropagation();handleAction(() => onAddNote(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onAddNote(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <FileText className="w-4 h-4 text-blue-500" />{" "}
@@ -135,7 +167,10 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
 
             {/* Plot Actions */}
             <button
-              onClick={(e)=> {e.stopPropagation();handleAction(() => onAddPlot(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onAddPlot(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <PlusCircle className="w-4 h-4 text-green-600" />{" "}
@@ -147,14 +182,20 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
 
             {/* Statistics */}
             <button
-                onClick={(e)=> {e.stopPropagation();handleAction(() => onViewStats(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onViewStats(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <BarChart2 className="w-4 h-4 text-purple-500" />{" "}
               <span>View Stats</span>
             </button>
             <button
-              onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewPlots(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onViewPlots(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Layers className="w-4 h-4 text-purple-600" />{" "}
@@ -163,7 +204,10 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
 
             {bukid.notes && onViewNote && (
               <button
-                onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewNote(bukid.id))}}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAction(() => onViewNote(bukid.id));
+                }}
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
               >
                 <BookOpen className="w-4 h-4 text-indigo-500" />
@@ -174,7 +218,10 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
             {/* Map View (Future) */}
             {onViewMap && (
               <button
-                onClick={(e)=> {e.stopPropagation(); handleAction(() => onViewMap(bukid.id))}}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAction(() => onViewMap(bukid.id));
+                }}
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
               >
                 <Map className="w-4 h-4 text-indigo-600" />{" "}
@@ -187,14 +234,20 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
 
             {/* Batch / Import / Export */}
             <button
-              onClick={(e)=> {e.stopPropagation(); handleAction(() => onImportCSV(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onImportCSV(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Upload className="w-4 h-4 text-blue-600" />{" "}
               <span>Import CSV</span>
             </button>
             <button
-              onClick={(e)=> {e.stopPropagation(); handleAction(() => onExportCSV(bukid.id))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onExportCSV(bukid.id));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
               <Download className="w-4 h-4 text-green-600" />{" "}
@@ -205,13 +258,14 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
             <div className="border-t border-gray-200 my-1"></div>
             {/* Status */}
             <button
-              onClick={(e)=> {e.stopPropagation();
+              onClick={(e) => {
+                e.stopPropagation();
                 handleAction(() =>
                   onUpdateStatus(
                     bukid.id,
                     bukid.status === "active" ? "inactive" : "active",
                   ),
-                )
+                );
               }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100"
             >
@@ -229,7 +283,10 @@ const BukidActionsDropdown: React.FC<BukidActionsDropdownProps> = ({
             </button>
             {/* Delete */}
             <button
-              onClick={(e)=> {e.stopPropagation(); handleAction(() => onDelete(bukid.id, bukid.name))}}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction(() => onDelete(bukid.id, bukid.name));
+              }}
               className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >
               <Trash2 className="w-4 h-4" /> <span>Delete Bukid</span>
