@@ -109,7 +109,7 @@ module.exports = async function bulkCreateBukid(
     // @ts-ignore
     const activityRepo = queryRunner.manager.getRepository(UserActivity);
     const activity = activityRepo.create({
-      user_id: _userId,
+      user_id: userId,
       action: "bulk_create_bukid",
       entity: "Bukid",
       session: { id: sessionId },

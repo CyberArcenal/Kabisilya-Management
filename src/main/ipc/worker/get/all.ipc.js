@@ -16,7 +16,7 @@ module.exports = async function getAllWorkers(params = {}) {
       // @ts-ignore
       sortOrder = 'ASC',
       // @ts-ignore
-      _userId 
+      userId 
     } = params;
 
     const workerRepository = AppDataSource.getRepository(Worker);
